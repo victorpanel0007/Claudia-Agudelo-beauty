@@ -1,0 +1,133 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Critical CSS: variables y base ─────────────────────────────────────── */
+:root {
+  --background: #FCF9EF;
+  --primary:    #D9A5A8;
+  --secondary:  #CDA967;
+  --accent:     #D9A5A8;
+  --text:       #626360;
+  --text-dark:  #3A3B39;
+  --sage:       #A3A39B;
+  --beige:      #DDD4AD;
+  --rose-soft:  #F1B8C6;
+  --white:      #FFFFFF;
+}
+
+/* ── Reset mínimo ────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+* { padding: 0; margin: 0; }
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: var(--font-inter), system-ui, sans-serif;
+  background: var(--background);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* ── Animaciones GPU-accelerated ─────────────────────────────────────────── */
+.animate-fade-in,
+.animate-slide-up,
+.animate-float,
+.animate-bounce-soft {
+  will-change: transform, opacity;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+/* ── Scrollbar ───────────────────────────────────────────────────────────── */
+::-webkit-scrollbar       { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: #F5F0E0; }
+::-webkit-scrollbar-thumb { background: var(--secondary); border-radius: 4px; }
+
+/* ── Divisor dorado ──────────────────────────────────────────────────────── */
+.gold-divider {
+  height: 1.5px;
+  background: linear-gradient(90deg, transparent, #CDA967, transparent);
+  contain: layout style;
+}
+
+/* ── Botones ─────────────────────────────────────────────────────────────── */
+.btn-beauty {
+  @apply bg-beauty-primary text-white font-semibold px-6 py-3 rounded-full
+    transition-all duration-300 hover:bg-beauty-primary-dark hover:shadow-beauty-lg
+    active:scale-95 inline-flex items-center gap-2;
+  will-change: transform;
+}
+
+.btn-beauty-outline {
+  @apply border-2 border-beauty-secondary text-beauty-secondary font-semibold px-6 py-3 rounded-full
+    transition-all duration-300 hover:bg-beauty-secondary hover:text-white
+    active:scale-95 inline-flex items-center gap-2;
+  will-change: transform;
+}
+
+.btn-beauty-light {
+  @apply bg-beauty-bg text-beauty-primary font-semibold px-6 py-3 rounded-full
+    transition-all duration-300 hover:bg-beauty-primary-light hover:text-beauty-text
+    active:scale-95 inline-flex items-center gap-2;
+  will-change: transform;
+}
+
+/* ── Card ────────────────────────────────────────────────────────────────── */
+.beauty-card {
+  @apply bg-white rounded-2xl shadow-card border border-beauty-primary/30
+    transition-all duration-300 hover:shadow-card-hover;
+  contain: layout;
+}
+
+/* ── Tipografía ──────────────────────────────────────────────────────────── */
+.section-title {
+  @apply font-serif text-3xl md:text-4xl font-bold text-beauty-text-dark;
+}
+.text-gold { @apply text-beauty-secondary; }
+
+.gradient-text {
+  background: linear-gradient(135deg, #CDA967, #E2CC9A);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ── Input ───────────────────────────────────────────────────────────────── */
+.input-beauty {
+  @apply w-full border border-beauty-primary/60 rounded-xl px-4 py-3 text-sm
+    focus:outline-none focus:ring-2 focus:ring-beauty-secondary focus:border-transparent
+    transition-all duration-200 bg-white text-beauty-text placeholder-beauty-text-muted;
+}
+
+/* ── Badges ──────────────────────────────────────────────────────────────── */
+.badge-confirmada { @apply bg-green-100 text-green-800 text-xs font-medium px-2.5 py-0.5 rounded-full; }
+.badge-pendiente  { @apply bg-yellow-100 text-yellow-800 text-xs font-medium px-2.5 py-0.5 rounded-full; }
+.badge-completada { @apply bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded-full; }
+.badge-cancelada  { @apply bg-red-100 text-red-800 text-xs font-medium px-2.5 py-0.5 rounded-full; }
+.badge-en_proceso { @apply bg-purple-100 text-purple-800 text-xs font-medium px-2.5 py-0.5 rounded-full; }
+
+/* ── Skeleton loader ─────────────────────────────────────────────────────── */
+.skeleton {
+  @apply animate-pulse bg-beauty-primary/15 rounded-xl;
+}
+
+/* ── Reduce CLS: espacio para imágenes ───────────────────────────────────── */
+img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* ── Transiciones solo en propiedades baratas ────────────────────────────── */
+a, button {
+  transition-property: color, background-color, border-color, box-shadow, opacity, transform;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ── Calendario ──────────────────────────────────────────────────────────── */
+.rbc-calendar  { font-family: var(--font-inter) !important; background: white !important; }
+.rbc-header    { font-weight: 600 !important; padding: 8px !important; background: #FCF9EF !important; color: #626360 !important; }
+.rbc-event     { background: #D9A5A8 !important; border: none !important; border-radius: 6px !important; color: #FFFFFF !important; font-size: 12px !important; font-weight: 500 !important; }
+.rbc-today     { background: #F5F0E0 !important; }
