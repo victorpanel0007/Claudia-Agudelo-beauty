@@ -54,6 +54,7 @@ export default function BookingSection() {
       const res = await fetch(`/api/disponibilidad?${params}`)
       const slots = await res.json()
       setAvailableSlots(Array.isArray(slots) ? slots : [])
+      setFormData(data)  // ← guardar datos para usar en confirmación
       setStep(2)
     } catch {
       toast.error('Error verificando disponibilidad')
@@ -92,6 +93,14 @@ export default function BookingSection() {
     } finally {
       setLoading(false)
     }
+  }
+
+  // Datos guardados del paso 1 para usar en confirmación directa
+  const [formData, setFormData] = useState<FormData | null>(null)
+
+  async function confirmarDirecto() {
+    if (!selectedSlot || !formData) { toast.error('Selecciona un horario'); return }
+    await confirmBooking(formData)
   }
 
   if (success) {
@@ -274,7 +283,7 @@ export default function BookingSection() {
                   <button type="button" onClick={() => setStep(1)} className="btn-beauty-outline flex-1 justify-center">Volver</button>
                   <button
                     type="button"
-                    onClick={e => { e.preventDefault(); handleSubmit(confirmBooking)() }}
+                    onClick={confirmarDirecto}
                     disabled={!selectedSlot || loading}
                     className="btn-beauty flex-1 justify-center disabled:opacity-50">
                     {loading ? 'Reservando...' : 'Confirmar'}
