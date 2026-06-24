@@ -5,6 +5,8 @@ import AdminSidebar from '@/components/admin/AdminSidebar'
 import AdminHeader from '@/components/admin/AdminHeader'
 import { Toaster } from 'react-hot-toast'
 
+export const dynamic = 'force-dynamic'
+
 export const metadata: Metadata = {
   title: 'Panel Admin — Claudia Agudelo Beauty',
   robots: 'noindex',
