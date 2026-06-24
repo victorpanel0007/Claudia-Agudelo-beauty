@@ -24,7 +24,7 @@ const playfair = Playfair_Display({
 
 // ── Metadata completa para SEO ────────────────────────────────────────────
 export const metadata: Metadata = {
-  metadataBase: new URL('https://claudiagudelobeauty.com'),
+  metadataBase: new URL('https://www.claudiaagudelobeauty.sbs'),
   title: {
     default: 'Claudia Agudelo Beauty | Salón de Belleza Premium',
     template: '%s | Claudia Agudelo Beauty',

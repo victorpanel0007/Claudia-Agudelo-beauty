@@ -514,21 +514,25 @@ export default function AgendaView() {
   const supabase = createClient()
 
   const loadCitas = useCallback(async () => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('citas')
       .select(`*, cliente:clientes(nombre,telefono,notas),
         especialista:especialistas(nombre,foto),
         servicio:servicios(nombre,duracion_minutos,precio,precio_desde,tipo_precio)`)
       .neq('estado', 'cancelada')
       .order('fecha_inicio')
+    if (error) console.error('Error cargando citas:', error.message)
     if (data) setCitas(data as Cita[])
     setLoading(false)
   }, [supabase])
 
   useEffect(() => {
     loadCitas()
-    const ch = supabase.channel('agenda-rt')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'citas' }, loadCitas)
+    const ch = supabase
+      .channel('agenda-rt-' + Date.now())
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'citas' }, () => loadCitas())
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'citas' }, () => loadCitas())
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'citas' }, () => loadCitas())
       .subscribe()
     return () => { supabase.removeChannel(ch) }
   }, [loadCitas, supabase])
