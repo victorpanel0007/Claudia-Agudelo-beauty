@@ -22,7 +22,7 @@ export default function LoginForm() {
     setError('')
     setLoading(true)
 
-    const { error: authError } = await supabase.auth.signInWithPassword({ email, password })
+    const { data: { session }, error: authError } = await supabase.auth.signInWithPassword({ email, password })
 
     if (authError) {
       setError('Credenciales incorrectas. Verifica tu email y contraseña.')
@@ -30,7 +30,13 @@ export default function LoginForm() {
       return
     }
 
-    router.push(redirectTo)
+    // Redirigir según el rol
+    const rol = session?.user?.user_metadata?.rol
+    if (rol === 'especialista') {
+      router.push('/especialista')
+    } else {
+      router.push(redirectTo)
+    }
     router.refresh()
   }
 

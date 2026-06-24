@@ -19,12 +19,18 @@ export default function EspecialistaLoginForm() {
     e.preventDefault()
     if (!email || !password) { toast.error('Completa todos los campos'); return }
     setLoading(true)
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    const { data: { session }, error } = await supabase.auth.signInWithPassword({ email, password })
     if (error) {
       toast.error('Correo o contraseña incorrectos')
       setLoading(false)
     } else {
-      router.push('/especialista')
+      // Si es admin, redirigir al panel admin
+      const rol = session?.user?.user_metadata?.rol
+      if (rol === 'admin') {
+        router.push('/admin')
+      } else {
+        router.push('/especialista')
+      }
       router.refresh()
     }
   }
