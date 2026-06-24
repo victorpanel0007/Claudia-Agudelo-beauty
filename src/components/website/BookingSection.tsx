@@ -1,6 +1,6 @@
 ﻿'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -8,6 +8,9 @@ import toast, { Toaster } from 'react-hot-toast'
 import { CATEGORIAS, SERVICIOS_DATA } from '@/lib/services-data'
 import { formatCurrency } from '@/lib/utils'
 import { Calendar, Clock, User, Phone, ChevronRight, Check } from 'lucide-react'
+import { createClient } from '@/lib/supabase/client'
+
+interface Especialista { id: string; nombre: string }
 
 const schema = z.object({
   nombre: z.string().min(3, 'Mínimo 3 caracteres'),
@@ -15,7 +18,7 @@ const schema = z.object({
   categoria_id: z.string().min(1, 'Selecciona una categoría'),
   servicio_idx: z.string().min(1, 'Selecciona un servicio'),
   fecha: z.string().min(1, 'Selecciona una fecha'),
-  especialista_preferencia: z.enum(['cualquiera', 'claudia', 'rosa']),
+  especialista_id: z.string(),
   observaciones: z.string().optional(),
 })
 
@@ -23,16 +26,25 @@ type FormData = z.infer<typeof schema>
 
 export default function BookingSection() {
   const [step, setStep] = useState(1)
+  const [especialistas, setEspecialistas] = useState<Especialista[]>([])
   const [availableSlots, setAvailableSlots] = useState<
     { hora: string; especialista_nombre: string; fecha_inicio: string; fecha_fin: string; especialista_id: string }[]
   >([])
   const [selectedSlot, setSelectedSlot] = useState<(typeof availableSlots)[0] | null>(null)
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
+  const [formData, setFormData] = useState<FormData | null>(null)
+
+  // Cargar especialistas desde Supabase dinámicamente
+  useEffect(() => {
+    const supabase = createClient()
+    supabase.from('especialistas').select('id, nombre').eq('activo', true).order('nombre')
+      .then(({ data }) => { if (data) setEspecialistas(data) })
+  }, [])
 
   const { register, handleSubmit, watch, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
-    defaultValues: { especialista_preferencia: 'cualquiera' },
+    defaultValues: { especialista_id: '' },
   })
 
   const categoriaId = watch('categoria_id')
@@ -50,11 +62,12 @@ export default function BookingSection() {
       const params = new URLSearchParams({
         fecha: new Date(data.fecha + 'T12:00:00-05:00').toISOString(),
         duracion: servicio.duracion.toString(),
+        ...(data.especialista_id ? { especialista_id: data.especialista_id } : {}),
       })
       const res = await fetch(`/api/disponibilidad?${params}`)
       const slots = await res.json()
       setAvailableSlots(Array.isArray(slots) ? slots : [])
-      setFormData(data)  // ← guardar datos para usar en confirmación
+      setFormData(data)
       setStep(2)
     } catch {
       toast.error('Error verificando disponibilidad')
@@ -94,9 +107,6 @@ export default function BookingSection() {
       setLoading(false)
     }
   }
-
-  // Datos guardados del paso 1 para usar en confirmación directa
-  const [formData, setFormData] = useState<FormData | null>(null)
 
   async function confirmarDirecto() {
     if (!selectedSlot || !formData) { toast.error('Selecciona un horario'); return }
@@ -154,7 +164,7 @@ export default function BookingSection() {
           ))}
         </div>
 
-        {/* Paso 1: formulario */}
+        {/* Paso 1 */}
         {step === 1 && (
           <form onSubmit={handleSubmit(checkAvailability)} className="beauty-card p-6 space-y-5">
 
@@ -213,21 +223,25 @@ export default function BookingSection() {
               {errors.fecha && <p className="text-red-500 text-xs mt-1">{errors.fecha.message}</p>}
             </div>
 
+            {/* Especialistas dinámicos desde Supabase */}
             <div>
               <label className="block text-sm font-medium text-beauty-text mb-2">Especialista</label>
-              <div className="grid grid-cols-3 gap-2">
-                {[
-                  { value: 'cualquiera', label: 'Cualquiera' },
-                  { value: 'claudia',    label: 'Claudia' },
-                  { value: 'rosa',       label: 'Rosa' },
-                ].map(opt => (
-                  <label key={opt.value} className="cursor-pointer">
-                    <input {...register('especialista_preferencia')} type="radio"
-                      value={opt.value} className="sr-only peer" />
+              <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${Math.min(especialistas.length + 1, 3)}, 1fr)` }}>
+                <label className="cursor-pointer">
+                  <input {...register('especialista_id')} type="radio" value="" className="sr-only peer" />
+                  <div className="border-2 border-beauty-primary/40 rounded-xl p-3 text-center text-sm font-medium text-beauty-text
+                    peer-checked:border-beauty-secondary peer-checked:text-beauty-secondary peer-checked:bg-beauty-secondary/10
+                    transition-all cursor-pointer hover:border-beauty-primary">
+                    Cualquiera
+                  </div>
+                </label>
+                {especialistas.map(esp => (
+                  <label key={esp.id} className="cursor-pointer">
+                    <input {...register('especialista_id')} type="radio" value={esp.id} className="sr-only peer" />
                     <div className="border-2 border-beauty-primary/40 rounded-xl p-3 text-center text-sm font-medium text-beauty-text
                       peer-checked:border-beauty-secondary peer-checked:text-beauty-secondary peer-checked:bg-beauty-secondary/10
                       transition-all cursor-pointer hover:border-beauty-primary">
-                      {opt.label}
+                      {esp.nombre}
                     </div>
                   </label>
                 ))}
@@ -246,7 +260,7 @@ export default function BookingSection() {
           </form>
         )}
 
-        {/* Paso 2: slots */}
+        {/* Paso 2 */}
         {step === 2 && (
           <div className="beauty-card p-6">
             <h3 className="font-semibold text-beauty-text-dark mb-1">Horarios disponibles</h3>
@@ -255,7 +269,7 @@ export default function BookingSection() {
             {availableSlots.length === 0 ? (
               <div className="text-center py-8">
                 <p className="text-beauty-text-muted">No hay disponibilidad para esa fecha.</p>
-                <button onClick={() => setStep(1)}
+                <button type="button" onClick={() => setStep(1)}
                   className="btn-beauty-outline mt-4">Cambiar fecha</button>
               </div>
             ) : (
