@@ -548,6 +548,36 @@ export default function AgendaView() {
   const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 })
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i))
 
+  // Vista día: solo el día actual
+  const dayView = [currentDate]
+
+  // Vista mes: todos los días del mes
+  const monthStart = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1)
+  const monthEnd = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0)
+  const monthDays = Array.from({ length: monthEnd.getDate() }, (_, i) => addDays(monthStart, i))
+
+  // Días a mostrar según la vista
+  const visibleDays = viewMode === 'day' ? dayView : viewMode === 'month' ? monthDays : weekDays
+
+  // Navegación según vista
+  function goNext() {
+    if (viewMode === 'day') setCurrentDate(d => addDays(d, 1))
+    else if (viewMode === 'week') setCurrentDate(d => addWeeks(d, 1))
+    else setCurrentDate(d => new Date(d.getFullYear(), d.getMonth() + 1, 1))
+  }
+  function goPrev() {
+    if (viewMode === 'day') setCurrentDate(d => addDays(d, -1))
+    else if (viewMode === 'week') setCurrentDate(d => subWeeks(d, 1))
+    else setCurrentDate(d => new Date(d.getFullYear(), d.getMonth() - 1, 1))
+  }
+
+  // Título del toolbar
+  const toolbarTitle = viewMode === 'day'
+    ? format(currentDate, "EEEE d 'de' MMMM yyyy", { locale: es })
+    : viewMode === 'week'
+    ? format(weekStart, "MMMM yyyy", { locale: es })
+    : format(currentDate, "MMMM yyyy", { locale: es })
+
   // Stats
   const today = new Date()
   const citasHoy = citas.filter(c => isSameDay(parseISO(c.fecha_inicio), today))
@@ -597,13 +627,13 @@ export default function AgendaView() {
                 className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors">
                 Hoy
               </button>
-              <button onClick={() => setCurrentDate(d => subWeeks(d, 1))}
+              <button onClick={goPrev}
                 className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"><ChevronLeft size={16} /></button>
-              <button onClick={() => setCurrentDate(d => addWeeks(d, 1))}
+              <button onClick={goNext}
                 className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"><ChevronRight size={16} /></button>
             </div>
-            <p className="font-semibold text-gray-700 text-sm">
-              {format(weekStart, "MMMM yyyy", { locale: es })}
+            <p className="font-semibold text-gray-700 text-sm capitalize">
+              {toolbarTitle}
             </p>
             <div className="flex items-center gap-1 bg-gray-100 rounded-xl p-1">
               {(['Día', 'Semana', 'Mes'] as const).map(v => (
@@ -616,58 +646,93 @@ export default function AgendaView() {
             </div>
           </div>
 
-          {/* Grid semanal */}
-          <div className="flex flex-1 overflow-auto">
-            {/* Columna horas */}
-            <div className="w-14 shrink-0 border-r border-gray-100">
-              <div className="h-10 border-b border-gray-100" /> {/* header vacío */}
-              {HOURS.map(h => (
-                <div key={h} className="h-16 border-b border-gray-50 flex items-start justify-end pr-2 pt-1">
-                  <span className="text-[11px] text-gray-400">{String(h).padStart(2,'0')}:00</span>
-                </div>
-              ))}
+          {/* Grid: Día / Semana usan vista de horas — Mes usa cuadrícula */}
+          {viewMode === 'month' ? (
+            /* ── Vista Mes ── */
+            <div className="flex-1 overflow-auto p-3">
+              {/* Cabecera días de semana */}
+              <div className="grid grid-cols-7 gap-1 mb-1">
+                {['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'].map(d => (
+                  <div key={d} className="text-center text-[11px] font-semibold text-gray-400 py-1">{d}</div>
+                ))}
+              </div>
+              {/* Días del mes — rellenar con blancos al inicio */}
+              <div className="grid grid-cols-7 gap-1">
+                {/* Espacios vacíos antes del día 1 */}
+                {Array.from({ length: (monthStart.getDay() === 0 ? 6 : monthStart.getDay() - 1) }).map((_, i) => (
+                  <div key={`empty-${i}`} className="h-20 rounded-xl bg-gray-50/50" />
+                ))}
+                {monthDays.map(day => {
+                  const citasDia = citas.filter(c => isSameDay(parseISO(c.fecha_inicio), day))
+                  const isHoy = isToday(day)
+                  return (
+                    <div key={day.toISOString()}
+                      className={`h-20 rounded-xl border p-1.5 overflow-hidden cursor-pointer hover:border-beauty-primary/40 transition-all ${
+                        isHoy ? 'border-beauty-primary bg-beauty-primary/5' : 'border-gray-100 bg-white'
+                      }`}
+                      onClick={() => { setCurrentDate(day); setViewMode('day') }}>
+                      <p className={`text-xs font-bold mb-1 ${isHoy ? 'text-beauty-primary' : 'text-gray-600'}`}>
+                        {format(day, 'd')}
+                      </p>
+                      <div className="space-y-0.5">
+                        {citasDia.slice(0, 2).map(c => {
+                          const st = STATUS_CONFIG[c.estado] || STATUS_CONFIG.pendiente
+                          return (
+                            <div key={c.id} onClick={e => { e.stopPropagation(); setSelectedCita(c) }}
+                              className={`text-[10px] truncate px-1.5 py-0.5 rounded-md border ${st.bg} ${st.color} cursor-pointer`}>
+                              {formatTime(c.fecha_inicio)} {c.cliente?.nombre?.split(' ')[0]}
+                            </div>
+                          )
+                        })}
+                        {citasDia.length > 2 && (
+                          <p className="text-[10px] text-gray-400 pl-1">+{citasDia.length - 2} más</p>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
             </div>
-
-            {/* Columnas días */}
-            {weekDays.map(day => {
-              const citasDia = citas.filter(c => isSameDay(parseISO(c.fecha_inicio), day))
-              const dayIsToday = isToday(day)
-              return (
-                <div key={day.toISOString()} className="flex-1 min-w-0 border-r border-gray-100 last:border-r-0">
-                  {/* Encabezado día */}
-                  <div className={`h-10 border-b border-gray-100 flex flex-col items-center justify-center sticky top-0 z-20 ${
-                    dayIsToday ? 'bg-beauty-primary/10' : 'bg-white'
-                  }`}>
-                    <span className="text-[10px] text-gray-400 uppercase font-medium">
-                      {format(day, 'EEE', { locale: es })} {format(day, 'd')}
-                    </span>
-                    {dayIsToday && <div className="w-1.5 h-1.5 rounded-full bg-beauty-primary mt-0.5" />}
+          ) : (
+            /* ── Vista Día / Semana (grid de horas) ── */
+            <div className="flex flex-1 overflow-auto">
+              {/* Columna horas */}
+              <div className="w-14 shrink-0 border-r border-gray-100">
+                <div className="h-10 border-b border-gray-100" />
+                {HOURS.map(h => (
+                  <div key={h} className="h-16 border-b border-gray-50 flex items-start justify-end pr-2 pt-1">
+                    <span className="text-[11px] text-gray-400">{String(h).padStart(2,'0')}:00</span>
                   </div>
+                ))}
+              </div>
 
-                  {/* Horas */}
-                  <div className="relative">
-                    {HOURS.map(h => (
-                      <div key={h} className="h-16 border-b border-gray-50" />
-                    ))}
-                    {/* Citas */}
-                    {loading
-                      ? null
-                      : citasDia.map(cita => (
-                        <CitaCard key={cita.id} cita={cita}
-                          onClick={() => setSelectedCita(cita)} />
-                      ))
-                    }
-                    {/* Botón nueva cita hover */}
-                    <div className="absolute inset-0 opacity-0 hover:opacity-100 transition-opacity flex items-end justify-center pb-2 pointer-events-none">
-                      <span className="text-[10px] text-beauty-primary font-medium bg-beauty-primary/10 px-2 py-1 rounded-full pointer-events-none">
-                        + Nueva Cita
+              {/* Columnas días */}
+              {visibleDays.map(day => {
+                const citasDia = citas.filter(c => isSameDay(parseISO(c.fecha_inicio), day))
+                const dayIsToday = isToday(day)
+                return (
+                  <div key={day.toISOString()} className="flex-1 min-w-0 border-r border-gray-100 last:border-r-0">
+                    <div className={`h-10 border-b border-gray-100 flex flex-col items-center justify-center sticky top-0 z-20 ${
+                      dayIsToday ? 'bg-beauty-primary/10' : 'bg-white'
+                    }`}>
+                      <span className="text-[10px] text-gray-400 uppercase font-medium">
+                        {format(day, 'EEE', { locale: es })} {format(day, 'd')}
                       </span>
+                      {dayIsToday && <div className="w-1.5 h-1.5 rounded-full bg-beauty-primary mt-0.5" />}
+                    </div>
+                    <div className="relative">
+                      {HOURS.map(h => (
+                        <div key={h} className="h-16 border-b border-gray-50" />
+                      ))}
+                      {loading ? null : citasDia.map(cita => (
+                        <CitaCard key={cita.id} cita={cita} onClick={() => setSelectedCita(cita)} />
+                      ))}
                     </div>
                   </div>
-                </div>
-              )
-            })}
-          </div>
+                )
+              })}
+            </div>
+          )}
 
           {/* Footer ocupación */}
           <div className="px-4 py-2 border-t border-gray-100 flex items-center gap-3">
