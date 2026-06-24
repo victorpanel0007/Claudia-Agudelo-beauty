@@ -48,7 +48,7 @@ export default function BookingSection() {
       if (!servicio) { toast.error('Servicio no válido'); return }
 
       const params = new URLSearchParams({
-        fecha: new Date(data.fecha + 'T12:00:00').toISOString(),
+        fecha: new Date(data.fecha + 'T12:00:00-05:00').toISOString(),
         duracion: servicio.duracion.toString(),
       })
       const res = await fetch(`/api/disponibilidad?${params}`)

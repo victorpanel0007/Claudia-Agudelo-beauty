@@ -21,6 +21,7 @@ export function formatDate(date: string | Date): string {
     year: 'numeric',
     month: 'long',
     day: 'numeric',
+    timeZone: 'America/Bogota',
   }).format(d)
 }
 
@@ -30,6 +31,7 @@ export function formatTime(date: string | Date): string {
     hour: '2-digit',
     minute: '2-digit',
     hour12: true,
+    timeZone: 'America/Bogota',
   }).format(d)
 }
 

@@ -34,13 +34,24 @@ function getInitials(name: string) {
   return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
 }
 function citaTop(fecha: string) {
-  const d = parseISO(fecha)
-  return ((d.getHours() - 8) * 60 + d.getMinutes()) * (64 / 60)
+  // Convertir a hora Colombia para posicionar correctamente en el grid
+  const d = new Date(fecha)
+  const colombiaStr = d.toLocaleString('en-US', { timeZone: 'America/Bogota', hour: 'numeric', minute: 'numeric', hour12: false })
+  const [h, m] = colombiaStr.split(':').map(Number)
+  return ((h - 8) * 60 + m) * (64 / 60)
 }
 function citaHeight(inicio: string, fin: string) {
-  const s = parseISO(inicio), e = parseISO(fin)
+  const s = new Date(inicio), e = new Date(fin)
   const mins = (e.getTime() - s.getTime()) / 60000
   return Math.max(mins * (64 / 60), 40)
+}
+
+// Comparar si dos fechas son el mismo día en Colombia
+function isSameDayColombia(dateStr: string, day: Date): boolean {
+  const d = new Date(dateStr)
+  const dStr = d.toLocaleDateString('en-CA', { timeZone: 'America/Bogota' })
+  const dayStr = day.toLocaleDateString('en-CA', { timeZone: 'America/Bogota' })
+  return dStr === dayStr
 }
 
 // ── Stat Card ──────────────────────────────────────────────────────────────
@@ -269,7 +280,7 @@ function NuevaCitaModal({ onClose, onSaved }: { onClose: () => void; onSaved: ()
     setLoadingSlots(true)
     const duracion = servicioSeleccionado?.duracion_minutos || 60
     const params = new URLSearchParams({
-      fecha: new Date(form.fecha + 'T12:00:00').toISOString(),
+      fecha: new Date(form.fecha + 'T12:00:00-05:00').toISOString(),
       duracion: duracion.toString(),
       ...(form.especialista_id ? { especialista_id: form.especialista_id } : {}),
     })
@@ -584,7 +595,7 @@ export default function AgendaView() {
 
   // Stats
   const today = new Date()
-  const citasHoy = citas.filter(c => isSameDay(parseISO(c.fecha_inicio), today))
+  const citasHoy = citas.filter(c => isSameDayColombia(c.fecha_inicio, today))
   const pendientes = citas.filter(c => c.estado === 'pendiente')
   const confirmadas = citas.filter(c => c.estado === 'confirmada')
   const ingresosDia = citasHoy.filter(c => c.estado === 'completada').reduce((s, c) => s + (c.valor_final || 0), 0)
@@ -671,7 +682,7 @@ export default function AgendaView() {
                   <div key={`empty-${i}`} className="h-20 rounded-xl bg-gray-50/50" />
                 ))}
                 {monthDays.map(day => {
-                  const citasDia = citas.filter(c => isSameDay(parseISO(c.fecha_inicio), day))
+                  const citasDia = citas.filter(c => isSameDayColombia(c.fecha_inicio, day))
                   const isHoy = isToday(day)
                   return (
                     <div key={day.toISOString()}
@@ -716,7 +727,7 @@ export default function AgendaView() {
 
               {/* Columnas días */}
               {visibleDays.map(day => {
-                const citasDia = citas.filter(c => isSameDay(parseISO(c.fecha_inicio), day))
+                const citasDia = citas.filter(c => isSameDayColombia(c.fecha_inicio, day))
                 const dayIsToday = isToday(day)
                 return (
                   <div key={day.toISOString()} className="flex-1 min-w-0 border-r border-gray-100 last:border-r-0">

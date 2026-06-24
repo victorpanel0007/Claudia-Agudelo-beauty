@@ -25,11 +25,10 @@ export async function getAvailableSlots(
 
   if (!especialistas?.length) return []
 
-  // Get all appointments for the given date
-  const dayStart = new Date(fecha)
-  dayStart.setHours(0, 0, 0, 0)
-  const dayEnd = new Date(fecha)
-  dayEnd.setHours(23, 59, 59, 999)
+  // Obtener citas del día en Colombia
+  const fechaStr2 = fecha.toLocaleDateString('en-CA', { timeZone: 'America/Bogota' })
+  const dayStart = new Date(`${fechaStr2}T00:00:00-05:00`)
+  const dayEnd   = new Date(`${fechaStr2}T23:59:59-05:00`)
 
   const { data: citas } = await supabase
     .from('citas')
@@ -44,9 +43,21 @@ export async function getAvailableSlots(
     const [startH, startM] = (esp.horario_inicio || '09:00').split(':').map(Number)
     const [endH, endM] = (esp.horario_fin || '19:00').split(':').map(Number)
 
-    const dayOfWeek = fecha.getDay()
+    // Verificar día laboral en zona horaria Colombia
+    const fechaColombia = new Date(fecha.toLocaleString('en-US', { timeZone: 'America/Bogota' }))
+    const dayOfWeek = fechaColombia.getDay()
     const diasLaborales: number[] = esp.dias_laborales || [1, 2, 3, 4, 5, 6]
     if (!diasLaborales.includes(dayOfWeek)) continue
+
+    // Construir fecha inicio/fin en Colombia usando UTC offset -5
+    const offsetMs = 5 * 60 * 60 * 1000 // UTC-5
+
+    // Obtener fecha en Colombia como YYYY-MM-DD
+    const fechaStr = fecha.toLocaleDateString('en-CA', { timeZone: 'America/Bogota' }) // YYYY-MM-DD
+
+    // Crear fecha inicio y fin del día en Colombia (como UTC)
+    const slotStart = new Date(`${fechaStr}T${String(startH).padStart(2,'0')}:${String(startM).padStart(2,'0')}:00-05:00`)
+    const workEnd   = new Date(`${fechaStr}T${String(endH).padStart(2,'0')}:${String(endM).padStart(2,'0')}:00-05:00`)
 
     // Build occupied intervals for this specialist
     const occupied = (citas || [])
@@ -56,12 +67,8 @@ export async function getAvailableSlots(
         fin: new Date(c.fecha_fin),
       }))
 
-    // Generate 30-min slots — a slot can START up to horario_fin
-    // (the service may finish after closing time, that's fine)
-    let current = new Date(fecha)
-    current.setHours(startH, startM, 0, 0)
-    const workEnd = new Date(fecha)
-    workEnd.setHours(endH, endM, 0, 0)
+    // Generar slots cada 30 minutos en hora Colombia
+    let current = new Date(slotStart)
 
     while (current.getTime() <= workEnd.getTime()) {
       const slotEnd = addMinutes(current, duracionMinutos)
@@ -70,11 +77,13 @@ export async function getAvailableSlots(
       )
 
       if (!isOccupied) {
-        const h = current.getHours()
-        const m = current.getMinutes().toString().padStart(2, '0')
-        const ampm = h >= 12 ? 'PM' : 'AM'
-        const h12 = h > 12 ? h - 12 : h === 0 ? 12 : h
-        const horaFormateada = `${h12}:${m} ${ampm}`
+        // Mostrar hora en Colombia
+        const horaFormateada = current.toLocaleTimeString('es-CO', {
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: true,
+          timeZone: 'America/Bogota',
+        })
 
         slots.push({
           hora: horaFormateada,

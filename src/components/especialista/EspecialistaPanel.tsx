@@ -19,10 +19,13 @@ const STATUS = {
   cancelada:   { label: 'Cancelada',   cls: 'bg-red-100 text-red-700 border-red-200' },
 }
 
-function dayLabel(fecha: string) {
-  const d = parseISO(fecha)
-  if (isToday(d)) return 'Hoy'
-  if (isTomorrow(d)) return 'Mañana'
+function dayLabel(fechaKey: string) {
+  // fechaKey es YYYY-MM-DD en Colombia
+  const d = new Date(`${fechaKey}T12:00:00-05:00`)
+  const hoy = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Bogota' })
+  const manana = new Date(Date.now() + 86400000).toLocaleDateString('en-CA', { timeZone: 'America/Bogota' })
+  if (fechaKey === hoy) return 'Hoy'
+  if (fechaKey === manana) return 'Mañana'
   return format(d, "EEEE d 'de' MMMM", { locale: es })
 }
 
@@ -57,9 +60,9 @@ export default function EspecialistaPanel({ userEmail, userName }: { userEmail: 
       return
     }
 
-    // Citas confirmadas y pendientes desde hoy
-    const hoy = new Date()
-    hoy.setHours(0, 0, 0, 0)
+    // Citas confirmadas y pendientes desde hoy en Colombia (UTC-5)
+    const hoyStr = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Bogota' })
+    const hoy = new Date(`${hoyStr}T00:00:00-05:00`)
 
     const { data } = await supabase
       .from('citas')
@@ -105,15 +108,20 @@ export default function EspecialistaPanel({ userEmail, userName }: { userEmail: 
     router.push('/especialista/login')
   }
 
-  // Agrupar citas por día
+  // Agrupar citas por día en Colombia
   const grupos: Record<string, Cita[]> = {}
   citas.forEach(c => {
-    const key = c.fecha_inicio.split('T')[0]
+    const key = new Date(c.fecha_inicio).toLocaleDateString('en-CA', { timeZone: 'America/Bogota' })
     if (!grupos[key]) grupos[key] = []
     grupos[key].push(c)
   })
 
-  const citasHoy = citas.filter(c => isToday(parseISO(c.fecha_inicio)))
+  const citasHoy = citas.filter(c => {
+    const d = new Date(c.fecha_inicio)
+    const hoy = new Date()
+    return d.toLocaleDateString('en-CA', { timeZone: 'America/Bogota' }) ===
+           hoy.toLocaleDateString('en-CA', { timeZone: 'America/Bogota' })
+  })
 
   return (
     <div className="min-h-screen bg-beauty-bg">
@@ -191,7 +199,7 @@ export default function EspecialistaPanel({ userEmail, userName }: { userEmail: 
                       ? 'bg-beauty-primary text-white'
                       : 'bg-beauty-secondary/20 text-beauty-secondary'
                   }`}>
-                    {dayLabel(fecha + 'T00:00:00')}
+                    {dayLabel(fecha)}
                   </span>
                   <span className="text-xs text-beauty-text-muted">{citasDia.length} cita{citasDia.length !== 1 ? 's' : ''}</span>
                 </div>
