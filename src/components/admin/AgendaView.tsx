@@ -636,12 +636,16 @@ export default function AgendaView() {
               {toolbarTitle}
             </p>
             <div className="flex items-center gap-1 bg-gray-100 rounded-xl p-1">
-              {(['Día', 'Semana', 'Mes'] as const).map(v => (
-                <button key={v}
-                  onClick={() => setViewMode(v.toLowerCase() as 'day' | 'week' | 'month')}
+              {([
+                { label: 'Día',    value: 'day' },
+                { label: 'Semana', value: 'week' },
+                { label: 'Mes',    value: 'month' },
+              ] as const).map(v => (
+                <button key={v.value}
+                  onClick={() => setViewMode(v.value)}
                   className={`text-xs font-medium px-3 py-1.5 rounded-lg transition-colors ${
-                    viewMode === v.toLowerCase() ? 'bg-white shadow-sm text-beauty-primary' : 'text-gray-500 hover:text-gray-700'
-                  }`}>{v}</button>
+                    viewMode === v.value ? 'bg-white shadow-sm text-beauty-primary' : 'text-gray-500 hover:text-gray-700'
+                  }`}>{v.label}</button>
               ))}
             </div>
           </div>

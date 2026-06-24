@@ -75,6 +75,7 @@ export default function BookingSection() {
           especialista_id: selectedSlot.especialista_id,
           fecha_inicio:    selectedSlot.fecha_inicio,
           fecha_fin:       selectedSlot.fecha_fin,
+          servicio_nombre: servicioSeleccionado?.nombre || null,
           observaciones:   data.observaciones || null,
           canal:           'web',
         }),

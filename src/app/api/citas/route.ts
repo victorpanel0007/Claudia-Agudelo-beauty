@@ -74,11 +74,22 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Se requiere cliente_id o nombre_cliente' }, { status: 400 })
     }
 
+    // Si no hay servicio_id pero hay nombre del servicio, buscarlo en la DB
+    let servicioId = body.servicio_id || null
+    if (!servicioId && body.servicio_nombre) {
+      const { data: srv } = await supabase
+        .from('servicios')
+        .select('id')
+        .ilike('nombre', body.servicio_nombre)
+        .maybeSingle()
+      if (srv) servicioId = srv.id
+    }
+
     // Campos que van a la tabla citas
     const citaData = {
       cliente_id:       clienteId,
       especialista_id:  body.especialista_id   || null,
-      servicio_id:      body.servicio_id        || null,
+      servicio_id:      servicioId,
       fecha_inicio:     body.fecha_inicio,
       fecha_fin:        body.fecha_fin,
       estado:           body.estado             || 'confirmada',
