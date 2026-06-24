@@ -15,7 +15,7 @@ const schema = z.object({
   categoria_id: z.string().min(1, 'Selecciona una categoría'),
   servicio_idx: z.string().min(1, 'Selecciona un servicio'),
   fecha: z.string().min(1, 'Selecciona una fecha'),
-  especialista_preferencia: z.enum(['cualquiera', 'claudia', 'andrea']),
+  especialista_preferencia: z.enum(['cualquiera', 'claudia', 'rosa']),
   observaciones: z.string().optional(),
 })
 
@@ -209,7 +209,7 @@ export default function BookingSection() {
                 {[
                   { value: 'cualquiera', label: 'Cualquiera' },
                   { value: 'claudia',    label: 'Claudia' },
-                  { value: 'andrea',     label: 'Andrea' },
+                  { value: 'rosa',       label: 'Rosa' },
                 ].map(opt => (
                   <label key={opt.value} className="cursor-pointer">
                     <input {...register('especialista_preferencia')} type="radio"
@@ -252,9 +252,13 @@ export default function BookingSection() {
               <>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-6">
                   {availableSlots.map((slot, i) => (
-                    <button key={i} onClick={() => setSelectedSlot(slot)}
+                    <button
+                      type="button"
+                      key={i}
+                      onClick={() => setSelectedSlot(slot)}
                       className={`p-3 rounded-xl border-2 text-left transition-all ${
-                        selectedSlot?.fecha_inicio === slot.fecha_inicio
+                        selectedSlot?.fecha_inicio === slot.fecha_inicio &&
+                        selectedSlot?.especialista_id === slot.especialista_id
                           ? 'border-beauty-secondary bg-beauty-secondary/10'
                           : 'border-beauty-primary/40 hover:border-beauty-secondary/60'
                       }`}>
@@ -266,8 +270,10 @@ export default function BookingSection() {
                   ))}
                 </div>
                 <div className="flex gap-3">
-                  <button onClick={() => setStep(1)} className="btn-beauty-outline flex-1 justify-center">Volver</button>
-                  <button onClick={handleSubmit(confirmBooking)}
+                  <button type="button" onClick={() => setStep(1)} className="btn-beauty-outline flex-1 justify-center">Volver</button>
+                  <button
+                    type="button"
+                    onClick={e => { e.preventDefault(); handleSubmit(confirmBooking)() }}
                     disabled={!selectedSlot || loading}
                     className="btn-beauty flex-1 justify-center disabled:opacity-50">
                     {loading ? 'Reservando...' : 'Confirmar'}
