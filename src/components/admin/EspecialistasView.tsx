@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
@@ -132,8 +132,8 @@ export default function EspecialistasView() {
     <div className="space-y-5 animate-fade-in">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-bold text-beauty-black flex items-center gap-2">
-            <User size={22} className="text-beauty-gold" />
+          <h2 className="text-xl font-bold text-beauty-text flex items-center gap-2">
+            <User size={22} className="text-beauty-secondary" />
             Especialistas
           </h2>
           <p className="text-gray-500 text-sm">Gestiona horarios y disponibilidad</p>
@@ -144,10 +144,10 @@ export default function EspecialistasView() {
       </div>
 
       {/* Info box */}
-      <div className="bg-beauty-gold/10 border border-beauty-gold/30 rounded-xl p-4 flex items-start gap-3">
-        <Clock size={18} className="text-beauty-gold mt-0.5 shrink-0" />
+      <div className="bg-beauty-secondary/10 border border-beauty-secondary/30 rounded-xl p-4 flex items-start gap-3">
+        <Clock size={18} className="text-beauty-secondary mt-0.5 shrink-0" />
         <div className="text-sm">
-          <p className="font-semibold text-beauty-black">Horario del bot de WhatsApp</p>
+          <p className="font-semibold text-beauty-text">Horario del bot de WhatsApp</p>
           <p className="text-gray-600 mt-0.5">
             El bot solo ofrece citas dentro del horario laboral de cada especialista.
             Cambia el horario aquí y se actualizará automáticamente en el bot.
@@ -165,11 +165,11 @@ export default function EspecialistasView() {
               {/* Header */}
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-full bg-beauty-gold flex items-center justify-center">
-                    <span className="text-beauty-black font-bold text-lg">{e.nombre.charAt(0)}</span>
+                  <div className="w-12 h-12 rounded-full bg-beauty-secondary flex items-center justify-center">
+                    <span className="text-beauty-text font-bold text-lg">{e.nombre.charAt(0)}</span>
                   </div>
                   <div>
-                    <p className="font-bold text-beauty-black">{e.nombre}</p>
+                    <p className="font-bold text-beauty-text">{e.nombre}</p>
                     <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full ${
                       e.activo ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'
                     }`}>
@@ -179,9 +179,9 @@ export default function EspecialistasView() {
                 </div>
                 <button
                   onClick={() => openEdit(e)}
-                  className="p-2 hover:bg-beauty-rose-light rounded-xl transition-colors"
+                  className="p-2 hover:bg-beauty-rosa-claro rounded-xl transition-colors"
                 >
-                  <Edit size={16} className="text-beauty-gold" />
+                  <Edit size={16} className="text-beauty-secondary" />
                 </button>
               </div>
 
@@ -189,10 +189,10 @@ export default function EspecialistasView() {
               <div className="space-y-2">
                 <div className="bg-gray-50 rounded-xl p-3">
                   <div className="flex items-center gap-2 mb-1">
-                    <Clock size={14} className="text-beauty-gold" />
+                    <Clock size={14} className="text-beauty-secondary" />
                     <p className="text-xs font-semibold text-gray-600">Horario de trabajo</p>
                   </div>
-                  <p className="text-beauty-black font-bold text-sm">
+                  <p className="text-beauty-text font-bold text-sm">
                     {formatHorario(e.horario_inicio, e.horario_fin)}
                   </p>
                 </div>
@@ -205,7 +205,7 @@ export default function EspecialistasView() {
                         key={d.num}
                         className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold ${
                           e.dias_laborales?.includes(d.num)
-                            ? 'bg-beauty-gold text-beauty-black'
+                            ? 'bg-beauty-secondary text-beauty-text'
                             : 'bg-gray-100 text-gray-300'
                         }`}
                       >
@@ -216,11 +216,11 @@ export default function EspecialistasView() {
                 </div>
 
                 {/* Slots preview */}
-                <div className="bg-beauty-rose-light rounded-xl p-3">
+                <div className="bg-beauty-rosa-claro rounded-xl p-3">
                   <p className="text-xs font-semibold text-gray-600 mb-1">
                     Ventana de citas
                   </p>
-                  <p className="text-beauty-black text-sm font-medium">
+                  <p className="text-beauty-text text-sm font-medium">
                     Desde {formatTime12(e.horario_inicio)} — última cita a las {formatTime12(e.horario_fin)}
                   </p>
                   <p className="text-gray-400 text-xs mt-0.5">
@@ -238,7 +238,7 @@ export default function EspecialistasView() {
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/50">
           <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl w-full sm:max-w-md max-h-[90vh] overflow-y-auto animate-slide-up">
             <div className="p-5 border-b border-gray-100 flex items-center justify-between sticky top-0 bg-white">
-              <h3 className="font-bold text-beauty-black">
+              <h3 className="font-bold text-beauty-text">
                 {editing ? `Editar — ${editing.nombre}` : 'Nueva Especialista'}
               </h3>
               <button onClick={() => setShowForm(false)} className="p-1.5 hover:bg-gray-100 rounded-lg">
@@ -298,7 +298,7 @@ export default function EspecialistasView() {
                       onClick={() => toggleDia(d.num)}
                       className={`px-3 py-2 rounded-xl text-sm font-medium transition-all ${
                         diasSelected.includes(d.num)
-                          ? 'bg-beauty-gold text-beauty-black shadow-beauty'
+                          ? 'bg-beauty-secondary text-beauty-text shadow-beauty'
                           : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
                       }`}
                     >
@@ -314,7 +314,7 @@ export default function EspecialistasView() {
                   {...register('activo')}
                   type="checkbox"
                   id="activo"
-                  className="w-4 h-4 accent-beauty-gold"
+                  className="w-4 h-4 accent-beauty-secondary"
                 />
                 <label htmlFor="activo" className="text-sm font-medium text-gray-700">
                   Especialista activa (visible para el bot y clientes)

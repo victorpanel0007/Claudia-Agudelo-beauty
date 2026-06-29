@@ -24,7 +24,7 @@ const playfair = Playfair_Display({
 
 // ── Metadata completa para SEO ────────────────────────────────────────────
 export const metadata: Metadata = {
-  metadataBase: new URL('https://www.claudiaagudelobeauty.sbs'),
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'https://www.claudiaagudelobeauty.sbs'),
   title: {
     default: 'Claudia Agudelo Beauty | Salón de Belleza Premium',
     template: '%s | Claudia Agudelo Beauty',
@@ -63,7 +63,7 @@ export const metadata: Metadata = {
 }
 
 export const viewport: Viewport = {
-  themeColor: '#CDA967',
+  themeColor: '#EFA1B5',
   width: 'device-width',
   initialScale: 1,
   maximumScale: 5,

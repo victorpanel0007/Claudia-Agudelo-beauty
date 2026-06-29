@@ -2,21 +2,19 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ── Critical CSS: variables y base ─────────────────────────────────────── */
+/* ── Paleta Oficial Claudia Agudelo Beauty ───────────────────────────────── */
 :root {
-  --background: #FCF9EF;
-  --primary:    #D9A5A8;
-  --secondary:  #CDA967;
-  --accent:     #D9A5A8;
-  --text:       #626360;
-  --text-dark:  #3A3B39;
-  --sage:       #A3A39B;
-  --beige:      #DDD4AD;
-  --rose-soft:  #F1B8C6;
-  --white:      #FFFFFF;
+  --background:  #FFF8EE; /* Crema Suave */
+  --rosa-claro:  #FAD6E0; /* Rosa Claro */
+  --primary:     #EFA1B5; /* Rosa Medio */
+  --borgona:     #8B1E3F; /* Borgoña */
+  --sage:        #A7B8A6; /* Verde Salvia */
+  --secondary:   #D4AF37; /* Dorado */
+  --text:        #222222; /* Negro Suave */
+  --white:       #FFFFFF;
 }
 
-/* ── Reset mínimo ────────────────────────────────────────────────────────── */
+/* ── Reset ───────────────────────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; }
 * { padding: 0; margin: 0; }
 html { scroll-behavior: smooth; }
@@ -30,11 +28,8 @@ body {
   text-rendering: optimizeLegibility;
 }
 
-/* ── Animaciones GPU-accelerated ─────────────────────────────────────────── */
-.animate-fade-in,
-.animate-slide-up,
-.animate-float,
-.animate-bounce-soft {
+/* ── GPU animations ──────────────────────────────────────────────────────── */
+.animate-fade-in, .animate-slide-up, .animate-float, .animate-bounce-soft {
   will-change: transform, opacity;
   transform: translateZ(0);
   backface-visibility: hidden;
@@ -42,17 +37,18 @@ body {
 
 /* ── Scrollbar ───────────────────────────────────────────────────────────── */
 ::-webkit-scrollbar       { width: 5px; height: 5px; }
-::-webkit-scrollbar-track { background: #F5F0E0; }
-::-webkit-scrollbar-thumb { background: var(--secondary); border-radius: 4px; }
+::-webkit-scrollbar-track { background: #FAD6E0; }
+::-webkit-scrollbar-thumb { background: #D4AF37; border-radius: 4px; }
 
 /* ── Divisor dorado ──────────────────────────────────────────────────────── */
 .gold-divider {
   height: 1.5px;
-  background: linear-gradient(90deg, transparent, #CDA967, transparent);
-  contain: layout style;
+  background: linear-gradient(90deg, transparent, #D4AF37, transparent);
 }
 
 /* ── Botones ─────────────────────────────────────────────────────────────── */
+
+/* Primario: Rosa Medio */
 .btn-beauty {
   @apply bg-beauty-primary text-white font-semibold px-6 py-3 rounded-full
     transition-all duration-300 hover:bg-beauty-primary-dark hover:shadow-beauty-lg
@@ -60,6 +56,15 @@ body {
   will-change: transform;
 }
 
+/* Borgoña: para CTAs importantes */
+.btn-beauty-borgona {
+  @apply bg-beauty-borgona text-white font-semibold px-6 py-3 rounded-full
+    transition-all duration-300 hover:bg-beauty-borgona-dark hover:shadow-beauty-lg
+    active:scale-95 inline-flex items-center gap-2;
+  will-change: transform;
+}
+
+/* Outline dorado */
 .btn-beauty-outline {
   @apply border-2 border-beauty-secondary text-beauty-secondary font-semibold px-6 py-3 rounded-full
     transition-all duration-300 hover:bg-beauty-secondary hover:text-white
@@ -67,60 +72,59 @@ body {
   will-change: transform;
 }
 
+/* Claro crema */
 .btn-beauty-light {
-  @apply bg-beauty-bg text-beauty-primary font-semibold px-6 py-3 rounded-full
-    transition-all duration-300 hover:bg-beauty-primary-light hover:text-beauty-text
+  @apply bg-beauty-bg text-beauty-borgona font-semibold px-6 py-3 rounded-full
+    transition-all duration-300 hover:bg-beauty-rosa-claro
     active:scale-95 inline-flex items-center gap-2;
   will-change: transform;
 }
 
 /* ── Card ────────────────────────────────────────────────────────────────── */
 .beauty-card {
-  @apply bg-white rounded-2xl shadow-card border border-beauty-primary/30
+  @apply bg-white rounded-2xl shadow-card border border-beauty-primary/25
     transition-all duration-300 hover:shadow-card-hover;
   contain: layout;
 }
 
 /* ── Tipografía ──────────────────────────────────────────────────────────── */
 .section-title {
-  @apply font-serif text-3xl md:text-4xl font-bold text-beauty-text-dark;
+  @apply font-serif text-3xl md:text-4xl font-bold text-beauty-text;
 }
 .text-gold { @apply text-beauty-secondary; }
 
+/* Texto degradado dorado */
 .gradient-text {
-  background: linear-gradient(135deg, #CDA967, #E2CC9A);
+  background: linear-gradient(135deg, #D4AF37, #E8CC6A);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
+/* Texto borgoña */
+.text-borgona { @apply text-beauty-borgona; }
+
 /* ── Input ───────────────────────────────────────────────────────────────── */
 .input-beauty {
-  @apply w-full border border-beauty-primary/60 rounded-xl px-4 py-3 text-sm
+  @apply w-full border border-beauty-primary/50 rounded-xl px-4 py-3 text-sm
     focus:outline-none focus:ring-2 focus:ring-beauty-secondary focus:border-transparent
     transition-all duration-200 bg-white text-beauty-text placeholder-beauty-text-muted;
 }
 
 /* ── Badges ──────────────────────────────────────────────────────────────── */
 .badge-confirmada { @apply bg-green-100 text-green-800 text-xs font-medium px-2.5 py-0.5 rounded-full; }
-.badge-pendiente  { @apply bg-yellow-100 text-yellow-800 text-xs font-medium px-2.5 py-0.5 rounded-full; }
+.badge-pendiente  { @apply bg-amber-100 text-amber-800 text-xs font-medium px-2.5 py-0.5 rounded-full; }
 .badge-completada { @apply bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded-full; }
 .badge-cancelada  { @apply bg-red-100 text-red-800 text-xs font-medium px-2.5 py-0.5 rounded-full; }
 .badge-en_proceso { @apply bg-purple-100 text-purple-800 text-xs font-medium px-2.5 py-0.5 rounded-full; }
 
-/* ── Skeleton loader ─────────────────────────────────────────────────────── */
-.skeleton {
-  @apply animate-pulse bg-beauty-primary/15 rounded-xl;
-}
+/* ── Skeleton ────────────────────────────────────────────────────────────── */
+.skeleton { @apply animate-pulse bg-beauty-rosa-claro/50 rounded-xl; }
 
-/* ── Reduce CLS: espacio para imágenes ───────────────────────────────────── */
-img {
-  max-width: 100%;
-  height: auto;
-  display: block;
-}
+/* ── Imágenes anti-CLS ───────────────────────────────────────────────────── */
+img { max-width: 100%; height: auto; display: block; }
 
-/* ── Transiciones solo en propiedades baratas ────────────────────────────── */
+/* ── Transiciones baratas ────────────────────────────────────────────────── */
 a, button {
   transition-property: color, background-color, border-color, box-shadow, opacity, transform;
   transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
@@ -128,6 +132,6 @@ a, button {
 
 /* ── Calendario ──────────────────────────────────────────────────────────── */
 .rbc-calendar  { font-family: var(--font-inter) !important; background: white !important; }
-.rbc-header    { font-weight: 600 !important; padding: 8px !important; background: #FCF9EF !important; color: #626360 !important; }
-.rbc-event     { background: #D9A5A8 !important; border: none !important; border-radius: 6px !important; color: #FFFFFF !important; font-size: 12px !important; font-weight: 500 !important; }
-.rbc-today     { background: #F5F0E0 !important; }
+.rbc-header    { font-weight: 600 !important; padding: 8px !important; background: #FFF8EE !important; color: #222222 !important; }
+.rbc-event     { background: #EFA1B5 !important; border: none !important; border-radius: 6px !important; color: #FFFFFF !important; font-size: 12px !important; font-weight: 500 !important; }
+.rbc-today     { background: #FAD6E0 !important; }

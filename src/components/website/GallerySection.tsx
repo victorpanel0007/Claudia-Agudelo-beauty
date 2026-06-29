@@ -1,18 +1,18 @@
-'use client'
+﻿'use client'
 
 import { motion } from 'framer-motion'
 
 // viewport: once: true + margin para cargar justo antes de entrar en pantalla
 const gallery = [
-  { emoji: '💅', label: 'Manicura',    bg: 'bg-beauty-primary-light' },
+  { emoji: '💅', label: 'Manicura',    bg: 'bg-beauty-rosa-claro' },
   { emoji: '💄', label: 'Maquillaje',  bg: 'bg-beauty-bg' },
-  { emoji: '💆‍♀️', label: 'Masajes',    bg: 'bg-beauty-primary-light/60' },
+  { emoji: '💆‍♀️', label: 'Masajes',    bg: 'bg-beauty-rosa-claro/60' },
   { emoji: '✨', label: 'Facial',      bg: 'bg-beauty-bg' },
-  { emoji: '👁️', label: 'Cejas',       bg: 'bg-beauty-primary-light' },
+  { emoji: '👁️', label: 'Cejas',       bg: 'bg-beauty-rosa-claro' },
   { emoji: '💇‍♀️', label: 'Peinados',   bg: 'bg-beauty-bg' },
-  { emoji: '💈', label: 'Barbería',    bg: 'bg-beauty-primary-light/60' },
+  { emoji: '💈', label: 'Barbería',    bg: 'bg-beauty-rosa-claro/60' },
   { emoji: '🪒', label: 'Depilación',  bg: 'bg-beauty-bg' },
-  { emoji: '💇', label: 'Peluquería',  bg: 'bg-beauty-primary-light' },
+  { emoji: '💇', label: 'Peluquería',  bg: 'bg-beauty-rosa-claro' },
 ]
 
 export default function GallerySection() {

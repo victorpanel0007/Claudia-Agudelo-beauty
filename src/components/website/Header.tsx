@@ -7,11 +7,10 @@ import { Menu, X, LayoutDashboard } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const navLinks = [
-  { href: '#inicio',      label: 'Inicio' },
-  { href: '#nosotros',    label: 'Nosotros' },
-  { href: '#servicios',   label: 'Servicios' },
-  { href: '#galeria',     label: 'Galería' },
-  { href: '#contacto',    label: 'Contacto' },
+  { href: '#inicio',    label: 'Inicio' },
+  { href: '#servicios', label: 'Servicios' },
+  { href: '#galeria',   label: 'Galería' },
+  { href: '#contacto',  label: 'Contacto' },
 ]
 
 export default function Header() {

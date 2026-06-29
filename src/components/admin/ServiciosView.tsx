@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
@@ -96,7 +96,7 @@ export default function ServiciosView() {
     <div className="space-y-5 animate-fade-in">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-bold text-beauty-black">Servicios</h2>
+          <h2 className="text-xl font-bold text-beauty-text">Servicios</h2>
           <p className="text-gray-500 text-sm">Catálogo de servicios</p>
         </div>
         <button onClick={openNew} className="btn-beauty text-sm py-2">
@@ -122,7 +122,7 @@ export default function ServiciosView() {
             {filtered.map(s => (
               <div key={s.id} className="p-4 flex items-center gap-4 hover:bg-gray-50">
                 <div className="flex-1 min-w-0">
-                  <p className="font-medium text-beauty-black text-sm">{s.nombre}</p>
+                  <p className="font-medium text-beauty-text text-sm">{s.nombre}</p>
                   <p className="text-gray-400 text-xs">
                     {(s.categoria as Categoria)?.nombre || s.categoria_id}
                   </p>
@@ -134,19 +134,19 @@ export default function ServiciosView() {
                   </div>
                   <div className="text-right min-w-[80px]">
                     {s.tipo_precio === 'fijo' && s.precio ? (
-                      <span className="text-beauty-gold font-semibold text-sm">
+                      <span className="text-beauty-secondary font-semibold text-sm">
                         {formatCurrency(s.precio)}
                       </span>
                     ) : s.tipo_precio === 'desde' && s.precio_desde ? (
-                      <span className="text-beauty-gold font-semibold text-xs">
+                      <span className="text-beauty-secondary font-semibold text-xs">
                         Desde {formatCurrency(s.precio_desde)}
                       </span>
                     ) : (
                       <span className="text-gray-400 text-xs">Valoración</span>
                     )}
                   </div>
-                  <button onClick={() => openEdit(s)} className="p-1.5 hover:bg-beauty-rose-light rounded-lg transition-colors">
-                    <Edit size={14} className="text-beauty-gold" />
+                  <button onClick={() => openEdit(s)} className="p-1.5 hover:bg-beauty-rosa-claro rounded-lg transition-colors">
+                    <Edit size={14} className="text-beauty-secondary" />
                   </button>
                   <button onClick={() => deleteServicio(s.id)} className="p-1.5 hover:bg-red-50 rounded-lg transition-colors">
                     <Trash2 size={14} className="text-red-400" />
@@ -163,7 +163,7 @@ export default function ServiciosView() {
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/50">
           <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl w-full sm:max-w-md max-h-[90vh] overflow-y-auto animate-slide-up">
             <div className="p-5 border-b border-gray-100 sticky top-0 bg-white">
-              <h3 className="font-bold text-beauty-black">
+              <h3 className="font-bold text-beauty-text">
                 {editing ? 'Editar Servicio' : 'Nuevo Servicio'}
               </h3>
             </div>

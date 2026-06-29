@@ -1,5 +1,5 @@
 import { createAdminClient } from './supabase/server'
-import { addMinutes, parseTimeToDate } from './utils'
+import { addMinutes } from './utils'
 
 export interface AvailableSlot {
   hora: string

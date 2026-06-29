@@ -38,7 +38,7 @@ export default function EspecialistaLoginForm() {
   return (
     <div className="min-h-screen bg-beauty-bg flex items-center justify-center p-4">
       <Toaster position="top-center" />
-      <div className="bg-white rounded-3xl shadow-beauty-lg w-full max-w-sm p-8">
+      <div className="bg-white rounded-3xl shadow-beauty border border-beauty-primary/20 w-full max-w-sm p-8">
 
         {/* Logo */}
         <div className="flex flex-col items-center mb-8">
@@ -51,7 +51,7 @@ export default function EspecialistaLoginForm() {
               priority
             />
           </div>
-          <h1 className="font-serif text-xl font-bold text-beauty-text-dark">Bienvenida</h1>
+          <h1 className="font-serif text-xl font-bold text-beauty-text">Bienvenida</h1>
           <p className="text-beauty-text-muted text-sm mt-1">Accede a tus citas del día</p>
         </div>
 

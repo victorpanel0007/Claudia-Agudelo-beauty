@@ -51,12 +51,8 @@ const nextConfig = {
     ],
   },
 
-  // ── Webpack: tree-shake moment.js ─────────────────────────────────────────
+  // ── Webpack: optimizaciones ───────────────────────────────────────────────
   webpack: (config) => {
-    const webpack = require('webpack')
-    config.plugins.push(
-      new webpack.ContextReplacementPlugin(/moment[/\\]locale$/, /es/)
-    )
     return config
   },
 }

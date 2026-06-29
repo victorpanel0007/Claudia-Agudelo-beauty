@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { MapPin, Phone, Clock, Instagram, Facebook } from 'lucide-react'
 
@@ -27,7 +27,7 @@ export default function ContactSection() {
           <div className="space-y-6">
             {/* Location */}
             <div className="flex items-start gap-4">
-              <div className="w-12 h-12 rounded-xl bg-beauty-primary-light border border-beauty-primary/30 flex items-center justify-center shrink-0">
+              <div className="w-12 h-12 rounded-xl bg-beauty-rosa-claro border border-beauty-primary/30 flex items-center justify-center shrink-0">
                 <MapPin className="text-beauty-primary" size={20} />
               </div>
               <div>
@@ -39,7 +39,7 @@ export default function ContactSection() {
 
             {/* WhatsApp */}
             <div className="flex items-start gap-4">
-              <div className="w-12 h-12 rounded-xl bg-beauty-primary-light border border-beauty-primary/30 flex items-center justify-center shrink-0">
+              <div className="w-12 h-12 rounded-xl bg-beauty-rosa-claro border border-beauty-primary/30 flex items-center justify-center shrink-0">
                 <Phone className="text-beauty-primary" size={20} />
               </div>
               <div>
@@ -54,7 +54,7 @@ export default function ContactSection() {
 
             {/* Schedule */}
             <div className="flex items-start gap-4">
-              <div className="w-12 h-12 rounded-xl bg-beauty-primary-light border border-beauty-primary/30 flex items-center justify-center shrink-0">
+              <div className="w-12 h-12 rounded-xl bg-beauty-rosa-claro border border-beauty-primary/30 flex items-center justify-center shrink-0">
                 <Clock className="text-beauty-primary" size={20} />
               </div>
               <div>

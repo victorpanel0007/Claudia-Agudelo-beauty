@@ -1,8 +1,9 @@
-'use client'
+﻿'use client'
 
 import { useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import Image from 'next/image'
 import { Eye, EyeOff, Lock, Mail, Loader2 } from 'lucide-react'
 
 export default function LoginForm() {
@@ -30,7 +31,6 @@ export default function LoginForm() {
       return
     }
 
-    // Redirigir según el rol
     const rol = session?.user?.user_metadata?.rol
     if (rol === 'especialista') {
       router.push('/especialista')
@@ -41,105 +41,106 @@ export default function LoginForm() {
   }
 
   return (
-    <div className="animate-slide-up">
-      {/* Logo */}
-      <div className="text-center mb-8">
-        <div className="w-16 h-16 rounded-full bg-gradient-gold flex items-center justify-center mx-auto mb-4 shadow-beauty-lg">
-          <span className="text-3xl">💅</span>
+    <div className="min-h-screen bg-beauty-bg flex items-center justify-center p-4">
+      <div className="w-full max-w-sm animate-slide-up">
+
+        {/* Logo */}
+        <div className="flex flex-col items-center mb-8">
+          <div className="w-20 h-20 rounded-full overflow-hidden border-2 border-beauty-primary/30 shadow-beauty mb-4">
+            <Image
+              src="/WhatsApp Image 2026-06-18 at 8.53.37 PM_1254x1254.png"
+              alt="Claudia Agudelo Beauty"
+              width={80} height={80}
+              className="w-full h-full object-cover"
+              priority
+            />
+          </div>
+          <h1 className="font-serif text-beauty-text text-xl font-bold">Claudia Agudelo Beauty</h1>
+          <p className="text-beauty-text-muted text-sm mt-1">Panel Administrativo</p>
         </div>
-        <h1 className="font-serif text-beauty-gold text-2xl font-bold">
-          Claudia Agudelo Beauty
-        </h1>
-        <p className="text-white/50 text-sm mt-1">Panel Administrativo</p>
-      </div>
 
-      {/* Card */}
-      <div className="bg-white/5 border border-beauty-gold/20 rounded-2xl p-7 backdrop-blur-sm">
-        <h2 className="text-white font-semibold text-lg mb-6 text-center">
-          Iniciar Sesión
-        </h2>
+        {/* Card */}
+        <div className="bg-white rounded-2xl shadow-beauty border border-beauty-primary/20 p-7">
+          <h2 className="text-beauty-text font-bold text-lg mb-6 text-center">Iniciar Sesión</h2>
 
-        <form onSubmit={handleLogin} className="space-y-4">
-          {/* Email */}
-          <div>
-            <label className="block text-white/70 text-sm font-medium mb-1.5">
-              Correo electrónico
-            </label>
-            <div className="relative">
-              <Mail size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
-              <input
-                type="email"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                required
-                autoComplete="email"
-                placeholder="admin@claudiabeauty.com"
-                className="w-full bg-white/10 border border-white/20 focus:border-beauty-gold rounded-xl pl-9 pr-4 py-3 text-white placeholder-white/30 text-sm outline-none focus:ring-2 focus:ring-beauty-gold/30 transition-all"
-              />
+          <form onSubmit={handleLogin} className="space-y-4">
+            {/* Email */}
+            <div>
+              <label className="block text-beauty-text text-sm font-medium mb-1.5">
+                Correo electrónico
+              </label>
+              <div className="relative">
+                <Mail size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-beauty-text-muted" />
+                <input
+                  type="email"
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  required
+                  autoComplete="email"
+                  placeholder="correo@ejemplo.com"
+                  className="input-beauty pl-9"
+                />
+              </div>
             </div>
-          </div>
 
-          {/* Password */}
-          <div>
-            <label className="block text-white/70 text-sm font-medium mb-1.5">
-              Contraseña
-            </label>
-            <div className="relative">
-              <Lock size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
-              <input
-                type={showPassword ? 'text' : 'password'}
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                required
-                autoComplete="current-password"
-                placeholder="••••••••"
-                className="w-full bg-white/10 border border-white/20 focus:border-beauty-gold rounded-xl pl-9 pr-10 py-3 text-white placeholder-white/30 text-sm outline-none focus:ring-2 focus:ring-beauty-gold/30 transition-all"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white/70 transition-colors"
-                aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
-              >
-                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-              </button>
+            {/* Password */}
+            <div>
+              <label className="block text-beauty-text text-sm font-medium mb-1.5">
+                Contraseña
+              </label>
+              <div className="relative">
+                <Lock size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-beauty-text-muted" />
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  required
+                  autoComplete="current-password"
+                  placeholder="••••••••"
+                  className="input-beauty pl-9 pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-beauty-text-muted hover:text-beauty-text transition-colors"
+                >
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
             </div>
-          </div>
 
-          {/* Error */}
-          {error && (
-            <div className="bg-red-500/10 border border-red-500/30 rounded-xl px-4 py-3 text-red-400 text-sm">
-              {error}
-            </div>
-          )}
-
-          {/* Submit */}
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full btn-beauty justify-center py-3 text-base disabled:opacity-60 disabled:cursor-not-allowed"
-          >
-            {loading ? (
-              <>
-                <Loader2 size={18} className="animate-spin" />
-                Ingresando...
-              </>
-            ) : (
-              'Ingresar al Panel'
+            {/* Error */}
+            {error && (
+              <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-red-600 text-sm">
+                {error}
+              </div>
             )}
-          </button>
-        </form>
 
-        <p className="text-center text-white/30 text-xs mt-5">
-          Acceso restringido solo para personal autorizado
+            {/* Submit */}
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full bg-beauty-primary text-white font-semibold py-3 rounded-full text-sm hover:bg-beauty-primary-dark transition-all disabled:opacity-60 flex items-center justify-center gap-2 mt-2"
+            >
+              {loading ? (
+                <><Loader2 size={18} className="animate-spin" /> Ingresando...</>
+              ) : (
+                'Ingresar al Panel'
+              )}
+            </button>
+          </form>
+
+          <p className="text-center text-beauty-text-muted text-xs mt-5">
+            Acceso restringido solo para personal autorizado
+          </p>
+        </div>
+
+        <p className="text-center mt-5">
+          <a href="/" className="text-beauty-secondary hover:text-beauty-secondary-dark text-sm transition-colors">
+            ← Volver al sitio web
+          </a>
         </p>
       </div>
-
-      <p className="text-center mt-5">
-        <a href="/" className="text-beauty-gold/60 hover:text-beauty-gold text-sm transition-colors">
-          ← Volver al sitio web
-        </a>
-      </p>
     </div>
   )
 }

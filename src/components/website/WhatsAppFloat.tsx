@@ -1,11 +1,17 @@
-'use client'
+﻿'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { X } from 'lucide-react'
 
 export default function WhatsAppFloat() {
-  const [showTooltip, setShowTooltip] = useState(true)
+  const [showTooltip, setShowTooltip] = useState(false)
   const waNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || '3022197673'
+
+  // Mostrar tooltip solo en cliente para evitar hydration mismatch
+  useEffect(() => {
+    const timer = setTimeout(() => setShowTooltip(true), 1500)
+    return () => clearTimeout(timer)
+  }, [])
 
   return (
     <div className="fixed bottom-6 right-4 z-50 flex flex-col items-end gap-3">
@@ -19,7 +25,7 @@ export default function WhatsAppFloat() {
           >
             <X size={10} />
           </button>
-          <p className="text-xs font-medium text-beauty-black">¡Hola! 👋</p>
+          <p className="text-xs font-medium text-beauty-text">¡Hola! 👋</p>
           <p className="text-xs text-gray-500 mt-0.5">Reserva tu cita por WhatsApp</p>
         </div>
       )}

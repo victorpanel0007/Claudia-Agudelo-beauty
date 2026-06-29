@@ -1,7 +1,7 @@
 'use client'
 
+import React, { useState, useRef, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { useState } from 'react'
 
 // Simulated conversation flow
 const CONVERSATION_STEPS = [
@@ -202,22 +202,28 @@ function WhatsAppBubble({
 export default function WhatsAppSection() {
   const [visibleCount, setVisibleCount] = useState(0)
   const [running, setRunning] = useState(false)
+  const timersRef = useRef<ReturnType<typeof setTimeout>[]>([])
+
+  useEffect(() => {
+    return () => { timersRef.current.forEach(clearTimeout) }
+  }, [])
 
   function startDemo() {
     if (running) return
     setRunning(true)
     setVisibleCount(0)
+    timersRef.current.forEach(clearTimeout)
+    timersRef.current = []
 
     CONVERSATION_STEPS.forEach((step, i) => {
-      setTimeout(() => {
-        setVisibleCount(i + 1)
-      }, step.delay)
+      const t = setTimeout(() => setVisibleCount(i + 1), step.delay)
+      timersRef.current.push(t)
     })
 
-    // Reset after full demo
-    setTimeout(() => {
+    const reset = setTimeout(() => {
       setRunning(false)
     }, CONVERSATION_STEPS[CONVERSATION_STEPS.length - 1].delay + 3000)
+    timersRef.current.push(reset)
   }
 
   return (

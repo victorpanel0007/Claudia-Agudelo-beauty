@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
@@ -12,6 +12,18 @@ interface Stats {
   citasPendientes: number
   clientesTotal: number
   ingresosMes: number
+}
+
+function StatusBadge({ estado }: { estado: string }) {
+  const map: Record<string, { label: string; icon: React.ReactNode; cls: string }> = {
+    confirmada: { label: 'Confirmada', icon: <CheckCircle size={12} />, cls: 'badge-confirmada' },
+    completada: { label: 'Completada', icon: <CheckCircle size={12} />, cls: 'badge-completada' },
+    cancelada:  { label: 'Cancelada',  icon: <XCircle size={12} />,    cls: 'badge-cancelada' },
+    pendiente:  { label: 'Pendiente',  icon: <AlertCircle size={12} />, cls: 'badge-pendiente' },
+    en_proceso: { label: 'En proceso', icon: <Clock size={12} />,      cls: 'badge-en_proceso' },
+  }
+  const s = map[estado] || map.pendiente
+  return <span className={`${s.cls} flex items-center gap-1`}>{s.icon} {s.label}</span>
 }
 
 export default function Dashboard() {
@@ -35,13 +47,11 @@ export default function Dashboard() {
   }, [])
 
   async function loadData() {
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-    const todayEnd = new Date(today)
-    todayEnd.setHours(23, 59, 59, 999)
-
+    const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Bogota' })
+    const today    = new Date(`${todayStr}T00:00:00-05:00`)
+    const todayEnd = new Date(`${todayStr}T23:59:59-05:00`)
     const monthStart = new Date(today.getFullYear(), today.getMonth(), 1)
-    const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0)
+    const monthEnd   = new Date(today.getFullYear(), today.getMonth() + 1, 0)
 
     const [citasHoyRes, pendientesRes, clientesRes, ingresosRes] = await Promise.all([
       supabase
@@ -81,29 +91,14 @@ export default function Dashboard() {
     { label: 'Citas Hoy', value: stats.citasHoy, icon: Calendar, color: 'text-blue-600 bg-blue-100' },
     { label: 'Confirmadas', value: stats.citasPendientes, icon: CheckCircle, color: 'text-green-600 bg-green-100' },
     { label: 'Clientes', value: stats.clientesTotal, icon: Users, color: 'text-purple-600 bg-purple-100' },
-    { label: 'Ingresos del Mes', value: formatCurrency(stats.ingresosMes), icon: TrendingUp, color: 'text-beauty-gold bg-beauty-rose-light' },
+    { label: 'Ingresos del Mes', value: formatCurrency(stats.ingresosMes), icon: TrendingUp, color: 'text-beauty-secondary bg-beauty-rosa-claro' },
   ]
 
-  function StatusBadge({ estado }: { estado: string }) {
-    const map: Record<string, { label: string; icon: React.ReactNode; cls: string }> = {
-      confirmada: { label: 'Confirmada', icon: <CheckCircle size={12} />, cls: 'badge-confirmada' },
-      completada: { label: 'Completada', icon: <CheckCircle size={12} />, cls: 'badge-completada' },
-      cancelada: { label: 'Cancelada', icon: <XCircle size={12} />, cls: 'badge-cancelada' },
-      pendiente: { label: 'Pendiente', icon: <AlertCircle size={12} />, cls: 'badge-pendiente' },
-      en_proceso: { label: 'En proceso', icon: <Clock size={12} />, cls: 'badge-en_proceso' },
-    }
-    const s = map[estado] || map.pendiente
-    return (
-      <span className={`${s.cls} flex items-center gap-1`}>
-        {s.icon} {s.label}
-      </span>
-    )
-  }
 
   return (
     <div className="space-y-6 animate-fade-in">
       <div>
-        <h2 className="text-xl font-bold text-beauty-black">Dashboard</h2>
+        <h2 className="text-xl font-bold text-beauty-text">Dashboard</h2>
         <p className="text-gray-500 text-sm">Resumen del día</p>
       </div>
 
@@ -116,7 +111,7 @@ export default function Dashboard() {
                 <card.icon size={20} />
               </div>
             </div>
-            <p className="text-2xl font-bold text-beauty-black">{loading ? '—' : card.value}</p>
+            <p className="text-2xl font-bold text-beauty-text">{loading ? '—' : card.value}</p>
             <p className="text-gray-500 text-xs mt-1">{card.label}</p>
           </div>
         ))}
@@ -125,8 +120,8 @@ export default function Dashboard() {
       {/* Today's appointments */}
       <div className="beauty-card">
         <div className="p-5 border-b border-gray-100 flex items-center justify-between">
-          <h3 className="font-semibold text-beauty-black">Citas de Hoy</h3>
-          <Link href="/admin/agenda" className="text-beauty-gold text-sm hover:underline">
+          <h3 className="font-semibold text-beauty-text">Citas de Hoy</h3>
+          <Link href="/admin/agenda" className="text-beauty-secondary text-sm hover:underline">
             Ver agenda →
           </Link>
         </div>
@@ -144,20 +139,20 @@ export default function Dashboard() {
               <div key={cita.id} className="p-4 flex items-center gap-4 hover:bg-gray-50 transition-colors">
                 {/* Time */}
                 <div className="text-center min-w-[60px]">
-                  <p className="font-bold text-beauty-black text-sm">{formatTime(cita.fecha_inicio)}</p>
+                  <p className="font-bold text-beauty-text text-sm">{formatTime(cita.fecha_inicio)}</p>
                   <p className="text-gray-400 text-xs">{formatTime(cita.fecha_fin)}</p>
                 </div>
 
                 {/* Avatar */}
-                <div className="w-10 h-10 rounded-full bg-beauty-rose-light flex items-center justify-center shrink-0">
-                  <span className="text-beauty-gold font-bold text-sm">
+                <div className="w-10 h-10 rounded-full bg-beauty-rosa-claro flex items-center justify-center shrink-0">
+                  <span className="text-beauty-secondary font-bold text-sm">
                     {(cita.cliente?.nombre || 'C').charAt(0)}
                   </span>
                 </div>
 
                 {/* Info */}
                 <div className="flex-1 min-w-0">
-                  <p className="font-medium text-beauty-black text-sm truncate">
+                  <p className="font-medium text-beauty-text text-sm truncate">
                     {cita.cliente?.nombre || 'Cliente'}
                   </p>
                   <p className="text-gray-500 text-xs truncate">

@@ -68,7 +68,7 @@ export default function Footer() {
         <div className="gold-divider my-6" />
 
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-beauty-text-muted">
-          <p>© {new Date().getFullYear()} Claudia Agudelo Beauty. Todos los derechos reservados.</p>
+          <p>© 2026 Claudia Agudelo Beauty. Todos los derechos reservados.</p>
 
           {/* Redes sociales */}
           <div className="flex items-center gap-2">

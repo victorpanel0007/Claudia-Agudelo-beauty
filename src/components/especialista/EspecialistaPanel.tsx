@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
@@ -7,7 +7,7 @@ import Image from 'next/image'
 import { formatTime, formatDate, formatCurrency } from '@/lib/utils'
 import type { Cita } from '@/types/database'
 import { LogOut, Clock, Calendar, CheckCircle, Phone, RefreshCw } from 'lucide-react'
-import { format, isToday, isTomorrow, parseISO } from 'date-fns'
+import { format, isToday, parseISO } from 'date-fns'
 import { es } from 'date-fns/locale'
 import toast from 'react-hot-toast'
 
@@ -227,7 +227,7 @@ export default function EspecialistaPanel({ userEmail, userName }: { userEmail: 
 
                         {/* Cliente y servicio */}
                         <div className="flex items-start gap-3">
-                          <div className="w-10 h-10 rounded-full bg-beauty-primary-light flex items-center justify-center shrink-0 text-sm font-bold text-beauty-primary">
+                          <div className="w-10 h-10 rounded-full bg-beauty-rosa-claro flex items-center justify-center shrink-0 text-sm font-bold text-beauty-primary">
                             {(cita.cliente?.nombre || 'C').charAt(0).toUpperCase()}
                           </div>
                           <div className="flex-1 min-w-0">

@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
@@ -146,7 +146,7 @@ export default function WhatsAppAdminView() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-bold text-beauty-black flex items-center gap-2">
+          <h2 className="text-xl font-bold text-beauty-text flex items-center gap-2">
             <MessageSquare size={22} className="text-green-500" />
             WhatsApp Bot
           </h2>
@@ -185,13 +185,13 @@ export default function WhatsAppAdminView() {
           { label: 'Mensajes hoy', value: statsToday.length, icon: MessageSquare, color: 'text-blue-600 bg-blue-100' },
           { label: 'Recibidos hoy', value: statsToday.filter(m => m.tipo === 'entrante').length, icon: Phone, color: 'text-green-600 bg-green-100' },
           { label: 'Enviados hoy', value: statsToday.filter(m => m.tipo === 'saliente').length, icon: Send, color: 'text-purple-600 bg-purple-100' },
-          { label: 'Conversaciones', value: conversaciones.length, icon: Users, color: 'text-beauty-gold bg-beauty-rose-light' },
+          { label: 'Conversaciones', value: conversaciones.length, icon: Users, color: 'text-beauty-secondary bg-beauty-rosa-claro' },
         ].map(s => (
           <div key={s.label} className="beauty-card p-4">
             <div className={`w-9 h-9 rounded-xl flex items-center justify-center mb-2 ${s.color}`}>
               <s.icon size={18} />
             </div>
-            <p className="text-xl font-bold text-beauty-black">{s.value}</p>
+            <p className="text-xl font-bold text-beauty-text">{s.value}</p>
             <p className="text-gray-400 text-xs mt-0.5">{s.label}</p>
           </div>
         ))}
@@ -209,8 +209,8 @@ export default function WhatsAppAdminView() {
             onClick={() => setActiveTab(tab.key as typeof activeTab)}
             className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
               activeTab === tab.key
-                ? 'bg-white text-beauty-black shadow-sm'
-                : 'text-gray-500 hover:text-beauty-black'
+                ? 'bg-white text-beauty-text shadow-sm'
+                : 'text-gray-500 hover:text-beauty-text'
             }`}
           >
             <tab.icon size={15} />
@@ -225,7 +225,7 @@ export default function WhatsAppAdminView() {
           {/* Conversation list */}
           <div className="beauty-card overflow-hidden flex flex-col">
             <div className="p-3 border-b border-gray-100">
-              <p className="font-semibold text-beauty-black text-sm">
+              <p className="font-semibold text-beauty-text text-sm">
                 Conversaciones ({conversaciones.length})
               </p>
             </div>
@@ -243,7 +243,7 @@ export default function WhatsAppAdminView() {
                   key={conv.telefono}
                   onClick={() => setSelectedConv(conv)}
                   className={`w-full p-3 text-left hover:bg-gray-50 transition-colors ${
-                    selectedConv?.telefono === conv.telefono ? 'bg-beauty-rose-light border-l-2 border-beauty-gold' : ''
+                    selectedConv?.telefono === conv.telefono ? 'bg-beauty-rosa-claro border-l-2 border-beauty-secondary' : ''
                   }`}
                 >
                   <div className="flex items-center gap-3">
@@ -254,7 +254,7 @@ export default function WhatsAppAdminView() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between">
-                        <p className="font-medium text-beauty-black text-sm truncate">{conv.nombre}</p>
+                        <p className="font-medium text-beauty-text text-sm truncate">{conv.nombre}</p>
                         <p className="text-gray-400 text-[10px] shrink-0 ml-1">{formatTime(conv.ultimo)}</p>
                       </div>
                       <p className="text-gray-400 text-xs truncate">
@@ -282,7 +282,7 @@ export default function WhatsAppAdminView() {
                     <span className="text-green-700 font-bold">{selectedConv.nombre.charAt(0).toUpperCase()}</span>
                   </div>
                   <div className="flex-1">
-                    <p className="font-semibold text-beauty-black text-sm">{selectedConv.nombre}</p>
+                    <p className="font-semibold text-beauty-text text-sm">{selectedConv.nombre}</p>
                     <p className="text-gray-400 text-xs">{selectedConv.telefono}</p>
                   </div>
                   <a
@@ -306,7 +306,7 @@ export default function WhatsAppAdminView() {
                         className={`max-w-[80%] px-3 py-2 rounded-2xl text-sm shadow-sm ${
                           m.tipo === 'saliente'
                             ? 'bg-white text-gray-800 rounded-tl-sm'
-                            : 'bg-beauty-gold/20 text-gray-800 rounded-tr-sm border border-beauty-gold/20'
+                            : 'bg-beauty-secondary/20 text-gray-800 rounded-tr-sm border border-beauty-secondary/20'
                         }`}
                       >
                         <p className="whitespace-pre-line leading-relaxed">{m.mensaje}</p>
@@ -338,24 +338,24 @@ export default function WhatsAppAdminView() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
           {/* Steps */}
           <div className="beauty-card p-5">
-            <h3 className="font-bold text-beauty-black mb-4 flex items-center gap-2">
-              <Zap size={18} className="text-beauty-gold" />
+            <h3 className="font-bold text-beauty-text mb-4 flex items-center gap-2">
+              <Zap size={18} className="text-beauty-secondary" />
               Flujo de reserva automática
             </h3>
             <div className="space-y-3">
               {FLUJO_STEPS.map((step, i) => (
                 <div key={i} className="flex gap-3">
                   <div className="flex flex-col items-center">
-                    <div className="w-8 h-8 rounded-full bg-beauty-gold flex items-center justify-center text-beauty-black font-bold text-sm shrink-0">
+                    <div className="w-8 h-8 rounded-full bg-beauty-secondary flex items-center justify-center text-beauty-text font-bold text-sm shrink-0">
                       {step.icono}
                     </div>
                     {i < FLUJO_STEPS.length - 1 && (
-                      <div className="w-0.5 h-6 bg-beauty-gold/20 mt-1" />
+                      <div className="w-0.5 h-6 bg-beauty-secondary/20 mt-1" />
                     )}
                   </div>
                   <div className="pb-3 min-w-0">
                     <div className="bg-gray-50 rounded-xl p-3">
-                      <p className="text-xs font-semibold text-beauty-black mb-1">
+                      <p className="text-xs font-semibold text-beauty-text mb-1">
                         Paso {step.paso}
                       </p>
                       <div className="flex items-start gap-2">
@@ -378,8 +378,8 @@ export default function WhatsAppAdminView() {
           {/* Commands reference */}
           <div className="space-y-4">
             <div className="beauty-card p-5">
-              <h3 className="font-bold text-beauty-black mb-3 flex items-center gap-2">
-                <MessageSquare size={18} className="text-beauty-gold" />
+              <h3 className="font-bold text-beauty-text mb-3 flex items-center gap-2">
+                <MessageSquare size={18} className="text-beauty-secondary" />
                 Palabras clave de reinicio
               </h3>
               <div className="space-y-2">
@@ -396,8 +396,8 @@ export default function WhatsAppAdminView() {
             </div>
 
             <div className="beauty-card p-5">
-              <h3 className="font-bold text-beauty-black mb-3 flex items-center gap-2">
-                <Clock size={18} className="text-beauty-gold" />
+              <h3 className="font-bold text-beauty-text mb-3 flex items-center gap-2">
+                <Clock size={18} className="text-beauty-secondary" />
                 Recordatorios automáticos
               </h3>
               <div className="space-y-3">
@@ -418,7 +418,7 @@ export default function WhatsAppAdminView() {
             </div>
 
             <div className="beauty-card p-5">
-              <h3 className="font-bold text-beauty-black mb-3">Categorías del bot</h3>
+              <h3 className="font-bold text-beauty-text mb-3">Categorías del bot</h3>
               <div className="grid grid-cols-3 gap-1.5">
                 {[
                   ['1️⃣', 'Manicura'], ['2️⃣', 'Maquillaje'], ['3️⃣', 'Masajes'],
@@ -441,8 +441,8 @@ export default function WhatsAppAdminView() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
           {/* Webhook URL */}
           <div className="beauty-card p-5">
-            <h3 className="font-bold text-beauty-black mb-4 flex items-center gap-2">
-              <Settings size={18} className="text-beauty-gold" />
+            <h3 className="font-bold text-beauty-text mb-4 flex items-center gap-2">
+              <Settings size={18} className="text-beauty-secondary" />
               Configuración Evolution API
             </h3>
 
@@ -473,24 +473,24 @@ export default function WhatsAppAdminView() {
               </div>
 
               <div className="bg-gray-50 rounded-xl p-4 space-y-2 text-sm">
-                <p className="font-medium text-beauty-black text-sm">Variables de entorno</p>
+                <p className="font-medium text-beauty-text text-sm">Variables de entorno</p>
                 {[
                   { key: 'EVOLUTION_API_URL', desc: 'URL base de Evolution API' },
                   { key: 'EVOLUTION_API_KEY', desc: 'API Key de acceso' },
                   { key: 'EVOLUTION_INSTANCE_NAME', desc: 'Nombre de la instancia' },
                 ].map(v => (
                   <div key={v.key} className="flex items-start gap-2">
-                    <Circle size={6} className="text-beauty-gold mt-1.5 shrink-0" />
+                    <Circle size={6} className="text-beauty-secondary mt-1.5 shrink-0" />
                     <div>
-                      <code className="text-xs font-mono text-beauty-black">{v.key}</code>
+                      <code className="text-xs font-mono text-beauty-text">{v.key}</code>
                       <p className="text-xs text-gray-400">{v.desc}</p>
                     </div>
                   </div>
                 ))}
               </div>
 
-              <div className="bg-beauty-rose-light border border-beauty-rose rounded-xl p-4">
-                <p className="text-sm font-semibold text-beauty-black mb-2">Estado del bot</p>
+              <div className="bg-beauty-rosa-claro border border-beauty-primary rounded-xl p-4">
+                <p className="text-sm font-semibold text-beauty-text mb-2">Estado del bot</p>
                 <div className="flex items-center gap-2">
                   {instanceStatus === 'connected' ? (
                     <>
@@ -511,7 +511,7 @@ export default function WhatsAppAdminView() {
                 </div>
                 <button
                   onClick={checkInstanceStatus}
-                  className="mt-3 text-xs text-beauty-gold hover:underline flex items-center gap-1"
+                  className="mt-3 text-xs text-beauty-secondary hover:underline flex items-center gap-1"
                 >
                   <RefreshCw size={11} /> Verificar conexión
                 </button>
@@ -521,8 +521,8 @@ export default function WhatsAppAdminView() {
 
           {/* Test message sender */}
           <div className="beauty-card p-5">
-            <h3 className="font-bold text-beauty-black mb-4 flex items-center gap-2">
-              <Send size={18} className="text-beauty-gold" />
+            <h3 className="font-bold text-beauty-text mb-4 flex items-center gap-2">
+              <Send size={18} className="text-beauty-secondary" />
               Enviar mensaje de prueba
             </h3>
 
@@ -571,13 +571,13 @@ export default function WhatsAppAdminView() {
                 <p className="text-xs font-medium text-gray-600 mb-2">Prueba rápida del bot:</p>
                 <button
                   onClick={() => setTestMsg('Hola')}
-                  className="text-xs bg-gray-100 hover:bg-beauty-rose-light text-gray-600 hover:text-beauty-gold px-3 py-1.5 rounded-full transition-colors mr-2"
+                  className="text-xs bg-gray-100 hover:bg-beauty-rosa-claro text-gray-600 hover:text-beauty-secondary px-3 py-1.5 rounded-full transition-colors mr-2"
                 >
                   Enviar "Hola"
                 </button>
                 <button
                   onClick={() => setTestMsg('menu')}
-                  className="text-xs bg-gray-100 hover:bg-beauty-rose-light text-gray-600 hover:text-beauty-gold px-3 py-1.5 rounded-full transition-colors"
+                  className="text-xs bg-gray-100 hover:bg-beauty-rosa-claro text-gray-600 hover:text-beauty-secondary px-3 py-1.5 rounded-full transition-colors"
                 >
                   Enviar "menu"
                 </button>
@@ -587,8 +587,8 @@ export default function WhatsAppAdminView() {
 
           {/* Setup guide */}
           <div className="lg:col-span-2 beauty-card p-5">
-            <h3 className="font-bold text-beauty-black mb-4 flex items-center gap-2">
-              <ChevronRight size={18} className="text-beauty-gold" />
+            <h3 className="font-bold text-beauty-text mb-4 flex items-center gap-2">
+              <ChevronRight size={18} className="text-beauty-secondary" />
               Guía de configuración
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -604,8 +604,8 @@ export default function WhatsAppAdminView() {
                   step: '2',
                   title: 'Configurar el webhook',
                   items: ['Copia la URL del webhook de arriba', 'En Evolution API → Webhooks', `Pega la URL y activa "messages.upsert"`],
-                  color: 'border-beauty-gold/40 bg-beauty-rose-light',
-                  num: 'bg-beauty-gold',
+                  color: 'border-beauty-secondary/40 bg-beauty-rosa-claro',
+                  num: 'bg-beauty-secondary',
                 },
                 {
                   step: '3',
@@ -619,7 +619,7 @@ export default function WhatsAppAdminView() {
                   <div className={`w-7 h-7 rounded-full ${g.num} text-white text-xs font-bold flex items-center justify-center mb-3`}>
                     {g.step}
                   </div>
-                  <p className="font-semibold text-beauty-black text-sm mb-2">{g.title}</p>
+                  <p className="font-semibold text-beauty-text text-sm mb-2">{g.title}</p>
                   <ul className="space-y-1">
                     {g.items.map((item, i) => (
                       <li key={i} className="flex items-start gap-1.5 text-xs text-gray-600">
