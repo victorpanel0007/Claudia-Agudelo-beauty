@@ -42,7 +42,7 @@ export default function LoginForm() {
 
   return (
     <div className="min-h-screen bg-beauty-bg flex items-center justify-center p-4">
-      <div className="w-full max-w-sm animate-slide-up">
+      <div className="w-full max-w-md animate-slide-up">
 
         {/* Logo */}
         <div className="flex flex-col items-center mb-8">
@@ -55,13 +55,13 @@ export default function LoginForm() {
               priority
             />
           </div>
-          <h1 className="font-serif text-beauty-text text-xl font-bold">Claudia Agudelo Beauty</h1>
+          <h1 className="font-serif text-beauty-text text-2xl font-bold">Claudia Agudelo Beauty</h1>
           <p className="text-beauty-text-muted text-sm mt-1">Panel Administrativo</p>
         </div>
 
         {/* Card */}
-        <div className="bg-white rounded-2xl shadow-beauty border border-beauty-primary/20 p-7">
-          <h2 className="text-beauty-text font-bold text-lg mb-6 text-center">Iniciar Sesión</h2>
+        <div className="bg-white rounded-2xl shadow-beauty border border-beauty-primary/20 p-8">
+          <h2 className="text-beauty-text font-bold text-xl mb-6 text-center">Iniciar Sesión</h2>
 
           <form onSubmit={handleLogin} className="space-y-4">
             {/* Email */}
