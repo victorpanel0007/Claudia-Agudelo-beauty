@@ -256,7 +256,7 @@ function DetailPanel({ cita, onClose, onCompletar, onCancelar }: {
       </div>
 
       {/* Acciones */}
-      {(cita.estado === 'confirmada' || cita.estado === 'pendiente') && (
+      {(cita.estado === 'confirmada' || cita.estado === 'pendiente' || cita.estado === 'en_proceso') && (
         <div className="p-4 mt-auto flex gap-2">
           <button
             onClick={() => onCancelar(cita.id)}

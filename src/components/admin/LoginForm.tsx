@@ -70,7 +70,7 @@ export default function LoginForm() {
                 Correo electrónico
               </label>
               <div className="relative">
-                <Mail size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-beauty-text-muted" />
+                <Mail size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-beauty-text-muted" />
                 <input
                   type="email"
                   value={email}
@@ -78,7 +78,7 @@ export default function LoginForm() {
                   required
                   autoComplete="email"
                   placeholder="correo@ejemplo.com"
-                  className="input-beauty pl-9"
+                  className="w-full border border-beauty-primary/40 rounded-xl pl-11 pr-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-beauty-primary/30 focus:border-beauty-primary transition-colors"
                 />
               </div>
             </div>
@@ -89,7 +89,7 @@ export default function LoginForm() {
                 Contraseña
               </label>
               <div className="relative">
-                <Lock size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-beauty-text-muted" />
+                <Lock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-beauty-text-muted" />
                 <input
                   type={showPassword ? 'text' : 'password'}
                   value={password}
@@ -97,12 +97,12 @@ export default function LoginForm() {
                   required
                   autoComplete="current-password"
                   placeholder="••••••••"
-                  className="input-beauty pl-9 pr-10"
+                  className="w-full border border-beauty-primary/40 rounded-xl pl-11 pr-12 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-beauty-primary/30 focus:border-beauty-primary transition-colors"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-beauty-text-muted hover:text-beauty-text transition-colors"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-beauty-text-muted hover:text-beauty-text transition-colors"
                 >
                   {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
