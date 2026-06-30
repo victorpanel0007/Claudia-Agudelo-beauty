@@ -2,19 +2,24 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { useForm } from 'react-hook-form'
 import { Clock, Plus, Edit, Save, X, CheckCircle, XCircle, User } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 interface Especialista {
   id: string
   nombre: string
-  foto?: string
   activo: boolean
   especialidades: string[]
   horario_inicio: string
   horario_fin: string
   dias_laborales: number[]
+}
+
+interface FormState {
+  nombre: string
+  horario_inicio: string
+  horario_fin: string
+  activo: boolean
 }
 
 const DIAS = [
@@ -27,56 +32,76 @@ const DIAS = [
   { num: 6, label: 'Sáb', short: 'S' },
 ]
 
-// Generate time options every 30 min — 6:00 AM to 10:00 PM
 const TIME_OPTIONS = Array.from({ length: 33 }, (_, i) => {
-  const totalMins = 360 + i * 30  // 6:00 = 360 min, 22:00 = 1320 min
+  const totalMins = 360 + i * 30
   const h = Math.floor(totalMins / 60).toString().padStart(2, '0')
   const m = (totalMins % 60).toString().padStart(2, '0')
   return `${h}:${m}`
 })
 
-type FormData = {
-  nombre: string
-  horario_inicio: string
-  horario_fin: string
-  activo: boolean
+function formatTime12(t: string): string {
+  const [h, m] = t.split(':')
+  const hour = parseInt(h)
+  const ampm = hour >= 12 ? 'PM' : 'AM'
+  const h12 = hour > 12 ? hour - 12 : hour === 0 ? 12 : hour
+  return `${h12}:${m} ${ampm}`
+}
+
+function calcSlots(inicio: string, fin: string): number {
+  const [sh, sm] = inicio.split(':').map(Number)
+  const [eh, em] = fin.split(':').map(Number)
+  return Math.max(0, Math.floor(((eh * 60 + em) - (sh * 60 + sm)) / 30) + 1)
+}
+
+const DEFAULT_FORM: FormState = {
+  nombre: '',
+  horario_inicio: '09:00',
+  horario_fin: '19:00',
+  activo: true,
 }
 
 export default function EspecialistasView() {
   const [especialistas, setEspecialistas] = useState<Especialista[]>([])
   const [loading, setLoading] = useState(true)
-  const [editing, setEditing] = useState<Especialista | null>(null)
+  const [saving, setSaving] = useState(false)
+  const [editingId, setEditingId] = useState<string | null>(null)
   const [showForm, setShowForm] = useState(false)
+  const [form, setForm] = useState<FormState>(DEFAULT_FORM)
   const [diasSelected, setDiasSelected] = useState<number[]>([1, 2, 3, 4, 5, 6])
   const supabase = createClient()
-
-  const { register, handleSubmit, reset, formState: { errors } } = useForm<FormData>()
 
   useEffect(() => { loadData() }, [])
 
   async function loadData() {
+    setLoading(true)
     const { data } = await supabase.from('especialistas').select('*').order('nombre')
     setEspecialistas((data as Especialista[]) || [])
     setLoading(false)
   }
 
   function openEdit(e: Especialista) {
-    setEditing(e)
+    setEditingId(e.id)
     setDiasSelected(e.dias_laborales || [1, 2, 3, 4, 5, 6])
-    reset({
-      nombre: e.nombre,
-      horario_inicio: e.horario_inicio,
-      horario_fin: e.horario_fin,
-      activo: e.activo,
+    setForm({
+      nombre:          e.nombre,
+      horario_inicio:  e.horario_inicio || '09:00',
+      horario_fin:     e.horario_fin    || '19:00',
+      activo:          e.activo,
     })
     setShowForm(true)
   }
 
   function openNew() {
-    setEditing(null)
+    setEditingId(null)
     setDiasSelected([1, 2, 3, 4, 5, 6])
-    reset({ nombre: '', horario_inicio: '09:00', horario_fin: '19:00', activo: true })
+    setForm(DEFAULT_FORM)
     setShowForm(true)
+  }
+
+  function closeForm() {
+    setShowForm(false)
+    setEditingId(null)
+    setForm(DEFAULT_FORM)
   }
 
   function toggleDia(num: number) {
@@ -85,51 +110,49 @@ export default function EspecialistasView() {
     )
   }
 
-  async function onSubmit(data: FormData) {
-    if (diasSelected.length === 0) {
-      toast.error('Selecciona al menos un día laboral')
-      return
-    }
+  async function handleSave() {
+    if (!form.nombre.trim()) { toast.error('El nombre es requerido'); return }
+    if (diasSelected.length === 0) { toast.error('Selecciona al menos un día'); return }
 
+    setSaving(true)
     const payload = {
-      nombre: data.nombre,
-      horario_inicio: data.horario_inicio,
-      horario_fin: data.horario_fin,
-      activo: data.activo,
-      dias_laborales: diasSelected,
+      nombre:          form.nombre.trim(),
+      horario_inicio:  form.horario_inicio,
+      horario_fin:     form.horario_fin,
+      activo:          form.activo,
+      dias_laborales:  diasSelected,
     }
 
-    if (editing) {
-      const { error } = await supabase.from('especialistas').update(payload).eq('id', editing.id)
-      if (error) { toast.error('Error al actualizar'); return }
-      toast.success(`✅ ${data.nombre} actualizada correctamente`)
+    if (editingId) {
+      const { error } = await supabase
+        .from('especialistas')
+        .update(payload)
+        .eq('id', editingId)
+      if (error) {
+        toast.error('Error al guardar: ' + error.message)
+      } else {
+        toast.success(`✅ ${form.nombre} actualizada correctamente`)
+        closeForm()
+        loadData()
+      }
     } else {
-      const { error } = await supabase.from('especialistas').insert(payload)
-      if (error) { toast.error('Error al crear'); return }
-      toast.success(`✅ ${data.nombre} creada correctamente`)
+      const { error } = await supabase
+        .from('especialistas')
+        .insert(payload)
+      if (error) {
+        toast.error('Error al crear: ' + error.message)
+      } else {
+        toast.success(`✅ ${form.nombre} creada correctamente`)
+        closeForm()
+        loadData()
+      }
     }
-
-    setShowForm(false)
-    loadData()
-  }
-
-  function formatHorario(inicio: string, fin: string) {
-    const fmt = (t: string) => {
-      const [h, m] = t.split(':')
-      const hour = parseInt(h)
-      const ampm = hour >= 12 ? 'PM' : 'AM'
-      const h12 = hour > 12 ? hour - 12 : hour === 0 ? 12 : hour
-      return `${h12}:${m} ${ampm}`
-    }
-    return `${fmt(inicio)} — ${fmt(fin)}`
-  }
-
-  function formatDias(dias: number[]) {
-    return DIAS.filter(d => dias.includes(d.num)).map(d => d.label).join(', ')
+    setSaving(false)
   }
 
   return (
     <div className="space-y-5 animate-fade-in">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-xl font-bold text-beauty-text flex items-center gap-2">
@@ -155,18 +178,17 @@ export default function EspecialistasView() {
         </div>
       </div>
 
-      {/* Especialistas cards */}
+      {/* Cards */}
       {loading ? (
         <div className="beauty-card p-8 text-center text-gray-400">Cargando...</div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {especialistas.map(e => (
             <div key={e.id} className="beauty-card p-5">
-              {/* Header */}
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-full bg-beauty-secondary flex items-center justify-center">
-                    <span className="text-beauty-text font-bold text-lg">{e.nombre.charAt(0)}</span>
+                  <div className="w-12 h-12 rounded-full bg-beauty-primary flex items-center justify-center">
+                    <span className="text-white font-bold text-lg">{e.nombre.charAt(0)}</span>
                   </div>
                   <div>
                     <p className="font-bold text-beauty-text">{e.nombre}</p>
@@ -177,15 +199,12 @@ export default function EspecialistasView() {
                     </span>
                   </div>
                 </div>
-                <button
-                  onClick={() => openEdit(e)}
-                  className="p-2 hover:bg-beauty-rosa-claro rounded-xl transition-colors"
-                >
+                <button onClick={() => openEdit(e)}
+                  className="p-2 hover:bg-beauty-rosa-claro rounded-xl transition-colors">
                   <Edit size={16} className="text-beauty-secondary" />
                 </button>
               </div>
 
-              {/* Horario */}
               <div className="space-y-2">
                 <div className="bg-gray-50 rounded-xl p-3">
                   <div className="flex items-center gap-2 mb-1">
@@ -193,7 +212,7 @@ export default function EspecialistasView() {
                     <p className="text-xs font-semibold text-gray-600">Horario de trabajo</p>
                   </div>
                   <p className="text-beauty-text font-bold text-sm">
-                    {formatHorario(e.horario_inicio, e.horario_fin)}
+                    {formatTime12(e.horario_inicio)} — {formatTime12(e.horario_fin)}
                   </p>
                 </div>
 
@@ -201,25 +220,20 @@ export default function EspecialistasView() {
                   <p className="text-xs font-semibold text-gray-600 mb-2">Días laborales</p>
                   <div className="flex gap-1 flex-wrap">
                     {DIAS.map(d => (
-                      <span
-                        key={d.num}
+                      <span key={d.num}
                         className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold ${
                           e.dias_laborales?.includes(d.num)
                             ? 'bg-beauty-secondary text-beauty-text'
                             : 'bg-gray-100 text-gray-300'
-                        }`}
-                      >
+                        }`}>
                         {d.short}
                       </span>
                     ))}
                   </div>
                 </div>
 
-                {/* Slots preview */}
                 <div className="bg-beauty-rosa-claro rounded-xl p-3">
-                  <p className="text-xs font-semibold text-gray-600 mb-1">
-                    Ventana de citas
-                  </p>
+                  <p className="text-xs font-semibold text-gray-600 mb-1">Ventana de citas</p>
                   <p className="text-beauty-text text-sm font-medium">
                     Desde {formatTime12(e.horario_inicio)} — última cita a las {formatTime12(e.horario_fin)}
                   </p>
@@ -233,50 +247,55 @@ export default function EspecialistasView() {
         </div>
       )}
 
-      {/* Edit / New form modal */}
+      {/* Modal formulario */}
       {showForm && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/50">
           <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl w-full sm:max-w-md max-h-[90vh] overflow-y-auto animate-slide-up">
-            <div className="p-5 border-b border-gray-100 flex items-center justify-between sticky top-0 bg-white">
+
+            {/* Header modal */}
+            <div className="p-5 border-b border-gray-100 flex items-center justify-between sticky top-0 bg-white z-10">
               <h3 className="font-bold text-beauty-text">
-                {editing ? `Editar — ${editing.nombre}` : 'Nueva Especialista'}
+                {editingId ? `Editar especialista` : 'Nueva Especialista'}
               </h3>
-              <button onClick={() => setShowForm(false)} className="p-1.5 hover:bg-gray-100 rounded-lg">
+              <button onClick={closeForm} className="p-1.5 hover:bg-gray-100 rounded-lg">
                 <X size={18} />
               </button>
             </div>
 
-            <form onSubmit={handleSubmit(onSubmit)} className="p-5 space-y-5" key={editing?.id || 'new'}>
+            <div className="p-5 space-y-5">
               {/* Nombre */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Nombre</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Nombre *</label>
                 <input
-                  {...register('nombre', { required: 'Requerido' })}
+                  type="text"
+                  value={form.nombre}
+                  onChange={e => setForm(f => ({ ...f, nombre: e.target.value }))}
                   className="input-beauty"
                   placeholder="Nombre de la especialista"
                 />
-                {errors.nombre && <p className="text-red-500 text-xs mt-1">{errors.nombre.message}</p>}
               </div>
 
               {/* Horario */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Primera cita
-                  </label>
-                  <select {...register('horario_inicio', { required: true })} className="input-beauty"
-                    defaultValue={editing?.horario_inicio || '09:00'}>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Primera cita</label>
+                  <select
+                    value={form.horario_inicio}
+                    onChange={e => setForm(f => ({ ...f, horario_inicio: e.target.value }))}
+                    className="input-beauty"
+                  >
                     {TIME_OPTIONS.map(t => (
                       <option key={t} value={t}>{formatTime12(t)}</option>
                     ))}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Última cita inicia
-                  </label>
-                  <select {...register('horario_fin', { required: true })} className="input-beauty"
-                    defaultValue={editing?.horario_fin || '19:00'}>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Última cita inicia</label>
+                  <select
+                    value={form.horario_fin}
+                    onChange={e => setForm(f => ({ ...f, horario_fin: e.target.value }))}
+                    className="input-beauty"
+                  >
                     {TIME_OPTIONS.map(t => (
                       <option key={t} value={t}>{formatTime12(t)}</option>
                     ))}
@@ -287,23 +306,25 @@ export default function EspecialistasView() {
                 ℹ️ La última cita puede <em>iniciar</em> a esa hora — termina cuando el servicio lo requiera.
               </p>
 
+              {/* Vista previa del horario seleccionado */}
+              <div className="bg-beauty-rosa-claro rounded-xl p-3 text-sm text-beauty-text font-medium text-center">
+                🕐 {formatTime12(form.horario_inicio)} — {formatTime12(form.horario_fin)}
+                <span className="text-xs text-gray-500 block mt-0.5">
+                  {calcSlots(form.horario_inicio, form.horario_fin)} slots disponibles
+                </span>
+              </div>
+
               {/* Días */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Días laborales
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Días laborales</label>
                 <div className="flex gap-2 flex-wrap">
                   {DIAS.map(d => (
-                    <button
-                      key={d.num}
-                      type="button"
-                      onClick={() => toggleDia(d.num)}
+                    <button key={d.num} type="button" onClick={() => toggleDia(d.num)}
                       className={`px-3 py-2 rounded-xl text-sm font-medium transition-all ${
                         diasSelected.includes(d.num)
                           ? 'bg-beauty-secondary text-beauty-text shadow-beauty'
                           : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-                      }`}
-                    >
+                      }`}>
                       {d.label}
                     </button>
                   ))}
@@ -311,53 +332,31 @@ export default function EspecialistasView() {
               </div>
 
               {/* Activo */}
-              <div className="flex items-center gap-3 bg-gray-50 rounded-xl p-3">
-                <input
-                  {...register('activo')}
-                  type="checkbox"
-                  id="activo"
-                  className="w-4 h-4 accent-beauty-secondary"
-                />
-                <label htmlFor="activo" className="text-sm font-medium text-gray-700">
-                  Especialista activa (visible para el bot y clientes)
+              <div className="flex items-center gap-3 bg-gray-50 rounded-xl p-3 cursor-pointer"
+                onClick={() => setForm(f => ({ ...f, activo: !f.activo }))}>
+                <div className={`w-10 h-6 rounded-full transition-colors relative ${form.activo ? 'bg-beauty-primary' : 'bg-gray-300'}`}>
+                  <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${form.activo ? 'left-5' : 'left-1'}`} />
+                </div>
+                <label className="text-sm font-medium text-gray-700 cursor-pointer">
+                  {form.activo ? 'Activa — visible para el bot y clientes' : 'Inactiva — no aparece en el bot'}
                 </label>
               </div>
 
-              {/* Buttons */}
+              {/* Botones */}
               <div className="flex gap-3 pt-1">
-                <button
-                  type="button"
-                  onClick={() => setShowForm(false)}
-                  className="flex-1 border-2 border-gray-200 py-3 rounded-xl text-sm font-medium hover:bg-gray-50 transition-colors"
-                >
+                <button type="button" onClick={closeForm}
+                  className="flex-1 border-2 border-gray-200 py-3 rounded-xl text-sm font-medium hover:bg-gray-50 transition-colors">
                   Cancelar
                 </button>
-                <button type="submit" className="flex-1 btn-beauty justify-center py-3">
-                  <Save size={16} />
-                  {editing ? 'Guardar cambios' : 'Crear especialista'}
+                <button type="button" onClick={handleSave} disabled={saving}
+                  className="flex-1 btn-beauty justify-center py-3 disabled:opacity-50">
+                  {saving ? 'Guardando...' : <><Save size={16} />{editingId ? 'Guardar cambios' : 'Crear especialista'}</>}
                 </button>
               </div>
-            </form>
+            </div>
           </div>
         </div>
       )}
     </div>
   )
-}
-
-function calcSlots(inicio: string, fin: string): number {
-  const [sh, sm] = inicio.split(':').map(Number)
-  const [eh, em] = fin.split(':').map(Number)
-  const startMins = sh * 60 + sm
-  const endMins = eh * 60 + em
-  // +1 because the end slot itself is available
-  return Math.max(0, Math.floor((endMins - startMins) / 30) + 1)
-}
-
-function formatTime12(t: string): string {
-  const [h, m] = t.split(':')
-  const hour = parseInt(h)
-  const ampm = hour >= 12 ? 'PM' : 'AM'
-  const h12 = hour > 12 ? hour - 12 : hour === 0 ? 12 : hour
-  return `${h12}:${m} ${ampm}`
 }
