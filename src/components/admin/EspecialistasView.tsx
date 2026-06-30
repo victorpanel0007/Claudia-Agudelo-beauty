@@ -246,7 +246,7 @@ export default function EspecialistasView() {
               </button>
             </div>
 
-            <form onSubmit={handleSubmit(onSubmit)} className="p-5 space-y-5">
+            <form onSubmit={handleSubmit(onSubmit)} className="p-5 space-y-5" key={editing?.id || 'new'}>
               {/* Nombre */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Nombre</label>
@@ -264,7 +264,8 @@ export default function EspecialistasView() {
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Primera cita
                   </label>
-                  <select {...register('horario_inicio', { required: true })} className="input-beauty">
+                  <select {...register('horario_inicio', { required: true })} className="input-beauty"
+                    defaultValue={editing?.horario_inicio || '09:00'}>
                     {TIME_OPTIONS.map(t => (
                       <option key={t} value={t}>{formatTime12(t)}</option>
                     ))}
@@ -274,7 +275,8 @@ export default function EspecialistasView() {
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Última cita inicia
                   </label>
-                  <select {...register('horario_fin', { required: true })} className="input-beauty">
+                  <select {...register('horario_fin', { required: true })} className="input-beauty"
+                    defaultValue={editing?.horario_fin || '19:00'}>
                     {TIME_OPTIONS.map(t => (
                       <option key={t} value={t}>{formatTime12(t)}</option>
                     ))}

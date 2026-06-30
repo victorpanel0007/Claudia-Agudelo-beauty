@@ -972,13 +972,17 @@ export default function AgendaView() {
             /* Day / Week grid */
             <div className="flex flex-1 overflow-auto">
               {/* Hours column */}
-              <div className="w-14 shrink-0 border-r border-gray-100">
+              <div className="w-16 shrink-0 border-r border-gray-100">
                 <div className="h-10 border-b border-gray-100" />
-                {HOURS.map(h => (
-                  <div key={h} className="h-16 border-b border-gray-50 flex items-start justify-end pr-2 pt-1">
-                    <span className="text-[11px] text-gray-400">{String(h).padStart(2, '0')}:00</span>
-                  </div>
-                ))}
+                {HOURS.map(h => {
+                  const ampm = h >= 12 ? 'PM' : 'AM'
+                  const h12 = h > 12 ? h - 12 : h === 0 ? 12 : h
+                  return (
+                    <div key={h} className="h-16 border-b border-gray-50 flex items-start justify-end pr-2 pt-1">
+                      <span className="text-[11px] text-gray-400">{h12}:00 {ampm}</span>
+                    </div>
+                  )
+                })}
               </div>
 
               {/* Day columns */}

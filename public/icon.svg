@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- Fondo círculo crema -->
+  <circle cx="50" cy="50" r="50" fill="#FFF8EE"/>
+  
+  <!-- Pétalos rosa -->
+  <ellipse cx="50" cy="22" rx="10" ry="18" fill="#EFA1B5" opacity="0.9"/>
+  <ellipse cx="50" cy="78" rx="10" ry="18" fill="#EFA1B5" opacity="0.9"/>
+  <ellipse cx="22" cy="50" rx="18" ry="10" fill="#EFA1B5" opacity="0.9"/>
+  <ellipse cx="78" cy="50" rx="18" ry="10" fill="#EFA1B5" opacity="0.9"/>
+  
+  <!-- Pétalos diagonales -->
+  <ellipse cx="29" cy="29" rx="10" ry="18" fill="#FAD6E0" opacity="0.85" transform="rotate(45 29 29)"/>
+  <ellipse cx="71" cy="29" rx="10" ry="18" fill="#FAD6E0" opacity="0.85" transform="rotate(-45 71 29)"/>
+  <ellipse cx="29" cy="71" rx="10" ry="18" fill="#FAD6E0" opacity="0.85" transform="rotate(-45 29 71)"/>
+  <ellipse cx="71" cy="71" rx="10" ry="18" fill="#FAD6E0" opacity="0.85" transform="rotate(45 71 71)"/>
+  
+  <!-- Centro dorado -->
+  <circle cx="50" cy="50" r="14" fill="#D4AF37"/>
+  <circle cx="50" cy="50" r="9" fill="#E8CC6A"/>
+  <circle cx="50" cy="50" r="5" fill="#D4AF37"/>
+</svg>
