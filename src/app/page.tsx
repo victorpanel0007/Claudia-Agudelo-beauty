@@ -1,46 +1,33 @@
 import dynamic from 'next/dynamic'
 import Header from '@/components/website/Header'
+import HeroSection from '@/components/website/HeroSection'
 import WhatsAppFloat from '@/components/website/WhatsAppFloat'
 
-// Hero sin animaciones pesadas — carga inmediata para mejor LCP
-const HeroSection = dynamic(() => import('@/components/website/HeroSection'), {
-  ssr: true,
-})
-
-// Secciones diferidas — no bloquean el primer render
 const ServicesSection = dynamic(() => import('@/components/website/ServicesSection'), {
   loading: () => <SectionSkeleton />,
-  ssr: false,
 })
 
 const BookingSection = dynamic(() => import('@/components/website/BookingSection'), {
   loading: () => <SectionSkeleton />,
-  ssr: false,
 })
 
 const WhatsAppSection = dynamic(() => import('@/components/website/WhatsAppSection'), {
   loading: () => <SectionSkeleton />,
-  ssr: false,
 })
 
 const GallerySection = dynamic(() => import('@/components/website/GallerySection'), {
   loading: () => <SectionSkeleton />,
-  ssr: false,
 })
 
 const TestimonialsSection = dynamic(() => import('@/components/website/TestimonialsSection'), {
   loading: () => <SectionSkeleton />,
-  ssr: false,
 })
 
 const ContactSection = dynamic(() => import('@/components/website/ContactSection'), {
   loading: () => <SectionSkeleton />,
-  ssr: false,
 })
 
-const Footer = dynamic(() => import('@/components/website/Footer'), {
-  ssr: false,
-})
+const Footer = dynamic(() => import('@/components/website/Footer'))
 
 function SectionSkeleton() {
   return (
