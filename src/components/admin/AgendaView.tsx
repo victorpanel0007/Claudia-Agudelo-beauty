@@ -151,11 +151,12 @@ function CitaCard({ cita, onClick }: { cita: Cita; onClick: () => void }) {
 }
 
 // ── DetailPanel ──────────────────────────────────────────────────────────────
-function DetailPanel({ cita, onClose, onCompletar, onCancelar }: {
+function DetailPanel({ cita, onClose, onCompletar, onCancelar, onEliminar }: {
   cita: Cita
   onClose: () => void
   onCompletar: (cita: Cita) => void
   onCancelar: (id: string) => void
+  onEliminar: (id: string) => void
 }) {
   const st = STATUS_CONFIG[cita.estado] ?? STATUS_CONFIG.pendiente
 
@@ -258,20 +259,23 @@ function DetailPanel({ cita, onClose, onCompletar, onCancelar }: {
       {/* Acciones */}
       {(cita.estado === 'confirmada' || cita.estado === 'pendiente' || cita.estado === 'en_proceso') && (
         <div className="p-4 mt-auto flex gap-2">
-          <button
-            onClick={() => onCancelar(cita.id)}
-            className="flex-1 text-xs font-semibold py-2.5 rounded-xl border-2 border-red-200 text-red-500 hover:bg-red-50 transition-colors"
-          >
+          <button onClick={() => onCancelar(cita.id)}
+            className="flex-1 text-xs font-semibold py-2.5 rounded-xl border-2 border-red-200 text-red-500 hover:bg-red-50 transition-colors">
             Cancelar
           </button>
-          <button
-            onClick={() => onCompletar(cita)}
-            className="flex-1 text-xs font-semibold py-2.5 rounded-xl bg-beauty-primary text-white hover:bg-beauty-primary-dark transition-colors"
-          >
+          <button onClick={() => onCompletar(cita)}
+            className="flex-1 text-xs font-semibold py-2.5 rounded-xl bg-beauty-primary text-white hover:bg-beauty-primary-dark transition-colors">
             Completar
           </button>
         </div>
       )}
+      {/* Eliminar permanentemente */}
+      <div className="px-4 pb-4">
+        <button onClick={() => onEliminar(cita.id)}
+          className="w-full text-xs text-red-400 hover:text-red-600 hover:bg-red-50 py-2 rounded-xl transition-colors border border-red-100">
+          🗑️ Eliminar cita permanentemente
+        </button>
+      </div>
     </div>
   )
 }
@@ -793,6 +797,21 @@ export default function AgendaView() {
     }
   }
 
+  async function eliminarCita(id: string) {
+    if (!confirm('¿Eliminar esta cita permanentemente?')) return
+    const { error } = await supabase.from('citas').delete().eq('id', id)
+    if (error) toast.error('Error al eliminar')
+    else { toast.success('🗑️ Cita eliminada'); setSelectedCita(null); loadCitas() }
+  }
+
+  async function eliminarTodasLasCitas() {
+    if (!confirm('⚠️ ¿Eliminar TODAS las citas? Esta acción no se puede deshacer.')) return
+    if (!confirm('¿Estás completamente segura? Se eliminarán TODAS las citas.')) return
+    const { error } = await supabase.from('citas').delete().neq('id', '00000000-0000-0000-0000-000000000000')
+    if (error) toast.error('Error: ' + error.message)
+    else { toast.success('🗑️ Agenda limpiada'); loadCitas() }
+  }
+
   function solicitarCompletar(cita: Cita) {
     setCitaACompletar(cita)
   }
@@ -856,12 +875,16 @@ export default function AgendaView() {
           <h2 className="text-xl font-bold text-gray-800">Agenda</h2>
           <p className="text-sm text-gray-400">Gestiona tus citas y servicios</p>
         </div>
-        <button
-          onClick={() => setShowNuevaCita(true)}
-          className="flex items-center gap-2 bg-beauty-primary text-white text-sm font-semibold px-4 py-2.5 rounded-xl hover:bg-beauty-primary-dark transition-colors shadow-sm"
-        >
-          <Plus size={16} /> Nueva Cita
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={eliminarTodasLasCitas}
+            className="flex items-center gap-1.5 text-xs text-red-500 border border-red-200 px-3 py-2 rounded-xl hover:bg-red-50 transition-colors">
+            🗑️ Limpiar agenda
+          </button>
+          <button onClick={() => setShowNuevaCita(true)}
+            className="flex items-center gap-2 bg-beauty-primary text-white text-sm font-semibold px-4 py-2.5 rounded-xl hover:bg-beauty-primary-dark transition-colors shadow-sm">
+            <Plus size={16} /> Nueva Cita
+          </button>
+        </div>
       </div>
 
       {/* Stat cards */}
@@ -1047,6 +1070,7 @@ export default function AgendaView() {
             onClose={() => setSelectedCita(null)}
             onCompletar={solicitarCompletar}
             onCancelar={cancelarCita}
+            onEliminar={eliminarCita}
           />
         )}
       </div>

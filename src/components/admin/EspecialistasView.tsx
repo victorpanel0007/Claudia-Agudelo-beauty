@@ -110,6 +110,21 @@ export default function EspecialistasView() {
     )
   }
 
+  async function handleEliminarEspecialista() {
+    if (!editingId || !form.nombre) return
+    if (!confirm(`¿Eliminar a ${form.nombre}? Esta acción no se puede deshacer.`)) return
+    setSaving(true)
+    const { error } = await supabase.from('especialistas').delete().eq('id', editingId)
+    if (error) {
+      toast.error('Error al eliminar: ' + error.message)
+    } else {
+      toast.success(`🗑️ ${form.nombre} eliminada`)
+      closeForm()
+      loadData()
+    }
+    setSaving(false)
+  }
+
   async function handleSave() {
     if (!form.nombre.trim()) { toast.error('El nombre es requerido'); return }
     if (diasSelected.length === 0) { toast.error('Selecciona al menos un día'); return }
@@ -124,12 +139,15 @@ export default function EspecialistasView() {
     }
 
     if (editingId) {
-      const { error } = await supabase
+      const { error, data } = await supabase
         .from('especialistas')
         .update(payload)
         .eq('id', editingId)
+        .select()
       if (error) {
         toast.error('Error al guardar: ' + error.message)
+      } else if (!data || data.length === 0) {
+        toast.error('No se encontró la especialista para actualizar')
       } else {
         toast.success(`✅ ${form.nombre} actualizada correctamente`)
         closeForm()
@@ -353,6 +371,13 @@ export default function EspecialistasView() {
                   {saving ? 'Guardando...' : <><Save size={16} />{editingId ? 'Guardar cambios' : 'Crear especialista'}</>}
                 </button>
               </div>
+              {/* Eliminar especialista */}
+              {editingId && (
+                <button type="button" onClick={handleEliminarEspecialista} disabled={saving}
+                  className="w-full text-xs text-red-500 hover:text-red-700 hover:bg-red-50 py-2 rounded-xl transition-colors border border-red-200">
+                  🗑️ Eliminar especialista permanentemente
+                </button>
+              )}
             </div>
           </div>
         </div>
