@@ -215,9 +215,22 @@ async function handleFechaInput(
   state.paso = 'seleccion_especialista'
   conversations.set(telefono, state)
 
+  // Obtener especialistas activos dinámicamente
+  const { data: especialistas } = await supabase
+    .from('especialistas')
+    .select('id, nombre')
+    .eq('activo', true)
+    .order('nombre')
+
+  const lista = (especialistas || [])
+    .map((e, i) => `${i + 1}️⃣ ${e.nombre}`)
+    .join('\n')
+  const totalEsp = (especialistas || []).length
+  const opcionCualquiera = `${totalEsp + 1}️⃣ Cualquiera disponible`
+
   await reply(
     telefono,
-    `📅 Fecha confirmada: *${parsed.interpreted}* ✅\n\n👩 ¿Qué especialista prefieres?\n\n1️⃣ Claudia\n2️⃣ Andrea\n3️⃣ Cualquiera disponible`,
+    `📅 Fecha confirmada: *${parsed.interpreted}* ✅\n\n👩 ¿Qué especialista prefieres?\n\n${lista}\n${opcionCualquiera}`,
     supabase
   )
 }
@@ -234,21 +247,21 @@ async function handleEspecialistaSelection(
     .eq('activo', true)
     .order('nombre')
 
+  const lista = especialistas || []
+  const totalEsp = lista.length
   const num = parseInt(text)
-  if (isNaN(num) || num < 1 || num > 3) {
-    await reply(telefono, '❌ Por favor escribe 1, 2 o 3.', supabase)
+
+  if (isNaN(num) || num < 1 || num > totalEsp + 1) {
+    await reply(telefono, `❌ Por favor escribe un número del 1 al ${totalEsp + 1}.`, supabase)
     return
   }
 
   let especialistaId: string | undefined
-  if (num === 1 && especialistas?.[0]) {
-    especialistaId = especialistas[0].id
-    state.especialista_id = especialistaId
-  } else if (num === 2 && especialistas?.[1]) {
-    especialistaId = especialistas[1].id
+  if (num <= totalEsp) {
+    especialistaId = lista[num - 1].id
     state.especialista_id = especialistaId
   }
-  // num === 3 → any available, especialistaId stays undefined
+  // num === totalEsp + 1 → cualquiera disponible
 
   await reply(telefono, `🔍 Buscando horarios disponibles...`, supabase)
 
@@ -256,10 +269,10 @@ async function handleEspecialistaSelection(
   const slots = await getAvailableSlots(fecha, state.duracion || 60, especialistaId)
 
   if (!slots.length) {
-    const nombre = num === 1 ? 'Claudia' : num === 2 ? 'Andrea' : 'ninguna especialista'
+    const nombreEsp = num <= totalEsp ? lista[num - 1].nombre : 'ninguna especialista'
     await reply(
       telefono,
-      `😔 No hay disponibilidad para *${formatDate(fecha)}* con *${nombre}*.\n\nPor favor elige otra fecha:\n• *mañana*\n• *próximo lunes*\n• *20/07/2026*`,
+      `😔 No hay disponibilidad para *${formatDate(fecha)}* con *${nombreEsp}*.\n\nPor favor elige otra fecha:\n• *mañana*\n• *próximo lunes*\n• *20/07/2026*`,
       supabase
     )
     state.paso = 'solicitar_fecha'
@@ -267,21 +280,22 @@ async function handleEspecialistaSelection(
     return
   }
 
-  // Store slots in separate cache (not in conversation state)
-  const shown = slots.slice(0, 8)
+  // Mostrar hasta 16 slots para dar más opciones de horario
+  const shown = slots.slice(0, 16)
   slotsCache.set(telefono, shown)
 
   state.paso = 'seleccion_horario'
   conversations.set(telefono, state)
 
+  const numberEmojis = ['1️⃣','2️⃣','3️⃣','4️⃣','5️⃣','6️⃣','7️⃣','8️⃣','9️⃣','🔟',
+    '1️⃣1️⃣','1️⃣2️⃣','1️⃣3️⃣','1️⃣4️⃣','1️⃣5️⃣','1️⃣6️⃣']
   const slotsList = shown
-    .map((s, i) => `${i + 1}️⃣ *${s.hora}* — ${s.especialista_nombre}`)
+    .map((s, i) => `${numberEmojis[i]} *${s.hora}* — ${s.especialista_nombre}`)
     .join('\n')
 
   let extraMsg = ''
-  if (slots.length > 8) {
-    const lastSlot = slots[slots.length - 1]
-    extraMsg = `\n\n_Mostrando 8 de ${slots.length} horarios disponibles (hasta las ${lastSlot.hora})._\n_Si ninguno te funciona, escribe otra fecha._`
+  if (slots.length > 16) {
+    extraMsg = `\n\n_Mostrando 16 de ${slots.length} horarios disponibles._\n_Si ninguno te funciona, escribe otra fecha._`
   }
 
   await reply(
