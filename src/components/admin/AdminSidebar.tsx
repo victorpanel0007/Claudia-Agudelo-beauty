@@ -15,18 +15,20 @@ import {
   X,
   LogOut,
   Globe,
+  Bell,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 
 const navItems = [
-  { href: '/admin', icon: LayoutDashboard, label: 'Dashboard', exact: true },
-  { href: '/admin/agenda', icon: Calendar, label: 'Agenda' },
-  { href: '/admin/clientes', icon: Users, label: 'Clientes' },
-  { href: '/admin/servicios', icon: Scissors, label: 'Servicios' },
-  { href: '/admin/especialistas', icon: UserCheck, label: 'Especialistas' },
-  { href: '/admin/whatsapp', icon: MessageSquare, label: 'WhatsApp Bot' },
-  { href: '/admin/reportes', icon: BarChart3, label: 'Reportes' },
+  { href: '/admin',                 icon: LayoutDashboard, label: 'Dashboard',      exact: true },
+  { href: '/admin/agenda',          icon: Calendar,        label: 'Agenda' },
+  { href: '/admin/clientes',        icon: Users,           label: 'Clientes' },
+  { href: '/admin/servicios',       icon: Scissors,        label: 'Servicios' },
+  { href: '/admin/especialistas',   icon: UserCheck,       label: 'Especialistas' },
+  { href: '/admin/notificaciones',  icon: Bell,            label: 'Notificaciones' },
+  { href: '/admin/whatsapp',        icon: MessageSquare,   label: 'WhatsApp Bot' },
+  { href: '/admin/reportes',        icon: BarChart3,       label: 'Reportes' },
 ]
 
 export default function AdminSidebar({ userEmail }: { userEmail: string }) {

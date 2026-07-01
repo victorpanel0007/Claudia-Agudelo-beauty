@@ -13,6 +13,8 @@ interface Especialista {
   horario_inicio: string
   horario_fin: string
   dias_laborales: number[]
+  whatsapp?: string
+  notificaciones?: boolean
 }
 
 interface FormState {
@@ -20,6 +22,8 @@ interface FormState {
   horario_inicio: string
   horario_fin: string
   activo: boolean
+  whatsapp: string
+  notificaciones: boolean
 }
 
 const DIAS = [
@@ -58,6 +62,8 @@ const DEFAULT_FORM: FormState = {
   horario_inicio: '09:00',
   horario_fin: '19:00',
   activo: true,
+  whatsapp: '',
+  notificaciones: true,
 }
 
 export default function EspecialistasView() {
@@ -87,6 +93,8 @@ export default function EspecialistasView() {
       horario_inicio:  e.horario_inicio || '09:00',
       horario_fin:     e.horario_fin    || '19:00',
       activo:          e.activo,
+      whatsapp:        e.whatsapp || '',
+      notificaciones:  e.notificaciones !== false,
     })
     setShowForm(true)
   }
@@ -136,6 +144,8 @@ export default function EspecialistasView() {
       horario_fin:     form.horario_fin,
       activo:          form.activo,
       dias_laborales:  diasSelected,
+      whatsapp:        form.whatsapp.trim() || null,
+      notificaciones:  form.notificaciones,
     }
 
     if (editingId) {
@@ -346,6 +356,38 @@ export default function EspecialistasView() {
                       {d.label}
                     </button>
                   ))}
+                </div>
+              </div>
+
+              {/* WhatsApp */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  WhatsApp (para notificaciones)
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">+57</span>
+                  <input
+                    type="text"
+                    value={form.whatsapp}
+                    onChange={e => setForm(f => ({ ...f, whatsapp: e.target.value }))}
+                    className="input-beauty pl-10"
+                    placeholder="3001234567"
+                  />
+                </div>
+                <p className="text-xs text-gray-400 mt-1">Número donde recibirá alertas de nuevas citas</p>
+              </div>
+
+              {/* Notificaciones */}
+              <div className="flex items-center gap-3 bg-gray-50 rounded-xl p-3 cursor-pointer"
+                onClick={() => setForm(f => ({ ...f, notificaciones: !f.notificaciones }))}>
+                <div className={`w-10 h-6 rounded-full transition-colors relative ${form.notificaciones ? 'bg-green-500' : 'bg-gray-300'}`}>
+                  <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${form.notificaciones ? 'left-5' : 'left-1'}`} />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-700 cursor-pointer">
+                    {form.notificaciones ? '🔔 Recibe notificaciones de nuevas citas' : '🔕 Notificaciones desactivadas'}
+                  </p>
+                  <p className="text-xs text-gray-400">El sistema le enviará un WhatsApp al confirmar cada cita</p>
                 </div>
               </div>
 
