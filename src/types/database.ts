@@ -32,6 +32,8 @@ export interface Especialista {
   horario_inicio: string
   horario_fin: string
   dias_laborales: number[]
+  whatsapp?: string
+  notificaciones?: boolean
   created_at: string
 }
 

@@ -1,16 +1,16 @@
 /**
  * Servicio de Notificaciones a Especialistas
  * Envía mensajes de WhatsApp automáticamente cuando una cita es confirmada.
- * Nunca bloquea el proceso principal — todos los errores son capturados.
+ * Nunca bloquea el proceso principal — todos los errores son capturados y registrados.
  */
 
-import { sendWhatsAppMessage } from './evolution-api'
+import { sendWhatsAppMessage, normalizarTelefono } from './evolution-api'
 import { formatDate, formatTime, formatCurrency } from './utils'
 
 const ORIGEN_LABELS: Record<string, string> = {
-  web:    '🌐 Sitio Web',
+  web:      '🌐 Sitio Web',
   whatsapp: '🤖 WhatsApp IA',
-  admin:  '🖥️ Panel Administrativo',
+  admin:    '🖥️ Panel Administrativo',
   telefono: '📞 Teléfono',
 }
 
@@ -33,7 +33,6 @@ export interface CitaParaNotificar {
 
 function buildMessage(cita: CitaParaNotificar, espNombre: string): string {
   const cliente  = cita.cliente?.nombre || 'Sin nombre'
-  // NO incluir teléfono ni datos de contacto del cliente
   const servicio = cita.servicio?.nombre || 'Sin servicio'
   const duracion = cita.servicio?.duracion_minutos ? `${cita.servicio.duracion_minutos} min` : 'No definida'
   const fecha    = formatDate(cita.fecha_inicio)
@@ -73,58 +72,129 @@ ID de la cita:
 #${idCorto}`
 }
 
+type SupabaseAdminClient = Awaited<ReturnType<typeof import('./supabase/server').createAdminClient>>
+
 /**
  * Envía notificación a la especialista de forma asíncrona.
- * Guarda el resultado en el historial de notificaciones.
- * Nunca lanza excepciones — siempre retorna silenciosamente.
+ * Guarda el resultado completo (incluyendo errores detallados) en el historial.
+ * Nunca lanza excepciones.
  */
 export async function notificarEspecialista(
   cita: CitaParaNotificar,
-  supabase: ReturnType<typeof import('./supabase/server').createAdminClient> extends Promise<infer T> ? T : never
+  supabase: SupabaseAdminClient
 ): Promise<void> {
   try {
     const esp = cita.especialista
-    if (!esp?.id || !esp?.whatsapp) return
-    if (esp.notificaciones === false) return
 
-    const telefono = esp.whatsapp.replace(/\D/g, '')
-    if (!telefono || telefono.length < 10) return
+    // ── Validaciones previas ──────────────────────────────────────────────
+    if (!esp?.id) {
+      console.warn('[Notif] Cita sin especialista asignada — no se envía notificación', { citaId: cita.id })
+      return
+    }
+    if (!esp?.whatsapp || esp.whatsapp.trim() === '') {
+      console.warn('[Notif] Especialista sin número WhatsApp configurado', {
+        citaId: cita.id, especialistaId: esp.id, nombre: esp.nombre,
+      })
+      // Registrar el fallo para que sea visible en el panel
+      await supabase.from('notificaciones_especialista').insert({
+        cita_id:              cita.id,
+        especialista_id:      esp.id,
+        especialista_nombre:  esp.nombre || 'Desconocida',
+        whatsapp_destino:     '',
+        mensaje:              buildMessage(cita, esp.nombre || 'Especialista'),
+        estado:               'error',
+        tipo:                 'confirmacion',
+        codigo_respuesta:     null,
+        error_detalle:        'Especialista no tiene número de WhatsApp configurado. Ve a Especialistas → Editar → WhatsApp.',
+      }).catch(e => console.error('[Notif] Error guardando registro de fallo:', e))
+      return
+    }
+    if (esp.notificaciones === false) {
+      console.log('[Notif] Notificaciones desactivadas para:', esp.nombre)
+      return
+    }
+
+    const telefono = normalizarTelefono(esp.whatsapp)
+    if (telefono.length < 11) {
+      const errorMsg = `Número inválido: "${esp.whatsapp}" → normalizado a "${telefono}". Debe tener formato 573XXXXXXXXX.`
+      console.error('[Notif]', errorMsg, { citaId: cita.id, especialistaId: esp.id })
+      await supabase.from('notificaciones_especialista').insert({
+        cita_id:             cita.id,
+        especialista_id:     esp.id,
+        especialista_nombre: esp.nombre || 'Desconocida',
+        whatsapp_destino:    telefono,
+        mensaje:             buildMessage(cita, esp.nombre || 'Especialista'),
+        estado:              'error',
+        tipo:                'confirmacion',
+        codigo_respuesta:    null,
+        error_detalle:       errorMsg,
+      }).catch(e => console.error('[Notif] Error guardando registro de fallo:', e))
+      return
+    }
 
     const espNombre = esp.nombre || 'Especialista'
-    const mensaje = buildMessage(cita, espNombre)
+    const mensaje   = buildMessage(cita, espNombre)
 
-    // Registrar intento en historial
-    const { data: notif } = await supabase
+    // ── Registrar intento ─────────────────────────────────────────────────
+    const { data: notif, error: insertError } = await supabase
       .from('notificaciones_especialista')
       .insert({
-        cita_id: cita.id,
-        especialista_id: esp.id,
+        cita_id:             cita.id,
+        especialista_id:     esp.id,
         especialista_nombre: espNombre,
-        whatsapp_destino: telefono,
+        whatsapp_destino:    telefono,
         mensaje,
-        estado: 'pendiente',
-        tipo: 'confirmacion',
+        estado:              'pendiente',
+        tipo:                'confirmacion',
       })
       .select('id')
       .single()
 
-    // Enviar mensaje (no awaited para no bloquear)
-    const enviado = await sendWhatsAppMessage(telefono, mensaje)
+    if (insertError) {
+      console.error('[Notif] Error al registrar intento de notificación:', insertError)
+    }
 
-    // Actualizar estado en historial
+    // ── Enviar mensaje ────────────────────────────────────────────────────
+    const result = await sendWhatsAppMessage(telefono, mensaje)
+
+    // ── Actualizar historial con resultado ────────────────────────────────
+    const updatePayload = result.ok
+      ? {
+          estado:           'enviado' as const,
+          codigo_respuesta: result.statusCode ?? 200,
+          error_detalle:    null,
+        }
+      : {
+          estado:           'error' as const,
+          codigo_respuesta: result.statusCode ?? null,
+          error_detalle:    result.errorMessage ?? 'Error desconocido al enviar',
+        }
+
     if (notif?.id) {
       await supabase
         .from('notificaciones_especialista')
-        .update({
-          estado: enviado ? 'enviado' : 'error',
-          codigo_respuesta: enviado ? 200 : 500,
-          error_detalle: enviado ? null : 'Evolution API no pudo enviar el mensaje',
-        })
+        .update(updatePayload)
         .eq('id', notif.id)
+        .then(({ error }) => {
+          if (error) console.error('[Notif] Error actualizando estado de notificación:', error)
+        })
     }
+
+    if (!result.ok) {
+      console.error('[Notif] Fallo al enviar WhatsApp a especialista', {
+        citaId:       cita.id,
+        especialista: esp.nombre,
+        telefono,
+        error:        result.errorMessage,
+        statusCode:   result.statusCode,
+      })
+    } else {
+      console.log('[Notif] Notificación enviada correctamente a', esp.nombre, telefono)
+    }
+
   } catch (err) {
-    // Nunca bloquear el flujo principal
-    console.error('[Notificaciones] Error al notificar especialista:', err)
+    // Captura de último recurso — nunca bloquear el flujo principal
+    console.error('[Notificaciones] Error inesperado al notificar especialista:', err)
   }
 }
 
@@ -133,31 +203,48 @@ export async function notificarEspecialista(
  */
 export async function reenviarNotificacion(
   notifId: string,
-  supabase: ReturnType<typeof import('./supabase/server').createAdminClient> extends Promise<infer T> ? T : never
+  supabase: SupabaseAdminClient
 ): Promise<boolean> {
   try {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('notificaciones_especialista')
       .select('*')
       .eq('id', notifId)
       .single()
 
-    if (!data) return false
+    if (error || !data) {
+      console.error('[Notif] Notificación no encontrada para reenvío:', notifId)
+      return false
+    }
 
-    const enviado = await sendWhatsAppMessage(data.whatsapp_destino, data.mensaje)
+    if (!data.whatsapp_destino || data.whatsapp_destino.trim() === '') {
+      await supabase
+        .from('notificaciones_especialista')
+        .update({
+          estado:           'error',
+          error_detalle:    'No se puede reenviar: número de WhatsApp vacío.',
+          codigo_respuesta: null,
+          created_at:       new Date().toISOString(),
+        })
+        .eq('id', notifId)
+      return false
+    }
+
+    const result = await sendWhatsAppMessage(data.whatsapp_destino, data.mensaje)
 
     await supabase
       .from('notificaciones_especialista')
       .update({
-        estado: enviado ? 'enviado' : 'error',
-        codigo_respuesta: enviado ? 200 : 500,
-        error_detalle: enviado ? null : 'Reenvío fallido',
-        created_at: new Date().toISOString(),
+        estado:           result.ok ? 'enviado' : 'error',
+        codigo_respuesta: result.ok ? (result.statusCode ?? 200) : (result.statusCode ?? null),
+        error_detalle:    result.ok ? null : (result.errorMessage ?? 'Reenvío fallido'),
+        created_at:       new Date().toISOString(),
       })
       .eq('id', notifId)
 
-    return enviado
-  } catch {
+    return result.ok
+  } catch (err) {
+    console.error('[Notif] Error en reenvío:', err)
     return false
   }
 }

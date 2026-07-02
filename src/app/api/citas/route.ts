@@ -22,8 +22,9 @@ export async function GET(request: NextRequest) {
     .order('fecha_inicio', { ascending: true })
 
   if (fecha) {
-    const start = new Date(fecha); start.setHours(0,0,0,0)
-    const end   = new Date(fecha); end.setHours(23,59,59,999)
+    // Usar offset Colombia explícito — nunca new Date(fecha) sin zona horaria
+    const start = new Date(`${fecha}T00:00:00-05:00`)
+    const end   = new Date(`${fecha}T23:59:59-05:00`)
     query = query.gte('fecha_inicio', start.toISOString()).lte('fecha_inicio', end.toISOString())
   }
   if (especialistaId) query = query.eq('especialista_id', especialistaId)

@@ -88,7 +88,7 @@ function todayStr(): string {
 
 function getPeriodRange(key: PeriodKey, custom: { desde: string; hasta: string }): { start: string; end: string } {
   const today = todayStr()
-  const d = new Date(today + 'T00:00:00')
+  const d = new Date(today + 'T12:00:00-05:00')
   switch (key) {
     case 'hoy':
       return { start: today, end: today }
@@ -102,11 +102,11 @@ function getPeriodRange(key: PeriodKey, custom: { desde: string; hasta: string }
     }
     case 'mes': {
       const s = new Date(d.getFullYear(), d.getMonth(), 1)
-      return { start: s.toLocaleDateString('en-CA'), end: today }
+      return { start: s.toLocaleDateString('en-CA', { timeZone: 'America/Bogota' }), end: today }
     }
     case 'anio': {
       const s = new Date(d.getFullYear(), 0, 1)
-      return { start: s.toLocaleDateString('en-CA'), end: today }
+      return { start: s.toLocaleDateString('en-CA', { timeZone: 'America/Bogota' }), end: today }
     }
     case 'personalizado':
       return { start: custom.desde || today, end: custom.hasta || today }
@@ -191,8 +191,8 @@ export default function ComisionesView() {
       .from('citas')
       .select('id, fecha_inicio, valor_final, porcentaje_comision, comision_especialista, ganancia_spa, pago_estado, servicio:servicios(nombre)')
       .eq('estado', 'completada')
-      .gte('fecha_inicio', start + 'T00:00:00')
-      .lte('fecha_inicio', end + 'T23:59:59')
+      .gte('fecha_inicio', start + 'T00:00:00-05:00')
+      .lte('fecha_inicio', end + 'T23:59:59-05:00')
       .order('fecha_inicio', { ascending: false })
 
     if (selectedEspId) {

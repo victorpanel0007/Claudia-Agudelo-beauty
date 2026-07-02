@@ -131,7 +131,7 @@ export default function EspecialistaPanel({ userEmail, userName }: { userEmail: 
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-beauty-primary/30">
               <Image
-                src="/WhatsApp Image 2026-06-18 at 8.53.37 PM_1254x1254.png"
+                src="/logo.png"
                 alt="Logo" width={40} height={40} className="w-full h-full object-cover"
               />
             </div>
@@ -195,7 +195,7 @@ export default function EspecialistaPanel({ userEmail, userName }: { userEmail: 
                 {/* Encabezado del día */}
                 <div className="flex items-center gap-2 mb-3">
                   <span className={`text-xs font-bold px-3 py-1 rounded-full capitalize ${
-                    isToday(parseISO(fecha + 'T00:00:00'))
+                    isToday(parseISO(fecha + 'T12:00:00-05:00'))
                       ? 'bg-beauty-primary text-white'
                       : 'bg-beauty-secondary/20 text-beauty-secondary'
                   }`}>

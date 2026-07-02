@@ -49,7 +49,7 @@ export default function HeroSection() {
           <div className="relative hidden lg:flex items-center justify-center">
             <div className="w-80 h-80 rounded-full overflow-hidden border-4 border-beauty-primary/20 shadow-beauty-lg">
               <Image
-                src="/WhatsApp Image 2026-06-18 at 8.53.37 PM_1254x1254.png"
+                src="/logo.png"
                 alt="Claudia Agudelo Beauty Logo"
                 width={320}
                 height={320}

@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import type { Cita, Cliente, Especialista, Servicio } from '@/types/database'
-import { formatCurrency, formatTime } from '@/lib/utils'
+import { formatCurrency, formatTime, formatDate } from '@/lib/utils'
 import { SERVICIOS_DATA } from '@/lib/services-data'
 import {
   Plus, X, Clock, ChevronLeft, ChevronRight,
@@ -213,7 +213,7 @@ function DetailPanel({ cita, onClose, onCompletar, onCancelar, onEliminar }: {
         <InfoRow icon="✂️" label={cita.servicio?.nombre ?? '—'} />
         <InfoRow icon="⏱️" label={`${cita.servicio?.duracion_minutos ?? 0} min`} />
         <InfoRow icon="👩" label={cita.especialista?.nombre ?? '—'} />
-        <InfoRow icon="📅" label={format(parseISO(cita.fecha_inicio), "d 'de' MMMM yyyy", { locale: es })} />
+        <InfoRow icon="📅" label={formatDate(cita.fecha_inicio)} />
         <InfoRow icon="🕐" label={`${formatTime(cita.fecha_inicio)} – ${formatTime(cita.fecha_fin)}`} />
         <div className="flex items-center justify-between pt-1 border-t border-gray-100">
           <span className="text-xs text-gray-500 font-medium">Total</span>
@@ -238,13 +238,13 @@ function DetailPanel({ cita, onClose, onCompletar, onCancelar, onEliminar }: {
           <ReminderRow
             icon={<Check size={12} />}
             label="WhatsApp enviado"
-            time={format(parseISO(cita.fecha_inicio), 'd MMM · HH:mm', { locale: es })}
+            time={formatTime(cita.fecha_inicio)}
             color="text-green-500"
           />
           <ReminderRow
             icon={<Check size={12} />}
             label="Correo enviado"
-            time={format(parseISO(cita.fecha_inicio), 'd MMM · HH:mm', { locale: es })}
+            time={formatTime(cita.fecha_inicio)}
             color="text-green-500"
           />
           <ReminderRow
@@ -393,7 +393,7 @@ function NuevaCitaModal({ onClose, onSaved }: { onClose: () => void; onSaved: ()
     es_nuevo_cliente: false,
     especialista_id: '',
     servicio_id: '',
-    fecha: new Date().toISOString().split('T')[0],
+    fecha: new Date().toLocaleDateString('en-CA', { timeZone: 'America/Bogota' }),
     slot_inicio: '',
     slot_fin: '',
     observaciones: '',
@@ -648,7 +648,7 @@ function NuevaCitaModal({ onClose, onSaved }: { onClose: () => void; onSaved: ()
                 <input
                   type="date"
                   value={form.fecha}
-                  min={new Date().toISOString().split('T')[0]}
+                  min={new Date().toLocaleDateString('en-CA', { timeZone: 'America/Bogota' })}
                   onChange={e => setForm(f => ({ ...f, fecha: e.target.value }))}
                   className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:border-beauty-primary focus:ring-2 focus:ring-beauty-primary/20"
                 />
@@ -701,7 +701,7 @@ function NuevaCitaModal({ onClose, onSaved }: { onClose: () => void; onSaved: ()
                 <ChevronLeft size={14} /> Volver
               </button>
               <p className="text-xs font-semibold text-gray-600 mb-3">
-                Horarios disponibles — {format(new Date(form.fecha + 'T12:00:00'), "EEEE d 'de' MMMM", { locale: es })}
+                Horarios disponibles — {format(new Date(form.fecha + 'T12:00:00-05:00'), "EEEE d 'de' MMMM", { locale: es })}
               </p>
               {slots.length === 0 ? (
                 <div className="text-center py-8">

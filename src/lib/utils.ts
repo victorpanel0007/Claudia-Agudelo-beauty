@@ -27,8 +27,9 @@ export function formatDate(date: string | Date): string {
 
 export function formatTime(date: string | Date): string {
   const d = typeof date === 'string' ? new Date(date) : date
-  return new Intl.DateTimeFormat('es-CO', {
-    hour: '2-digit',
+  // Formato limpio: "9:00 AM", "1:30 PM" — sin puntos ni espacios extra
+  return new Intl.DateTimeFormat('en-US', {
+    hour: 'numeric',
     minute: '2-digit',
     hour12: true,
     timeZone: 'America/Bogota',

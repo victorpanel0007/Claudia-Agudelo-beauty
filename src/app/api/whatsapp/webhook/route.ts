@@ -201,8 +201,9 @@ async function handleFechaInput(
     return
   }
 
-  const today = new Date(); today.setHours(0, 0, 0, 0)
-  if (parsed.fecha < today) {
+  // Comparar contra hoy en Colombia
+  const todayColStr = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Bogota' })
+  if (parsed.iso < todayColStr) {
     await reply(
       telefono,
       `❌ La fecha *${parsed.display}* ya pasó.\n\nElige una fecha futura. Ejemplos:\n• *mañana*\n• *próximo sábado*\n• *20/07/2026*`,
@@ -388,12 +389,12 @@ async function handleHorarioSelection(
 
   const fecha = new Date(selectedSlot.fecha_inicio)
   await sendAppointmentConfirmation(telefono, {
-    cliente: state.nombre!,
-    servicio: state.servicio_nombre!,
+    cliente:     state.nombre!,
+    servicio:    state.servicio_nombre!,
     especialista: selectedSlot.especialista_nombre,
-    fecha: formatDate(fecha),
-    hora: selectedSlot.hora,
-    precio: state.precio || 'A definir en la cita',
+    fecha:       formatDate(fecha),
+    hora:        selectedSlot.hora,
+    precio:      state.precio || 'A definir en la cita',
   })
 
   // Log confirmation to DB

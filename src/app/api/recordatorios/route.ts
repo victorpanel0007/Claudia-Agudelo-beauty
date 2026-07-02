@@ -39,13 +39,14 @@ export async function POST(request: NextRequest) {
 
   for (const cita of [...(citas24h || []), ...(citas2h || [])]) {
     if (cita.cliente?.telefono && cita.servicio?.nombre) {
-      await sendWhatsAppReminder(
+      const result = await sendWhatsAppReminder(
         cita.cliente.telefono,
         cita.servicio.nombre,
         formatDate(cita.fecha_inicio),
         formatTime(cita.fecha_inicio)
       )
-      sent++
+      if (result.ok) sent++
+      else console.error('[Recordatorio] Fallo al enviar a', cita.cliente.telefono, result.errorMessage)
     }
   }
 

@@ -218,7 +218,7 @@ export default function BookingSection() {
                 <Calendar size={14} className="inline mr-1" /> Fecha deseada
               </label>
               <input {...register('fecha')} type="date"
-                min={new Date().toISOString().split('T')[0]}
+                min={new Date().toLocaleDateString('en-CA', { timeZone: 'America/Bogota' })}
                 className="input-beauty" />
               {errors.fecha && <p className="text-red-500 text-xs mt-1">{errors.fecha.message}</p>}
             </div>

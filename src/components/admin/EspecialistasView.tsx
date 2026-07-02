@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Clock, Plus, Edit, Save, X, CheckCircle, XCircle, User } from 'lucide-react'
+import { Clock, Plus, Edit, Save, X, CheckCircle, XCircle, User, Send, RefreshCw, Wifi, WifiOff } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 interface Especialista {
@@ -51,10 +51,16 @@ function formatTime12(t: string): string {
   return `${h12}:${m} ${ampm}`
 }
 
+/**
+ * Calcula cuántos slots de 30 min caben entre inicio y fin,
+ * considerando que el servicio tiene que TERMINAR al cierre o antes.
+ * Con horario 09:00–19:00: (19:00–09:00) = 600 min / 30 = 20 slots.
+ */
 function calcSlots(inicio: string, fin: string): number {
   const [sh, sm] = inicio.split(':').map(Number)
   const [eh, em] = fin.split(':').map(Number)
-  return Math.max(0, Math.floor(((eh * 60 + em) - (sh * 60 + sm)) / 30) + 1)
+  const totalMins = (eh * 60 + em) - (sh * 60 + sm)
+  return Math.max(0, Math.floor(totalMins / 30))
 }
 
 const DEFAULT_FORM: FormState = {
@@ -74,9 +80,25 @@ export default function EspecialistasView() {
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState<FormState>(DEFAULT_FORM)
   const [diasSelected, setDiasSelected] = useState<number[]>([1, 2, 3, 4, 5, 6])
+  const [sendingTest, setSendingTest] = useState<string | null>(null)
+  const [waStatus, setWaStatus] = useState<'checking' | 'connected' | 'disconnected'>('checking')
   const supabase = createClient()
 
-  useEffect(() => { loadData() }, [])
+  useEffect(() => {
+    loadData()
+    checkWaStatus()
+  }, [])
+
+  async function checkWaStatus() {
+    setWaStatus('checking')
+    try {
+      const res = await fetch('/api/whatsapp/status')
+      const data = await res.json()
+      setWaStatus(data.connected ? 'connected' : 'disconnected')
+    } catch {
+      setWaStatus('disconnected')
+    }
+  }
 
   async function loadData() {
     setLoading(true)
@@ -178,6 +200,27 @@ export default function EspecialistasView() {
     setSaving(false)
   }
 
+  async function enviarPrueba(e: Especialista) {
+    if (!e.whatsapp) {
+      toast.error('Esta especialista no tiene número WhatsApp configurado')
+      return
+    }
+    setSendingTest(e.id)
+    try {
+      const res = await fetch(`/api/especialistas/${e.id}/notificar`, { method: 'POST' })
+      const data = await res.json()
+      if (data.ok) {
+        toast.success(`✅ Mensaje de prueba enviado a ${e.nombre} (${data.telefono})`)
+      } else {
+        toast.error(`❌ Error: ${data.error || 'No se pudo enviar'}`)
+      }
+    } catch {
+      toast.error('Error de conexión al enviar prueba')
+    } finally {
+      setSendingTest(null)
+    }
+  }
+
   return (
     <div className="space-y-5 animate-fade-in">
       {/* Header */}
@@ -189,9 +232,29 @@ export default function EspecialistasView() {
           </h2>
           <p className="text-gray-500 text-sm">Gestiona horarios y disponibilidad</p>
         </div>
-        <button onClick={openNew} className="btn-beauty text-sm py-2">
-          <Plus size={16} /> Nueva
-        </button>
+        <div className="flex items-center gap-3">
+          {/* Indicador estado Evolution API */}
+          {waStatus === 'connected' ? (
+            <span className="flex items-center gap-1.5 bg-green-100 text-green-700 text-xs font-semibold px-3 py-1.5 rounded-full">
+              <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" /> WhatsApp 🟢
+            </span>
+          ) : waStatus === 'disconnected' ? (
+            <span
+              onClick={checkWaStatus}
+              className="flex items-center gap-1.5 bg-red-100 text-red-600 text-xs font-semibold px-3 py-1.5 rounded-full cursor-pointer hover:bg-red-200 transition-colors"
+              title="Haz clic para reintentar"
+            >
+              <span className="w-2 h-2 bg-red-500 rounded-full" /> WhatsApp 🔴
+            </span>
+          ) : (
+            <span className="flex items-center gap-1.5 bg-gray-100 text-gray-500 text-xs font-semibold px-3 py-1.5 rounded-full">
+              <RefreshCw size={11} className="animate-spin" /> Verificando...
+            </span>
+          )}
+          <button onClick={openNew} className="btn-beauty text-sm py-2">
+            <Plus size={16} /> Nueva
+          </button>
+        </div>
       </div>
 
       {/* Info box */}
@@ -261,13 +324,41 @@ export default function EspecialistasView() {
                 </div>
 
                 <div className="bg-beauty-rosa-claro rounded-xl p-3">
-                  <p className="text-xs font-semibold text-gray-600 mb-1">Ventana de citas</p>
+                  <p className="text-xs font-semibold text-gray-600 mb-1">Horario de atención</p>
                   <p className="text-beauty-text text-sm font-medium">
-                    Desde {formatTime12(e.horario_inicio)} — última cita a las {formatTime12(e.horario_fin)}
+                    {formatTime12(e.horario_inicio)} — {formatTime12(e.horario_fin)}
                   </p>
                   <p className="text-gray-400 text-xs mt-0.5">
-                    {calcSlots(e.horario_inicio, e.horario_fin)} slots de 30 min · la cita puede terminar después
+                    {calcSlots(e.horario_inicio, e.horario_fin)} slots de 30 min disponibles en el día
                   </p>
+                </div>
+
+                {/* Estado notificaciones WhatsApp */}
+                <div className="bg-gray-50 rounded-xl p-3 flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    {e.whatsapp ? (
+                      <span className="flex items-center gap-1 text-green-700 text-xs font-medium">
+                        <Wifi size={13} className="text-green-500" />
+                        WhatsApp: {e.whatsapp}
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-1 text-red-500 text-xs font-medium">
+                        <WifiOff size={13} />
+                        Sin WhatsApp configurado
+                      </span>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => enviarPrueba(e)}
+                    disabled={!e.whatsapp || sendingTest === e.id}
+                    title={e.whatsapp ? 'Enviar mensaje de prueba' : 'Configura el número WhatsApp primero'}
+                    className="flex items-center gap-1 text-xs bg-green-50 border border-green-200 text-green-700 px-2.5 py-1.5 rounded-lg hover:bg-green-100 transition-colors disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
+                  >
+                    {sendingTest === e.id
+                      ? <><RefreshCw size={11} className="animate-spin" /> Enviando...</>
+                      : <><Send size={11} /> Prueba</>
+                    }
+                  </button>
                 </div>
               </div>
             </div>
@@ -306,7 +397,7 @@ export default function EspecialistasView() {
               {/* Horario */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Primera cita</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Hora de apertura</label>
                   <select
                     value={form.horario_inicio}
                     onChange={e => setForm(f => ({ ...f, horario_inicio: e.target.value }))}
@@ -318,7 +409,7 @@ export default function EspecialistasView() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Última cita inicia</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Hora de cierre</label>
                   <select
                     value={form.horario_fin}
                     onChange={e => setForm(f => ({ ...f, horario_fin: e.target.value }))}
@@ -331,14 +422,15 @@ export default function EspecialistasView() {
                 </div>
               </div>
               <p className="text-xs text-gray-400 -mt-2">
-                ℹ️ La última cita puede <em>iniciar</em> a esa hora — termina cuando el servicio lo requiera.
+                ℹ️ El sistema solo ofrecerá horarios cuyos servicios <em>terminen</em> antes del cierre.<br />
+                Ej: cierre 7:00 PM + servicio 60 min → último slot disponible: 6:00 PM.
               </p>
 
               {/* Vista previa del horario seleccionado */}
               <div className="bg-beauty-rosa-claro rounded-xl p-3 text-sm text-beauty-text font-medium text-center">
-                🕐 {formatTime12(form.horario_inicio)} — {formatTime12(form.horario_fin)}
+                🕐 Apertura: {formatTime12(form.horario_inicio)} — Cierre: {formatTime12(form.horario_fin)}
                 <span className="text-xs text-gray-500 block mt-0.5">
-                  {calcSlots(form.horario_inicio, form.horario_fin)} slots disponibles
+                  {calcSlots(form.horario_inicio, form.horario_fin)} slots de 30 min (servicio de 30 min)
                 </span>
               </div>
 

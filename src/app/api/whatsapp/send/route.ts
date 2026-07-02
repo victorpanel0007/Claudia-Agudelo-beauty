@@ -13,11 +13,11 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const ok = await sendWhatsAppMessage(telefono, mensaje)
+    const result = await sendWhatsAppMessage(telefono, mensaje)
 
-    if (!ok) {
+    if (!result.ok) {
       return NextResponse.json(
-        { error: 'No se pudo enviar el mensaje. Verifica la conexión con Evolution API.' },
+        { error: result.errorMessage || 'No se pudo enviar el mensaje. Verifica la conexión con Evolution API.' },
         { status: 500 }
       )
     }

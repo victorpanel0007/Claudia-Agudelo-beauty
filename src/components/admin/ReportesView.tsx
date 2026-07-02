@@ -84,7 +84,8 @@ function todayStr() {
 
 function getPeriodRange(period: Period): { start: string; end: string } {
   const today = todayStr()
-  const d = new Date(today + 'T00:00:00')
+  // Usar mediodía en Colombia para evitar problemas de DST al hacer aritmética
+  const d = new Date(today + 'T12:00:00-05:00')
   switch (period) {
     case 'hoy':
       return { start: today, end: today }
@@ -98,18 +99,18 @@ function getPeriodRange(period: Period): { start: string; end: string } {
     }
     case 'mes': {
       const s = new Date(d.getFullYear(), d.getMonth(), 1)
-      return { start: s.toLocaleDateString('en-CA'), end: today }
+      return { start: s.toLocaleDateString('en-CA', { timeZone: 'America/Bogota' }), end: today }
     }
     case 'anio': {
       const s = new Date(d.getFullYear(), 0, 1)
-      return { start: s.toLocaleDateString('en-CA'), end: today }
+      return { start: s.toLocaleDateString('en-CA', { timeZone: 'America/Bogota' }), end: today }
     }
   }
 }
 
 function getEspPeriodRange(p: EspPeriod): { start: string; end: string } {
   const today = todayStr()
-  const d = new Date(today + 'T00:00:00')
+  const d = new Date(today + 'T12:00:00-05:00')
   switch (p) {
     case 'hoy': return { start: today, end: today }
     case 'ayer': {
@@ -119,20 +120,23 @@ function getEspPeriodRange(p: EspPeriod): { start: string; end: string } {
     }
     case '7dias': {
       const s = new Date(d); s.setDate(d.getDate() - 6)
-      return { start: s.toLocaleDateString('en-CA'), end: today }
+      return { start: s.toLocaleDateString('en-CA', { timeZone: 'America/Bogota' }), end: today }
     }
     case '15dias': {
       const s = new Date(d); s.setDate(d.getDate() - 14)
-      return { start: s.toLocaleDateString('en-CA'), end: today }
+      return { start: s.toLocaleDateString('en-CA', { timeZone: 'America/Bogota' }), end: today }
     }
     case 'este_mes': {
       const s = new Date(d.getFullYear(), d.getMonth(), 1)
-      return { start: s.toLocaleDateString('en-CA'), end: today }
+      return { start: s.toLocaleDateString('en-CA', { timeZone: 'America/Bogota' }), end: today }
     }
     case 'mes_anterior': {
       const s = new Date(d.getFullYear(), d.getMonth() - 1, 1)
       const e = new Date(d.getFullYear(), d.getMonth(), 0)
-      return { start: s.toLocaleDateString('en-CA'), end: e.toLocaleDateString('en-CA') }
+      return {
+        start: s.toLocaleDateString('en-CA', { timeZone: 'America/Bogota' }),
+        end: e.toLocaleDateString('en-CA', { timeZone: 'America/Bogota' }),
+      }
     }
   }
 }
@@ -182,7 +186,7 @@ export default function ReportesView() {
   const loadDashboard = useCallback(async () => {
     setDashLoading(true)
     const today = todayStr()
-    const d = new Date(today + 'T00:00:00')
+    const d = new Date(today + 'T12:00:00-05:00')
 
     const weekAgo = new Date(d); weekAgo.setDate(d.getDate() - 6)
     const quinAgo = new Date(d); quinAgo.setDate(d.getDate() - 14)
@@ -191,23 +195,23 @@ export default function ReportesView() {
     const [resHoy, resSemana, res15, resMes, resComisiones, resGastos] = await Promise.all([
       supabase.from('citas').select('valor_final')
         .eq('estado', 'completada')
-        .gte('fecha_inicio', today + 'T00:00:00')
-        .lte('fecha_inicio', today + 'T23:59:59'),
+        .gte('fecha_inicio', today + 'T00:00:00-05:00')
+        .lte('fecha_inicio', today + 'T23:59:59-05:00'),
       supabase.from('citas').select('valor_final')
         .eq('estado', 'completada')
-        .gte('fecha_inicio', weekAgo.toLocaleDateString('en-CA') + 'T00:00:00')
-        .lte('fecha_inicio', today + 'T23:59:59'),
+        .gte('fecha_inicio', weekAgo.toLocaleDateString('en-CA', { timeZone: 'America/Bogota' }) + 'T00:00:00-05:00')
+        .lte('fecha_inicio', today + 'T23:59:59-05:00'),
       supabase.from('citas').select('valor_final')
         .eq('estado', 'completada')
-        .gte('fecha_inicio', quinAgo.toLocaleDateString('en-CA') + 'T00:00:00')
-        .lte('fecha_inicio', today + 'T23:59:59'),
+        .gte('fecha_inicio', quinAgo.toLocaleDateString('en-CA', { timeZone: 'America/Bogota' }) + 'T00:00:00-05:00')
+        .lte('fecha_inicio', today + 'T23:59:59-05:00'),
       supabase.from('citas').select('valor_final')
         .eq('estado', 'completada')
-        .gte('fecha_inicio', mesStart.toLocaleDateString('en-CA') + 'T00:00:00')
-        .lte('fecha_inicio', today + 'T23:59:59'),
+        .gte('fecha_inicio', mesStart.toLocaleDateString('en-CA', { timeZone: 'America/Bogota' }) + 'T00:00:00-05:00')
+        .lte('fecha_inicio', today + 'T23:59:59-05:00'),
       supabase.from('liquidaciones').select('valor_comision').eq('estado', 'pendiente'),
       supabase.from('gastos').select('valor')
-        .gte('fecha', mesStart.toLocaleDateString('en-CA'))
+        .gte('fecha', mesStart.toLocaleDateString('en-CA', { timeZone: 'America/Bogota' }))
         .lte('fecha', today),
     ])
 
@@ -243,8 +247,8 @@ export default function ReportesView() {
       .from('citas')
       .select('valor_final, fecha_inicio, servicio:servicios(nombre), cliente:clientes(nombre), especialista:especialistas(nombre)')
       .eq('estado', 'completada')
-      .gte('fecha_inicio', start + 'T00:00:00')
-      .lte('fecha_inicio', end + 'T23:59:59')
+      .gte('fecha_inicio', start + 'T00:00:00-05:00')
+      .lte('fecha_inicio', end + 'T23:59:59-05:00')
       .order('fecha_inicio', { ascending: false })
       .limit(500)
 
@@ -308,8 +312,8 @@ export default function ReportesView() {
         .select('valor_final, servicio:servicios(nombre)')
         .eq('estado', 'completada')
         .eq('especialista_id', selEsp)
-        .gte('fecha_inicio', start + 'T00:00:00')
-        .lte('fecha_inicio', end + 'T23:59:59'),
+        .gte('fecha_inicio', start + 'T00:00:00-05:00')
+        .lte('fecha_inicio', end + 'T23:59:59-05:00'),
       supabase.from('comisiones_config')
         .select('porcentaje')
         .eq('especialista_id', selEsp)

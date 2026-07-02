@@ -40,8 +40,9 @@ export function parseFlexibleDate(input: string): ParsedDate {
   const text = input.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
 
   // ── Relative keywords ──────────────────────────────────────────
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
+  // Obtener "hoy" en Colombia para no depender de la zona del servidor
+  const todayColStr = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Bogota' })
+  const today = new Date(`${todayColStr}T00:00:00-05:00`)
 
   if (/^hoy$/.test(text)) {
     return buildResult(today)
@@ -152,8 +153,16 @@ function fromDMY(d: number, m: number, y: number): ParsedDate {
       error: `La fecha ${d}/${m}/${y} no es válida. Por favor verifica el día y el mes.`,
     }
   }
-  const fecha = new Date(y, m - 1, d)
-  if (fecha.getMonth() !== m - 1) {
+  // ✅ CORRECTO: usar offset -05:00 explícito para Colombia
+  // NUNCA: new Date(y, m-1, d) — eso usa UTC en Vercel y cambia el día
+  const dStr = String(d).padStart(2, '0')
+  const mStr = String(m).padStart(2, '0')
+  const iso = `${y}-${mStr}-${dStr}`
+  const fecha = new Date(`${iso}T00:00:00-05:00`)
+
+  // Verificar que la fecha sea válida (ej: 31 de febrero no existe)
+  const fechaCheck = new Date(`${iso}T12:00:00-05:00`)
+  if (fechaCheck.toLocaleDateString('en-CA', { timeZone: 'America/Bogota' }) !== iso) {
     return {
       fecha: null, display: '', interpreted: '', iso: '',
       error: `El día ${d} no existe en ese mes. Por favor verifica la fecha.`,
@@ -163,42 +172,52 @@ function fromDMY(d: number, m: number, y: number): ParsedDate {
 }
 
 function buildResult(fecha: Date): ParsedDate {
-  const d = fecha.getDate().toString().padStart(2, '0')
-  const m = (fecha.getMonth() + 1).toString().padStart(2, '0')
-  const y = fecha.getFullYear()
+  // Obtener la fecha en Colombia para mostrar correctamente
+  const isoCol = fecha.toLocaleDateString('en-CA', { timeZone: 'America/Bogota' })
+  const [y, m, d] = isoCol.split('-')
 
   const DIAS_NOMBRES = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado']
   const MESES_NOMBRES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
     'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
 
+  // Obtener día de semana en Colombia
+  const diaSemana = new Date(`${isoCol}T12:00:00-05:00`).toLocaleDateString('es-CO', {
+    timeZone: 'America/Bogota',
+    weekday: 'long',
+  })
+  const mesNombre = MESES_NOMBRES[parseInt(m) - 1]
+
   return {
     fecha,
     display: `${d}/${m}/${y}`,
-    interpreted: `${DIAS_NOMBRES[fecha.getDay()]} ${d} de ${MESES_NOMBRES[fecha.getMonth()]} de ${y}`,
-    iso: `${y}-${m}-${d}`,
+    interpreted: `${diaSemana} ${parseInt(d)} de ${mesNombre} de ${y}`,
+    iso: isoCol,
   }
 }
 
 function addDays(date: Date, days: number): Date {
-  const d = new Date(date)
-  d.setDate(d.getDate() + days)
-  return d
+  // Obtener fecha en Colombia, sumar días, volver a crear con offset correcto
+  const isoCol = date.toLocaleDateString('en-CA', { timeZone: 'America/Bogota' })
+  const [y, m, d] = isoCol.split('-').map(Number)
+  const temp = new Date(y, m - 1, d + days)
+  const newIso = temp.toLocaleDateString('en-CA')
+  return new Date(`${newIso}T00:00:00-05:00`)
 }
 
 function nextWeekday(from: Date, targetDay: number, forceNext = false): Date {
-  const d = new Date(from)
-  const current = d.getDay()
+  const isoCol = from.toLocaleDateString('en-CA', { timeZone: 'America/Bogota' })
+  const current = new Date(`${isoCol}T12:00:00-05:00`).getDay()
   let diff = targetDay - current
   if (diff <= 0 || forceNext) diff += 7
-  d.setDate(d.getDate() + diff)
-  return d
+  return addDays(from, diff)
 }
 
 function guessYear(day: number, month: number): number {
-  const now = new Date()
-  const y = now.getFullYear()
-  const candidate = new Date(y, month - 1, day)
-  const today = new Date(); today.setHours(0, 0, 0, 0)
-  // If already past, use next year
-  return candidate < today ? y + 1 : y
+  const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Bogota' })
+  const [y] = todayStr.split('-').map(Number)
+  const mStr = String(month).padStart(2, '0')
+  const dStr = String(day).padStart(2, '0')
+  const candidate = `${y}-${mStr}-${dStr}`
+  // Si ya pasó, usar el próximo año
+  return candidate < todayStr ? y + 1 : y
 }

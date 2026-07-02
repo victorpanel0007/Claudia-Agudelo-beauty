@@ -36,7 +36,7 @@ export default function Header() {
         <Link href="/" className="flex items-center gap-2.5">
           <div className="w-11 h-11 rounded-full overflow-hidden border-2 border-beauty-primary/30 shadow-sm shrink-0">
             <Image
-              src="/WhatsApp Image 2026-06-18 at 8.53.37 PM_1254x1254.png"
+              src="/logo.png"
               alt="Claudia Agudelo Beauty"
               width={44}
               height={44}

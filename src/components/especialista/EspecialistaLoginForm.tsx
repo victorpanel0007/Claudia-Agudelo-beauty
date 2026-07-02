@@ -44,7 +44,7 @@ export default function EspecialistaLoginForm() {
         <div className="flex flex-col items-center mb-8">
           <div className="w-20 h-20 rounded-full overflow-hidden border-2 border-beauty-primary/30 shadow-sm mb-4">
             <Image
-              src="/WhatsApp Image 2026-06-18 at 8.53.37 PM_1254x1254.png"
+              src="/logo.png"
               alt="Claudia Agudelo Beauty"
               width={80} height={80}
               className="w-full h-full object-cover"

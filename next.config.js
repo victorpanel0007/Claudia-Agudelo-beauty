@@ -50,11 +50,6 @@ const nextConfig = {
       '@supabase/supabase-js',
     ],
   },
-
-  // ── Webpack: optimizaciones ───────────────────────────────────────────────
-  webpack: (config) => {
-    return config
-  },
 }
 
 module.exports = nextConfig

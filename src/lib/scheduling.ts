@@ -9,6 +9,19 @@ export interface AvailableSlot {
   fecha_fin: string
 }
 
+/**
+ * Genera los slots disponibles para una fecha y duración dadas.
+ *
+ * REGLA FUNDAMENTAL:
+ *   Un slot es válido si y solo si:
+ *     - current >= workStart
+ *     - current + duracion <= workEnd   ← el servicio completo debe terminar ANTES del cierre
+ *     - No choca con ninguna cita existente
+ *
+ * Esto garantiza que un servicio de 60 min con cierre a las 19:00
+ * ofrezca como último slot las 18:00 (termina exactamente a las 19:00),
+ * nunca las 19:00 (terminaría a las 20:00).
+ */
 export async function getAvailableSlots(
   fecha: Date,
   duracionMinutos: number,
@@ -16,19 +29,20 @@ export async function getAvailableSlots(
 ): Promise<AvailableSlot[]> {
   const supabase = await createAdminClient()
 
-  // Get specialists
+  // ── Obtener especialistas activos ───────────────────────────────────────
   let query = supabase.from('especialistas').select('*').eq('activo', true)
   if (especialistaId) {
     query = query.eq('id', especialistaId)
   }
   const { data: especialistas } = await query
-
   if (!especialistas?.length) return []
 
-  // Obtener citas del día en Colombia
-  const fechaStr2 = fecha.toLocaleDateString('en-CA', { timeZone: 'America/Bogota' })
-  const dayStart = new Date(`${fechaStr2}T00:00:00-05:00`)
-  const dayEnd   = new Date(`${fechaStr2}T23:59:59-05:00`)
+  // ── Obtener la fecha del día en Colombia ────────────────────────────────
+  const fechaStr = fecha.toLocaleDateString('en-CA', { timeZone: 'America/Bogota' }) // YYYY-MM-DD
+
+  // ── Obtener citas del día (solo confirmadas o en proceso) ───────────────
+  const dayStart = new Date(`${fechaStr}T00:00:00-05:00`)
+  const dayEnd   = new Date(`${fechaStr}T23:59:59-05:00`)
 
   const { data: citas } = await supabase
     .from('citas')
@@ -40,65 +54,78 @@ export async function getAvailableSlots(
   const slots: AvailableSlot[] = []
 
   for (const esp of especialistas) {
+    // ── Horario del especialista (fallback 09:00–19:00) ─────────────────
     const [startH, startM] = (esp.horario_inicio || '09:00').split(':').map(Number)
-    const [endH, endM] = (esp.horario_fin || '19:00').split(':').map(Number)
+    const [endH, endM]     = (esp.horario_fin    || '19:00').split(':').map(Number)
 
-    // Verificar día laboral en zona horaria Colombia
-    const fechaColombia = new Date(fecha.toLocaleString('en-US', { timeZone: 'America/Bogota' }))
-    const dayOfWeek = fechaColombia.getDay()
+    // ── Verificar día laboral en Colombia ────────────────────────────────
+    // Usamos T12 para evitar que la conversión de zona cambie el día
+    const dayOfWeek     = new Date(`${fechaStr}T12:00:00-05:00`).getDay()
     const diasLaborales: number[] = esp.dias_laborales || [1, 2, 3, 4, 5, 6]
     if (!diasLaborales.includes(dayOfWeek)) continue
 
-    // Construir fecha inicio/fin en Colombia usando UTC offset -5
-    const offsetMs = 5 * 60 * 60 * 1000 // UTC-5
+    // ── Construir límites del día laboral ────────────────────────────────
+    const workStart = new Date(
+      `${fechaStr}T${String(startH).padStart(2, '0')}:${String(startM).padStart(2, '0')}:00-05:00`
+    )
+    const workEnd = new Date(
+      `${fechaStr}T${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}:00-05:00`
+    )
 
-    // Obtener fecha en Colombia como YYYY-MM-DD
-    const fechaStr = fecha.toLocaleDateString('en-CA', { timeZone: 'America/Bogota' }) // YYYY-MM-DD
-
-    // Crear fecha inicio y fin del día en Colombia (como UTC)
-    const slotStart = new Date(`${fechaStr}T${String(startH).padStart(2,'0')}:${String(startM).padStart(2,'0')}:00-05:00`)
-    const workEnd   = new Date(`${fechaStr}T${String(endH).padStart(2,'0')}:${String(endM).padStart(2,'0')}:00-05:00`)
-
-    // Build occupied intervals for this specialist
+    // ── Construir intervalos ocupados para esta especialista ────────────
     const occupied = (citas || [])
       .filter(c => c.especialista_id === esp.id)
       .map(c => ({
         inicio: new Date(c.fecha_inicio),
-        fin: new Date(c.fecha_fin),
+        fin:    new Date(c.fecha_fin),
       }))
 
-    // Generar slots cada 30 minutos en hora Colombia
-    let current = new Date(slotStart)
+    // ── Generar slots ────────────────────────────────────────────────────
+    //
+    // Paso del slot configurable — actualmente 30 min.
+    // La condición de corte es:  slotEnd <= workEnd
+    //   → el servicio debe TERMINAR dentro o exactamente al cierre.
+    //   → NUNCA se ofrece un slot que haga que la cita pase del horario.
+    //
+    const paso = 30 // minutos entre slots — podría venir de config en el futuro
 
-    while (current.getTime() <= workEnd.getTime()) {
+    let current = new Date(workStart)
+
+    while (true) {
       const slotEnd = addMinutes(current, duracionMinutos)
+
+      // ✅ Condición de corte: el servicio debe terminar al cierre o antes
+      if (slotEnd.getTime() > workEnd.getTime()) break
+
+      // ✅ Verificar que no choca con ninguna cita existente
       const isOccupied = occupied.some(
         occ => current < occ.fin && slotEnd > occ.inicio
       )
 
       if (!isOccupied) {
-        // Mostrar hora en Colombia
-        const horaFormateada = current.toLocaleTimeString('es-CO', {
-          hour: '2-digit',
+        // Formato limpio sin puntos ni espacios extra: "9:00 AM", "1:30 PM"
+        const colStr = current.toLocaleString('en-US', {
+          hour: 'numeric',
           minute: '2-digit',
           hour12: true,
           timeZone: 'America/Bogota',
         })
 
         slots.push({
-          hora: horaFormateada,
-          especialista_id: esp.id,
+          hora:                colStr,
+          especialista_id:     esp.id,
           especialista_nombre: esp.nombre,
-          fecha_inicio: current.toISOString(),
-          fecha_fin: slotEnd.toISOString(),
+          fecha_inicio:        current.toISOString(),
+          fecha_fin:           slotEnd.toISOString(),
         })
       }
 
-      current = addMinutes(current, 30)
+      // Avanzar al siguiente slot
+      current = addMinutes(current, paso)
     }
   }
 
-  // Sort by time
+  // Ordenar por hora de inicio
   return slots.sort((a, b) =>
     new Date(a.fecha_inicio).getTime() - new Date(b.fecha_inicio).getTime()
   )
@@ -115,7 +142,7 @@ export async function createAppointment(data: {
 }): Promise<{ id: string } | null> {
   const supabase = await createAdminClient()
 
-  // Check for conflicts
+  // Verificar conflictos antes de insertar
   const { data: conflict } = await supabase
     .from('citas')
     .select('id')
@@ -132,10 +159,7 @@ export async function createAppointment(data: {
 
   const { data: cita, error } = await supabase
     .from('citas')
-    .insert({
-      ...data,
-      estado: 'confirmada',
-    })
+    .insert({ ...data, estado: 'confirmada' })
     .select('id')
     .single()
 
