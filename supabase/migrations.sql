@@ -252,29 +252,73 @@ ALTER TABLE citas
 
 
 -- ────────────────────────────────────────────────────────────────
--- 6. VERIFICACIÓN FINAL
+-- 6. CONVERSACIONES BOT WHATSAPP (estado persistente)
+--    Reemplaza el Map() en memoria que se perdía entre requests
+--    en Vercel serverless. Cada fila = una conversación activa.
 -- ────────────────────────────────────────────────────────────────
 
--- Muestra el estado final de todas las tablas y especialistas
+CREATE TABLE IF NOT EXISTS conversaciones_bot (
+  telefono       text        PRIMARY KEY,
+  -- Paso actual del flujo
+  paso           text        NOT NULL DEFAULT 'seleccion_categoria',
+  -- Datos del flujo
+  categoria_id   text,
+  servicio_nombre text,
+  duracion       int,
+  precio         text,
+  nombre         text,
+  fecha          text,                -- ISO string de la fecha elegida
+  especialista_id text,
+  -- Slots disponibles serializados como JSON para no hacer otra llamada a la API
+  slots_json     jsonb,
+  -- Auditoría
+  created_at     timestamptz DEFAULT now(),
+  updated_at     timestamptz DEFAULT now()
+);
+
+-- Auto-actualizar updated_at
+CREATE OR REPLACE FUNCTION update_conversaciones_bot_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN NEW.updated_at = now(); RETURN NEW; END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_conv_bot_updated_at ON conversaciones_bot;
+CREATE TRIGGER trg_conv_bot_updated_at
+  BEFORE UPDATE ON conversaciones_bot
+  FOR EACH ROW EXECUTE FUNCTION update_conversaciones_bot_updated_at();
+
+-- Índice para limpiar conversaciones viejas (> 2 horas sin actividad)
+CREATE INDEX IF NOT EXISTS idx_conv_bot_updated ON conversaciones_bot(updated_at);
+
+-- RLS
+ALTER TABLE conversaciones_bot ENABLE ROW LEVEL SECURITY;
+
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE tablename = 'conversaciones_bot'
+      AND policyname = 'Full access conversaciones_bot'
+  ) THEN
+    CREATE POLICY "Full access conversaciones_bot"
+      ON conversaciones_bot USING (true) WITH CHECK (true);
+  END IF;
+END $$;
+
+
+-- ────────────────────────────────────────────────────────────────
+-- 7. VERIFICACIÓN FINAL
+-- ────────────────────────────────────────────────────────────────
+
 SELECT
-  'especialistas' AS tabla,
-  COUNT(*) AS filas
-FROM especialistas
-UNION ALL
-SELECT 'citas',                  COUNT(*) FROM citas
-UNION ALL
-SELECT 'notificaciones_esp',     COUNT(*) FROM notificaciones_especialista
-UNION ALL
-SELECT 'comisiones_config',      COUNT(*) FROM comisiones_config
-UNION ALL
-SELECT 'gastos',                 COUNT(*) FROM gastos
-UNION ALL
-SELECT 'liquidaciones',          COUNT(*) FROM liquidaciones
-UNION ALL
-SELECT 'pagos_especialistas',    COUNT(*) FROM pagos_especialistas
+  'especialistas'        AS tabla, COUNT(*) AS filas FROM especialistas
+UNION ALL SELECT 'citas',                  COUNT(*) FROM citas
+UNION ALL SELECT 'notificaciones_esp',     COUNT(*) FROM notificaciones_especialista
+UNION ALL SELECT 'comisiones_config',      COUNT(*) FROM comisiones_config
+UNION ALL SELECT 'gastos',                 COUNT(*) FROM gastos
+UNION ALL SELECT 'liquidaciones',          COUNT(*) FROM liquidaciones
+UNION ALL SELECT 'pagos_especialistas',    COUNT(*) FROM pagos_especialistas
+UNION ALL SELECT 'conversaciones_bot',     COUNT(*) FROM conversaciones_bot
 ORDER BY tabla;
 
--- Verificar horarios de especialistas
 SELECT nombre, horario_inicio, horario_fin, whatsapp, notificaciones
-FROM especialistas
-ORDER BY nombre;
+FROM especialistas ORDER BY nombre;

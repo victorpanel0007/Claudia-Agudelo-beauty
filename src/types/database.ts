@@ -97,29 +97,3 @@ export interface HorarioOcupado {
   fecha_fin: string
 }
 
-// WhatsApp conversation state
-export interface ConversationState {
-  telefono: string
-  paso: ConversationStep
-  categoria_id?: string
-  servicio_id?: string
-  nombre?: string
-  fecha?: string
-  especialista_id?: string
-  servicio_nombre?: string
-  duracion?: number
-  precio?: string
-  created_at: string
-}
-
-export type ConversationStep =
-  | 'inicio'
-  | 'seleccion_categoria'
-  | 'seleccion_servicio'
-  | 'solicitar_nombre'
-  | 'solicitar_telefono'
-  | 'solicitar_fecha'
-  | 'seleccion_especialista'
-  | 'seleccion_horario'
-  | 'confirmar'
-  | 'completado'
