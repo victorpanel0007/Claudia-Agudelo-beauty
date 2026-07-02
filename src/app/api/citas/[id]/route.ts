@@ -10,9 +10,41 @@ export async function PATCH(
   const { id } = await params
   const body = await request.json()
 
+  // Si la cita se está completando con valor_final, calcular comisión automáticamente
+  let updateData = { ...body }
+  if (body.estado === 'completada' && body.valor_final) {
+    // Obtener la cita actual para saber el especialista
+    const { data: citaActual } = await supabase
+      .from('citas')
+      .select('especialista_id')
+      .eq('id', id)
+      .single()
+
+    if (citaActual?.especialista_id) {
+      // Obtener porcentaje de comisión vigente
+      const { data: comConfig } = await supabase
+        .from('comisiones_config')
+        .select('porcentaje')
+        .eq('especialista_id', citaActual.especialista_id)
+        .maybeSingle()
+
+      const porcentaje = comConfig?.porcentaje ?? 40
+      const valor = Number(body.valor_final)
+      const comision = Math.round(valor * (porcentaje / 100))
+      const ganancia = valor - comision
+
+      updateData = {
+        ...updateData,
+        porcentaje_comision: porcentaje,
+        comision_especialista: comision,
+        ganancia_spa: ganancia,
+      }
+    }
+  }
+
   const { data, error } = await supabase
     .from('citas')
-    .update(body)
+    .update(updateData)
     .eq('id', id)
     .select(`
       *,
