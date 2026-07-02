@@ -29,7 +29,11 @@ function dayLabel(fechaKey: string) {
   return format(d, "EEEE d 'de' MMMM", { locale: es })
 }
 
-export default function EspecialistaPanel({ userEmail, userName }: { userEmail: string; userName: string }) {
+export default function EspecialistaPanel({ userEmail, userName, especialistaId }: {
+  userEmail: string
+  userName: string
+  especialistaId?: string
+}) {
   const [citas, setCitas] = useState<Cita[]>([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
@@ -40,19 +44,25 @@ export default function EspecialistaPanel({ userEmail, userName }: { userEmail: 
     if (!silent) setLoading(true)
     else setRefreshing(true)
 
-    // Buscar el especialista por nombre (usando email o nombre del metadata)
+    // Buscar el especialista: primero por ID del metadata (más seguro),
+    // luego por nombre como fallback
     const { data: especialistas } = await supabase
       .from('especialistas')
       .select('id, nombre')
       .eq('activo', true)
 
-    // Intentar encontrar el especialista que corresponde a este usuario
-    // Matching por nombre en metadata o por posición
-    const nombre = userName || userEmail.split('@')[0]
-    const esp = especialistas?.find(e =>
-      e.nombre.toLowerCase().includes(nombre.toLowerCase()) ||
-      nombre.toLowerCase().includes(e.nombre.toLowerCase())
-    ) || especialistas?.[0]
+    let esp = especialistaId
+      ? especialistas?.find(e => e.id === especialistaId)
+      : null
+
+    // Fallback por nombre solo si no hay ID configurado
+    if (!esp) {
+      const nombre = userName || userEmail.split('@')[0]
+      esp = especialistas?.find(e =>
+        e.nombre.toLowerCase().includes(nombre.toLowerCase()) ||
+        nombre.toLowerCase().includes(e.nombre.toLowerCase())
+      ) ?? null
+    }
 
     if (!esp) {
       setLoading(false)

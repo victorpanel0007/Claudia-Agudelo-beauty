@@ -1,15 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 
-// Rutas admin exclusivas para rol 'admin' — especialistas son redirigidas a su panel
-const ADMIN_ONLY_PATHS = [
-  '/admin/clientes',
-  '/admin/reportes',
-  '/admin/comisiones',
-  '/admin/notificaciones',
-  '/admin/servicios',
-  '/admin/whatsapp',
-]
+// Rutas completamente bloqueadas para especialistas — solo admin entra
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
@@ -47,12 +39,9 @@ export async function middleware(request: NextRequest) {
 
   const rol = user.user_metadata?.rol
 
-  // Especialista intentando acceder a rutas exclusivas de admin → redirigir a su panel
-  if (rol === 'especialista') {
-    const isAdminOnly = ADMIN_ONLY_PATHS.some(p => pathname.startsWith(p))
-    if (isAdminOnly) {
-      return NextResponse.redirect(new URL('/especialista', request.url))
-    }
+  // Especialista intentando acceder a /admin → redirigir a su panel
+  if (rol !== 'admin') {
+    return NextResponse.redirect(new URL('/especialista', request.url))
   }
 
   return response

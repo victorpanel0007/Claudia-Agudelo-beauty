@@ -10,5 +10,14 @@ export default async function EspecialistaDashboard() {
 
   if (!user) redirect('/especialista/login')
 
-  return <EspecialistaPanel userEmail={user.email ?? ''} userName={user.user_metadata?.nombre ?? ''} />
+  // Bloquear acceso si es admin — debe usar /admin
+  if (user.user_metadata?.rol === 'admin') redirect('/admin')
+
+  return (
+    <EspecialistaPanel
+      userEmail={user.email ?? ''}
+      userName={user.user_metadata?.nombre ?? ''}
+      especialistaId={user.user_metadata?.especialista_id ?? undefined}
+    />
+  )
 }
