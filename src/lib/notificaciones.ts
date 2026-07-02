@@ -32,16 +32,15 @@ export interface CitaParaNotificar {
 }
 
 function buildMessage(cita: CitaParaNotificar, espNombre: string): string {
-  const cliente = cita.cliente?.nombre || 'Sin nombre'
-  const telefono = cita.cliente?.telefono || 'No registrado'
+  const cliente  = cita.cliente?.nombre || 'Sin nombre'
+  // NO incluir teléfono ni datos de contacto del cliente
   const servicio = cita.servicio?.nombre || 'Sin servicio'
   const duracion = cita.servicio?.duracion_minutos ? `${cita.servicio.duracion_minutos} min` : 'No definida'
-  const fecha = formatDate(cita.fecha_inicio)
-  const hora = formatTime(cita.fecha_inicio)
-  const valor = cita.valor_final ? formatCurrency(cita.valor_final) : 'Por definir'
-  const origen = ORIGEN_LABELS[cita.canal || 'web'] || '🌐 Sitio Web'
-  const notas = cita.observaciones || 'Sin observaciones'
-  const idCorto = cita.id.slice(0, 8).toUpperCase()
+  const fecha    = formatDate(cita.fecha_inicio)
+  const hora     = formatTime(cita.fecha_inicio)
+  const origen   = ORIGEN_LABELS[cita.canal || 'web'] || '🌐 Sitio Web'
+  const notas    = cita.observaciones || 'Sin observaciones'
+  const idCorto  = cita.id.slice(0, 8).toUpperCase()
 
   return `📅 *Nueva cita confirmada*
 
@@ -51,9 +50,6 @@ Tienes una nueva cita confirmada.
 ━━━━━━━━━━━━━━━
 👩 Cliente:
 ${cliente}
-
-📞 Teléfono:
-${telefono}
 
 💅 Servicio:
 ${servicio}
@@ -66,12 +62,6 @@ ${hora}
 
 ⏳ Duración:
 ${duracion}
-
-💰 Valor:
-${valor}
-
-💳 Estado del pago:
-Pendiente
 
 📝 Observaciones:
 ${notas}

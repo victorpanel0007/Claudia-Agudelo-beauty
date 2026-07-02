@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/server'
+import { getUserRole, forbidden } from '@/lib/rbac'
 
 export async function GET(request: NextRequest) {
+  const rol = await getUserRole()
+  if (rol !== 'admin') return forbidden('Acceso restringido a administradores')
   const supabase = await createAdminClient()
   const { searchParams } = new URL(request.url)
   const especialistaId = searchParams.get('especialista_id')
@@ -15,6 +18,8 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const rol = await getUserRole()
+  if (rol !== 'admin') return forbidden('Acceso restringido a administradores')
   const supabase = await createAdminClient()
   const body = await request.json()
 

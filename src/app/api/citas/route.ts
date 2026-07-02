@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/server'
 import { notificarEspecialista } from '@/lib/notificaciones'
+import { getUserRole, filtrarCita } from '@/lib/rbac'
 
 export async function GET(request: NextRequest) {
   const supabase = await createAdminClient()
+  const rol = await getUserRole()
   const { searchParams } = new URL(request.url)
   const fecha = searchParams.get('fecha')
   const especialistaId = searchParams.get('especialista_id')
@@ -29,7 +31,10 @@ export async function GET(request: NextRequest) {
 
   const { data, error } = await query
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json(data, { headers: { 'Cache-Control': 'no-store' } })
+
+  // Filtrar datos según rol
+  const filtered = (data || []).map(c => filtrarCita(c as Record<string, unknown>, rol ?? 'especialista'))
+  return NextResponse.json(filtered, { headers: { 'Cache-Control': 'no-store' } })
 }
 
 export async function POST(request: NextRequest) {

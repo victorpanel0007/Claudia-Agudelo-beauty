@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { formatTime, formatDate, formatCurrency } from '@/lib/utils'
 import type { Cita } from '@/types/database'
-import { LogOut, Clock, Calendar, CheckCircle, Phone, RefreshCw } from 'lucide-react'
+import { LogOut, Clock, Calendar, CheckCircle, RefreshCw } from 'lucide-react'
 import { format, isToday, parseISO } from 'date-fns'
 import { es } from 'date-fns/locale'
 import toast from 'react-hot-toast'
@@ -240,14 +240,6 @@ export default function EspecialistaPanel({ userEmail, userName }: { userEmail: 
                               </p>
                             )}
                           </div>
-                          {/* WhatsApp directo */}
-                          {cita.cliente?.telefono && (
-                            <a href={`https://wa.me/57${cita.cliente.telefono}?text=Hola%20${encodeURIComponent(cita.cliente.nombre || '')}%2C%20te%20recuerdo%20tu%20cita`}
-                              target="_blank" rel="noopener noreferrer"
-                              className="w-9 h-9 rounded-xl bg-green-50 border border-green-200 flex items-center justify-center hover:bg-green-100 transition-colors shrink-0">
-                              <Phone size={14} className="text-green-600" />
-                            </a>
-                          )}
                         </div>
 
                         {/* Observaciones */}

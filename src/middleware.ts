@@ -1,10 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 
+// Rutas admin exclusivas para rol 'admin' — especialistas son redirigidas a su panel
+const ADMIN_ONLY_PATHS = [
+  '/admin/clientes',
+  '/admin/reportes',
+  '/admin/comisiones',
+  '/admin/notificaciones',
+  '/admin/servicios',
+  '/admin/whatsapp',
+]
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
-  // Only run auth check for /admin paths
+  // Solo corre en rutas /admin
   if (!pathname.startsWith('/admin')) {
     return NextResponse.next()
   }
@@ -16,17 +26,11 @@ export async function middleware(request: NextRequest) {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        getAll() {
-          return request.cookies.getAll()
-        },
+        getAll() { return request.cookies.getAll() },
         setAll(cookiesToSet: { name: string; value: string; options?: CookieOptions }[]) {
-          cookiesToSet.forEach(({ name, value }) =>
-            request.cookies.set(name, value)
-          )
+          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
           response = NextResponse.next({ request })
-          cookiesToSet.forEach(({ name, value, options }) =>
-            response.cookies.set(name, value, options)
-          )
+          cookiesToSet.forEach(({ name, value, options }) => response.cookies.set(name, value, options))
         },
       },
     }
@@ -34,10 +38,21 @@ export async function middleware(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser()
 
+  // Sin sesión → login
   if (!user) {
     const loginUrl = new URL('/login', request.url)
     loginUrl.searchParams.set('redirect', pathname)
     return NextResponse.redirect(loginUrl)
+  }
+
+  const rol = user.user_metadata?.rol
+
+  // Especialista intentando acceder a rutas exclusivas de admin → redirigir a su panel
+  if (rol === 'especialista') {
+    const isAdminOnly = ADMIN_ONLY_PATHS.some(p => pathname.startsWith(p))
+    if (isAdminOnly) {
+      return NextResponse.redirect(new URL('/especialista', request.url))
+    }
   }
 
   return response

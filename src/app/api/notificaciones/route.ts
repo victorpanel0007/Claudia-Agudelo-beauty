@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/server'
 import { reenviarNotificacion } from '@/lib/notificaciones'
+import { getUserRole, forbidden } from '@/lib/rbac'
 
 export async function GET(request: NextRequest) {
+  const rol = await getUserRole()
+  if (rol !== 'admin') return forbidden('Acceso restringido a administradores')
   const supabase = await createAdminClient()
   const { searchParams } = new URL(request.url)
   const estado = searchParams.get('estado')
