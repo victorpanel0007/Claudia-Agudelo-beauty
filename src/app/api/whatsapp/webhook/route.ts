@@ -295,8 +295,10 @@ async function handleEspecialistaSelection(
     return
   }
 
-  // Guardar hasta 16 slots en la BD — ya no hay Map en memoria
-  const shown = slots.slice(0, 16)
+  // Guardar todos los slots en la BD — el cliente elige de la lista completa
+  // Solo mostramos máximo 20 en el mensaje para no saturar WhatsApp
+  const MAX_SHOW = 20
+  const shown = slots.slice(0, MAX_SHOW)
 
   await setConv(supabase, {
     ...conv,
@@ -306,15 +308,15 @@ async function handleEspecialistaSelection(
   })
 
   const numberEmojis = [
-    '1️⃣','2️⃣','3️⃣','4️⃣','5️⃣','6️⃣','7️⃣','8️⃣',
-    '9️⃣','🔟','1️⃣1️⃣','1️⃣2️⃣','1️⃣3️⃣','1️⃣4️⃣','1️⃣5️⃣','1️⃣6️⃣',
+    '1️⃣','2️⃣','3️⃣','4️⃣','5️⃣','6️⃣','7️⃣','8️⃣','9️⃣','🔟',
+    '1️⃣1️⃣','1️⃣2️⃣','1️⃣3️⃣','1️⃣4️⃣','1️⃣5️⃣','1️⃣6️⃣','1️⃣7️⃣','1️⃣8️⃣','1️⃣9️⃣','2️⃣0️⃣',
   ]
   const slotsList = shown
     .map((s, i) => `${numberEmojis[i]} *${s.hora}* — ${s.especialista_nombre}`)
     .join('\n')
 
-  const extraMsg = slots.length > 16
-    ? `\n\n_Mostrando 16 de ${slots.length} horarios._\n_Si ninguno te funciona, escribe otra fecha._`
+  const extraMsg = slots.length > MAX_SHOW
+    ? `\n\n_Mostrando ${MAX_SHOW} de ${slots.length} horarios._\n_Si ninguno te funciona, escribe otra fecha._`
     : ''
 
   await reply(
