@@ -109,6 +109,9 @@ async function main() {
     { cat: '9', nombre: 'Radiofrecuencia capilar', tipo: 'valoracion', duracion: 60 },
     { cat: '9', nombre: 'Diseño de corte', tipo: 'valoracion', duracion: 60 },
     { cat: '9', nombre: 'Extensiones de cabello', tipo: 'valoracion', duracion: 240, requiere: true },
+    // Podología
+    { cat: '10', nombre: 'Correctores Ungueales', precio: 30000, tipo: 'fijo', duracion: 90 },
+    { cat: '10', nombre: 'Ortonixia', precio: 40000, tipo: 'fijo', duracion: 120 },
   ]
 
   const rows = servicios.map(s => ({
