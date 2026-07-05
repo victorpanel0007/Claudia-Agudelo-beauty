@@ -1,6 +1,7 @@
 ﻿'use client'
 
 import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { createClient } from '@/lib/supabase/client'
 import type { Servicio, Categoria } from '@/types/database'
 import { Plus, Edit, Trash2, Search, Clock, X } from 'lucide-react'
@@ -123,7 +124,7 @@ export default function ServiciosView() {
   )
 
   return (
-    <div className="space-y-5 animate-fade-in">
+    <div className="space-y-5">
 
       {/* Header */}
       <div className="flex items-center justify-between">
@@ -203,8 +204,8 @@ export default function ServiciosView() {
         )}
       </div>
 
-      {/* Modal formulario */}
-      {showForm && (
+      {/* Modal formulario — portal para evitar problemas con transform/overflow de ancestros */}
+      {showForm && typeof document !== 'undefined' && createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md animate-slide-up flex flex-col max-h-[90vh]">
 
@@ -362,7 +363,8 @@ export default function ServiciosView() {
 
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   )
