@@ -81,6 +81,7 @@ export default function EspecialistaPanel({ userEmail, userName, especialistaId 
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [espId, setEspId] = useState<string | null>(especialistaId ?? null)
+  const [citaACompletar, setCitaACompletar] = useState<Cita | null>(null)
   const supabase = createClient()
   const router = useRouter()
 
@@ -129,9 +130,10 @@ export default function EspecialistaPanel({ userEmail, userName, especialistaId 
     toast.success('Cita iniciada')
     loadCitas(true)
   }
-  async function marcarCompletada(id: string) {
-    await supabase.from('citas').update({ estado: 'completada' }).eq('id', id)
+  async function marcarCompletada(id: string, valorFinal: number) {
+    await supabase.from('citas').update({ estado: 'completada', valor_final: valorFinal }).eq('id', id)
     toast.success('¡Cita completada! ✓')
+    setCitaACompletar(null)
     loadCitas(true)
   }
   async function handleLogout() {
@@ -200,9 +202,20 @@ export default function EspecialistaPanel({ userEmail, userName, especialistaId 
 
       {/* ── Content ────────────────────────────────────────────────────── */}
       <div className="max-w-2xl mx-auto px-4 py-6">
-        {tab === 'agenda'     && <AgendaTab citas={citas} citasHoy={citasHoy} grupos={grupos} loading={loading} onIniciar={marcarEnProceso} onCompletar={marcarCompletada} />}
+        {tab === 'agenda'     && <AgendaTab citas={citas} citasHoy={citasHoy} grupos={grupos} loading={loading} onIniciar={marcarEnProceso} onCompletar={c => setCitaACompletar(c)} />}
         {tab === 'nueva-cita' && <NuevaCitaTab espId={espId} onSaved={() => { loadCitas(true); setTab('agenda') }} />}
         {tab === 'comisiones' && <ComisionesTab espId={espId} />}
+      </div>
+
+      {/* Modal completar cita con valor */}
+      {citaACompletar && typeof document !== 'undefined' && createPortal(
+        <CompletarModal
+          cita={citaACompletar}
+          onClose={() => setCitaACompletar(null)}
+          onConfirm={marcarCompletada}
+        />,
+        document.body
+      )}
       </div>
     </div>
   )
@@ -216,7 +229,7 @@ function AgendaTab({ citas, citasHoy, grupos, loading, onIniciar, onCompletar }:
   grupos: Record<string, Cita[]>
   loading: boolean
   onIniciar: (id: string) => void
-  onCompletar: (id: string) => void
+  onCompletar: (cita: Cita) => void
 }) {
   return (
     <div className="space-y-5">
@@ -301,7 +314,7 @@ function AgendaTab({ citas, citasHoy, grupos, loading, onIniciar, onCompletar }:
                             className="flex-1 text-xs font-semibold py-2 rounded-xl bg-blue-50 border border-blue-200 text-blue-600 hover:bg-blue-100 transition-colors">
                             Iniciar
                           </button>
-                          <button onClick={() => onCompletar(cita.id)}
+                          <button onClick={() => onCompletar(cita)}
                             className="flex-1 text-xs font-semibold py-2 rounded-xl bg-beauty-primary text-white hover:bg-beauty-primary-dark transition-colors flex items-center justify-center gap-1">
                             <CheckCircle size={13} /> Completar
                           </button>
@@ -309,7 +322,7 @@ function AgendaTab({ citas, citasHoy, grupos, loading, onIniciar, onCompletar }:
                       )}
                       {cita.estado === 'en_proceso' && (
                         <div className="mt-3 pt-3 border-t border-beauty-primary/10">
-                          <button onClick={() => onCompletar(cita.id)}
+                          <button onClick={() => onCompletar(cita)}
                             className="w-full text-xs font-semibold py-2 rounded-xl bg-beauty-primary text-white hover:bg-beauty-primary-dark transition-colors flex items-center justify-center gap-1">
                             <CheckCircle size={13} /> Marcar como completada
                           </button>
@@ -555,6 +568,83 @@ function NuevaCitaTab({ espId, onSaved }: { espId: string | null; onSaved: () =>
             )}
           </div>
         )}
+      </div>
+    </div>
+  )
+}
+
+// ── CompletarModal ─────────────────────────────────────────────────────────
+
+function CompletarModal({ cita, onClose, onConfirm }: {
+  cita: Cita
+  onClose: () => void
+  onConfirm: (id: string, valor: number) => void
+}) {
+  const [valor, setValor] = useState<string>(
+    cita.valor_final?.toString() ?? cita.servicio?.precio?.toString() ?? ''
+  )
+  const [loading, setLoading] = useState(false)
+
+  async function handleConfirm() {
+    const num = Number(valor)
+    if (!valor || isNaN(num) || num <= 0) { toast.error('Ingresa un valor válido'); return }
+    setLoading(true)
+    await onConfirm(cita.id, num)
+    setLoading(false)
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm animate-slide-up p-6">
+
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-bold text-beauty-text-dark">Completar Cita</h3>
+          <button onClick={onClose} className="p-1 hover:bg-gray-100 rounded-lg">
+            <X size={16} />
+          </button>
+        </div>
+
+        {/* Resumen */}
+        <div className="bg-beauty-bg rounded-xl p-3 mb-4 space-y-1">
+          <p className="text-sm font-semibold text-beauty-text-dark">{cita.cliente?.nombre}</p>
+          <p className="text-xs text-beauty-text-muted">{cita.servicio?.nombre ?? 'Servicio'}</p>
+          <p className="text-xs text-beauty-text-muted">{formatTime(cita.fecha_inicio)}</p>
+        </div>
+
+        {/* Valor */}
+        <div className="mb-5">
+          <label className="block text-sm font-semibold text-beauty-text-dark mb-2">
+            Valor cobrado <span className="text-red-500">*</span>
+          </label>
+          <div className="relative">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-beauty-text-muted text-sm font-medium">$</span>
+            <input
+              type="number"
+              value={valor}
+              onChange={e => setValor(e.target.value)}
+              placeholder="Ej: 46000"
+              autoFocus
+              className="w-full border border-gray-200 rounded-xl px-3 py-2.5 pl-7 text-lg font-bold text-beauty-text-dark focus:outline-none focus:border-beauty-primary focus:ring-2 focus:ring-beauty-primary/20 transition-colors"
+            />
+          </div>
+          {cita.servicio?.precio && (
+            <p className="text-xs text-beauty-text-muted mt-1">
+              Precio sugerido: ${Number(cita.servicio.precio).toLocaleString('es-CO')}
+            </p>
+          )}
+        </div>
+
+        <div className="flex gap-2">
+          <button onClick={onClose}
+            className="flex-1 text-sm font-semibold py-2.5 rounded-xl border-2 border-beauty-primary/30 text-beauty-text-muted hover:bg-beauty-bg transition-colors">
+            Cancelar
+          </button>
+          <button onClick={handleConfirm} disabled={loading || !valor}
+            className="flex-1 text-sm font-semibold py-2.5 rounded-xl bg-beauty-borgona text-white hover:bg-beauty-borgona-dark transition-colors disabled:opacity-40 flex items-center justify-center gap-2">
+            {loading ? <RefreshCw size={14} className="animate-spin" /> : <CheckCircle size={14} />}
+            Confirmar
+          </button>
+        </div>
       </div>
     </div>
   )
