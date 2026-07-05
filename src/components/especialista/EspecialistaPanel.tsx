@@ -342,6 +342,7 @@ function NuevaCitaTab({ espId, onSaved }: { espId: string | null; onSaved: () =>
   const [form, setForm] = useState({
     cliente_id: '',
     cliente_nombre: '',
+    cliente_telefono: '',
     es_nuevo: false,
     servicio_id: '',
     fecha: todayStr(),
@@ -391,7 +392,7 @@ function NuevaCitaTab({ espId, onSaved }: { espId: string | null; onSaved: () =>
       let clienteId = form.cliente_id
       if (form.es_nuevo) {
         const { data: nc, error } = await supabase.from('clientes')
-          .insert({ nombre: form.cliente_nombre.trim(), telefono: '' }).select('id').single()
+          .insert({ nombre: form.cliente_nombre.trim(), telefono: form.cliente_telefono?.trim() || '' }).select('id').single()
         if (error) throw error
         clienteId = nc.id
       }
@@ -438,7 +439,7 @@ function NuevaCitaTab({ espId, onSaved }: { espId: string | null; onSaved: () =>
               <label className="block text-xs font-semibold text-gray-600 mb-2">Cliente *</label>
               <div className="flex gap-2 mb-2">
                 {['existente','nuevo'].map(t => (
-                  <button key={t} onClick={() => setForm(f => ({ ...f, es_nuevo: t === 'nuevo', cliente_id: '', cliente_nombre: '' }))}
+                  <button key={t} onClick={() => setForm(f => ({ ...f, es_nuevo: t === 'nuevo', cliente_id: '', cliente_nombre: '', cliente_telefono: '' }))}
                     className={`flex-1 text-xs py-2 rounded-lg border font-medium transition-colors ${
                       (t === 'nuevo') === form.es_nuevo
                         ? 'border-beauty-primary bg-beauty-primary/10 text-beauty-primary'
@@ -449,10 +450,17 @@ function NuevaCitaTab({ espId, onSaved }: { espId: string | null; onSaved: () =>
                 ))}
               </div>
               {form.es_nuevo ? (
-                <input value={form.cliente_nombre}
-                  onChange={e => setForm(f => ({ ...f, cliente_nombre: e.target.value }))}
-                  placeholder="Nombre del cliente *"
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:border-beauty-primary" />
+                <div className="space-y-2">
+                  <input value={form.cliente_nombre}
+                    onChange={e => setForm(f => ({ ...f, cliente_nombre: e.target.value }))}
+                    placeholder="Nombre completo *"
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:border-beauty-primary" />
+                  <input value={form.cliente_telefono ?? ''}
+                    onChange={e => setForm(f => ({ ...f, cliente_telefono: e.target.value }))}
+                    placeholder="Teléfono (ej: 3001234567)"
+                    type="tel"
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:border-beauty-primary" />
+                </div>
               ) : (
                 <div className="relative">
                   <Search size={14} className="absolute left-3 top-3 text-gray-400" />
