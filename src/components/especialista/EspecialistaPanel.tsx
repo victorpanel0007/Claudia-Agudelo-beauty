@@ -216,7 +216,6 @@ export default function EspecialistaPanel({ userEmail, userName, especialistaId 
         />,
         document.body
       )}
-      </div>
     </div>
   )
 }
