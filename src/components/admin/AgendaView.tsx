@@ -835,8 +835,20 @@ export default function AgendaView() {
   }
 
   // ── Date navigation helpers ─────────────────────────────────────────────
+  const [isMobile, setIsMobile] = useState(false)
+
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 640)
+    check()
+    window.addEventListener('resize', check)
+    return () => window.removeEventListener('resize', check)
+  }, [])
+
   const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 })
-  const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i))
+  // On mobile show only 3 days centered on currentDate to avoid horizontal scroll
+  const weekDays = isMobile
+    ? Array.from({ length: 3 }, (_, i) => addDays(currentDate, i - 1))
+    : Array.from({ length: 7 }, (_, i) => addDays(weekStart, i))
   const dayView = [currentDate]
   const monthStart = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1)
   const monthEnd = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0)
@@ -873,6 +885,7 @@ export default function AgendaView() {
   return (
     <div className="flex flex-col h-full animate-fade-in">
       {/* Title bar */}
+<<<<<<< HEAD
       <div className="flex items-center justify-between mb-3">
         <div>
           <h2 className="text-lg sm:text-xl font-bold text-gray-800">Agenda</h2>
@@ -890,10 +903,26 @@ export default function AgendaView() {
             <Plus size={16} />
             <span className="hidden sm:inline">Nueva Cita</span>
             <span className="sm:hidden">Nueva</span>
+=======
+      <div className="flex items-center justify-between mb-4 gap-2">
+        <div className="min-w-0">
+          <h2 className="text-xl font-bold text-gray-800">Agenda</h2>
+          <p className="text-sm text-gray-400 hidden sm:block">Gestiona tus citas y servicios</p>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <button onClick={eliminarTodasLasCitas}
+            className="hidden sm:flex items-center gap-1.5 text-xs text-red-500 border border-red-200 px-3 py-2 rounded-xl hover:bg-red-50 transition-colors">
+            🗑️ Limpiar agenda
+          </button>
+          <button onClick={() => setShowNuevaCita(true)}
+            className="flex items-center gap-2 bg-beauty-primary text-white text-sm font-semibold px-3 sm:px-4 py-2.5 rounded-xl hover:bg-beauty-primary-dark transition-colors shadow-sm">
+            <Plus size={16} /> <span className="hidden sm:inline">Nueva Cita</span><span className="sm:hidden">Nueva</span>
+>>>>>>> 2f2bdad9279844c19f030c971fdf2af4a6837d01
           </button>
         </div>
       </div>
 
+<<<<<<< HEAD
       {/* Stat cards — 2 cols on mobile, 5 on xl */}
       <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-2 sm:gap-3 mb-3">
         <StatCard icon={<span className="text-lg">📅</span>} label="Citas Hoy" value={citasHoy.length} sub="actualizado" iconBg="bg-pink-50" />
@@ -901,6 +930,15 @@ export default function AgendaView() {
         <StatCard icon={<span className="text-lg">✅</span>} label="Confirmadas" value={confirmadas.length} sub="esta semana" iconBg="bg-green-50" />
         <StatCard icon={<span className="text-lg">💵</span>} label="Ingresos" value={formatCurrency(ingresosDia)} sub="del día" iconBg="bg-blue-50" />
         <StatCard icon={<span className="text-lg">👩</span>} label="Profesionales" value="2/2" sub="disponibles" iconBg="bg-purple-50" />
+=======
+      {/* Stat cards */}
+      <div className="grid grid-cols-2 xl:grid-cols-5 gap-2 sm:gap-3 mb-4">
+        <StatCard icon={<span className="text-xl">📅</span>} label="Citas Hoy" value={citasHoy.length} sub="▲ actualizado" iconBg="bg-pink-50" />
+        <StatCard icon={<span className="text-xl">⏳</span>} label="Pendientes" value={pendientes.length} sub="▲ por confirmar" iconBg="bg-amber-50" />
+        <StatCard icon={<span className="text-xl">✅</span>} label="Confirmadas" value={confirmadas.length} sub="▲ esta semana" iconBg="bg-green-50" />
+        <StatCard icon={<span className="text-xl">💵</span>} label="Ingresos" value={formatCurrency(ingresosDia)} sub="▲ completadas" iconBg="bg-blue-50" />
+        <StatCard icon={<span className="text-xl">👩</span>} label="Profesionales" value="2/2" sub="▲ disponibles" iconBg="bg-purple-50" />
+>>>>>>> 2f2bdad9279844c19f030c971fdf2af4a6837d01
       </div>
 
       {/* ── MOBILE LIST VIEW ───────────────────────────────────────── */}
@@ -985,10 +1023,19 @@ export default function AgendaView() {
         <div className="flex flex-col flex-1 min-w-0">
 
           {/* Toolbar */}
+<<<<<<< HEAD
           <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
             <div className="flex items-center gap-2">
               <button onClick={() => setCurrentDate(new Date())}
                 className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors">
+=======
+          <div className="flex items-center justify-between px-2 sm:px-4 py-3 border-b border-gray-100 gap-2">
+            <div className="flex items-center gap-1 sm:gap-2">
+              <button
+                onClick={() => setCurrentDate(new Date())}
+                className="text-xs font-semibold px-2 sm:px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors"
+              >
+>>>>>>> 2f2bdad9279844c19f030c971fdf2af4a6837d01
                 Hoy
               </button>
               <button onClick={goPrev} className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors">
@@ -998,19 +1045,19 @@ export default function AgendaView() {
                 <ChevronRight size={16} />
               </button>
             </div>
-            <p className="font-semibold text-gray-700 text-sm capitalize">{toolbarTitle}</p>
-            <div className="flex items-center gap-1 bg-gray-100 rounded-xl p-1">
+            <p className="font-semibold text-gray-700 text-xs sm:text-sm capitalize truncate flex-1 text-center px-1">{toolbarTitle}</p>
+            <div className="flex items-center gap-0.5 sm:gap-1 bg-gray-100 rounded-xl p-1 shrink-0">
               {(
                 [
                   { label: 'Día',    value: 'day'   },
-                  { label: 'Semana', value: 'week'  },
+                  { label: 'Sem',    value: 'week'  },
                   { label: 'Mes',    value: 'month' },
                 ] as const
               ).map(v => (
                 <button
                   key={v.value}
                   onClick={() => setViewMode(v.value)}
-                  className={`text-xs font-medium px-3 py-1.5 rounded-lg transition-colors ${
+                  className={`text-xs font-medium px-2 sm:px-3 py-1.5 rounded-lg transition-colors ${
                     viewMode === v.value
                       ? 'bg-white shadow-sm text-beauty-primary'
                       : 'text-gray-500 hover:text-gray-700'
@@ -1122,8 +1169,8 @@ export default function AgendaView() {
           )}
 
           {/* Legend + occupancy */}
-          <div className="px-4 py-2 border-t border-gray-100 flex items-center gap-3">
-            <div className="flex flex-wrap gap-3">
+          <div className="px-2 sm:px-4 py-2 border-t border-gray-100 flex flex-col sm:flex-row items-start sm:items-center gap-2">
+            <div className="flex flex-wrap gap-2 sm:gap-3">
               {Object.entries(STATUS_CONFIG).slice(0, 6).map(([key, s]) => (
                 <div key={key} className="flex items-center gap-1.5">
                   <div className={`w-2.5 h-2.5 rounded-full ${s.dot}`} />
@@ -1131,9 +1178,9 @@ export default function AgendaView() {
                 </div>
               ))}
             </div>
-            <div className="ml-auto flex items-center gap-2 shrink-0">
-              <span className="text-[11px] text-gray-500">Ocupación del día: {ocupacion}%</span>
-              <div className="w-24 h-2 bg-gray-100 rounded-full overflow-hidden">
+            <div className="sm:ml-auto flex items-center gap-2 shrink-0">
+              <span className="text-[11px] text-gray-500">Ocupación: {ocupacion}%</span>
+              <div className="w-20 sm:w-24 h-2 bg-gray-100 rounded-full overflow-hidden">
                 <div
                   className="h-full bg-beauty-primary rounded-full transition-all"
                   style={{ width: `${ocupacion}%` }}
@@ -1143,12 +1190,21 @@ export default function AgendaView() {
           </div>
         </div>
 
+<<<<<<< HEAD
         {/* Detail panel — sidebar on desktop, modal on mobile */}
         {selectedCita && (
           <>
             {/* Mobile overlay */}
             <div className="sm:hidden fixed inset-0 z-50 flex items-end justify-center bg-black/50">
               <div className="bg-white rounded-t-3xl w-full max-h-[85vh] overflow-y-auto shadow-2xl">
+=======
+        {/* Detail panel — overlay on mobile, sidebar on desktop */}
+        {selectedCita && (
+          <>
+            {/* Mobile: fullscreen overlay */}
+            <div className="sm:hidden fixed inset-0 z-50 bg-black/50 flex items-end" onClick={() => setSelectedCita(null)}>
+              <div className="w-full bg-white rounded-t-2xl max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+>>>>>>> 2f2bdad9279844c19f030c971fdf2af4a6837d01
                 <DetailPanel
                   cita={selectedCita}
                   onClose={() => setSelectedCita(null)}
@@ -1158,7 +1214,11 @@ export default function AgendaView() {
                 />
               </div>
             </div>
+<<<<<<< HEAD
             {/* Desktop sidebar */}
+=======
+            {/* Desktop: sidebar */}
+>>>>>>> 2f2bdad9279844c19f030c971fdf2af4a6837d01
             <div className="hidden sm:block">
               <DetailPanel
                 cita={selectedCita}

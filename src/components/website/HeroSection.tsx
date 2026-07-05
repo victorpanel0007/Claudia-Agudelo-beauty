@@ -28,12 +28,20 @@ export default function HeroSection() {
               </span>
             </h1>
 
+<<<<<<< HEAD
             <p className="text-beauty-text text-base leading-relaxed mb-6 max-w-md mx-auto lg:mx-0">
               En nuestro salón, cada detalle está pensado para que te sientas única, hermosa y renovada.
             </p>
 
             {/* CTA buttons — stack on mobile, row on sm+ */}
             <div className="flex flex-col sm:flex-row gap-3 justify-center lg:justify-start">
+=======
+            <p className="text-beauty-text text-sm sm:text-base leading-relaxed mb-8 max-w-md">
+              En nuestro salón, cada detalle está pensado para que te sientas única, hermosa y renovada.
+            </p>
+
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+>>>>>>> 2f2bdad9279844c19f030c971fdf2af4a6837d01
               <a href="#reservar"
                 className="bg-beauty-primary text-white font-semibold px-8 py-4 rounded-full text-base hover:bg-beauty-primary-dark transition-all shadow-beauty hover:shadow-beauty-lg flex items-center justify-center gap-2 min-h-[52px]">
                 💅 Agenda tu Cita

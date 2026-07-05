@@ -231,7 +231,11 @@ export default function WhatsAppSection() {
       <div className="max-w-6xl mx-auto px-4 sm:px-6">
         {/* Header */}
         <div className="text-center mb-10 sm:mb-14">
+<<<<<<< HEAD
           <p className="text-beauty-secondary text-xs sm:text-sm font-medium tracking-widest uppercase mb-3">
+=======
+          <p className="text-beauty-secondary text-sm font-medium tracking-widest uppercase mb-3">
+>>>>>>> 2f2bdad9279844c19f030c971fdf2af4a6837d01
             WhatsApp Automático
           </p>
           <h2 className="font-serif text-3xl sm:text-4xl md:text-5xl font-bold text-beauty-text-dark mb-4">
@@ -248,11 +252,19 @@ export default function WhatsAppSection() {
         {/* Phone first on mobile, side-by-side on lg */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-10 items-start">
 
+<<<<<<< HEAD
           {/* Phone mockup — smaller on mobile */}
           <div className="flex justify-center">
             <div className="relative">
               {/* Phone frame — w-60 on mobile, w-72 on sm+ */}
               <div className="w-60 sm:w-72 bg-[#111B21] rounded-[2.5rem] shadow-2xl border-4 border-gray-700 overflow-hidden">
+=======
+          {/* Phone mockup */}
+          <div className="flex justify-center px-6 sm:px-0">
+            <div className="relative w-full max-w-[288px]">
+              {/* Phone frame */}
+              <div className="w-full bg-[#111B21] rounded-[2.5rem] shadow-2xl border-4 border-gray-700 overflow-hidden">
+>>>>>>> 2f2bdad9279844c19f030c971fdf2af4a6837d01
                 {/* Status bar */}
                 <div className="bg-[#1F2C34] px-5 py-2 flex items-center gap-3">
                   <div className="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center shrink-0">
@@ -326,7 +338,7 @@ export default function WhatsAppSection() {
               <motion.div
                 animate={{ y: [0, -6, 0] }}
                 transition={{ repeat: Infinity, duration: 3 }}
-                className="absolute -right-4 top-1/3 bg-beauty-secondary text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-beauty"
+                className="absolute -right-2 sm:-right-4 top-1/3 bg-beauty-secondary text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-beauty whitespace-nowrap"
               >
                 ⚡ Sync en tiempo real
               </motion.div>

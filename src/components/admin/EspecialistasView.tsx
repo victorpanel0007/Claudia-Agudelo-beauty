@@ -224,19 +224,19 @@ export default function EspecialistasView() {
   return (
     <div className="space-y-5 animate-fade-in">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-start sm:items-center justify-between gap-2 flex-wrap">
         <div>
           <h2 className="text-xl font-bold text-beauty-text flex items-center gap-2">
             <User size={22} className="text-beauty-secondary" />
             Especialistas
           </h2>
-          <p className="text-gray-500 text-sm">Gestiona horarios y disponibilidad</p>
+          <p className="text-gray-500 text-sm hidden sm:block">Gestiona horarios y disponibilidad</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 flex-wrap">
           {/* Indicador estado Evolution API */}
           {waStatus === 'connected' ? (
             <span className="flex items-center gap-1.5 bg-green-100 text-green-700 text-xs font-semibold px-3 py-1.5 rounded-full">
-              <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" /> WhatsApp 🟢
+              <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" /> WA 🟢
             </span>
           ) : waStatus === 'disconnected' ? (
             <span
@@ -244,7 +244,7 @@ export default function EspecialistasView() {
               className="flex items-center gap-1.5 bg-red-100 text-red-600 text-xs font-semibold px-3 py-1.5 rounded-full cursor-pointer hover:bg-red-200 transition-colors"
               title="Haz clic para reintentar"
             >
-              <span className="w-2 h-2 bg-red-500 rounded-full" /> WhatsApp 🔴
+              <span className="w-2 h-2 bg-red-500 rounded-full" /> WA 🔴
             </span>
           ) : (
             <span className="flex items-center gap-1.5 bg-gray-100 text-gray-500 text-xs font-semibold px-3 py-1.5 rounded-full">

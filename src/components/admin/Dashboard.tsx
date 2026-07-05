@@ -146,11 +146,19 @@ export default function Dashboard() {
         ) : (
           <div className="divide-y divide-gray-50">
             {citasHoy.map(cita => (
+<<<<<<< HEAD
               <div key={cita.id} className="p-3 sm:p-4 flex items-center gap-3 hover:bg-gray-50 transition-colors min-h-[60px]">
                 {/* Time */}
                 <div className="text-center w-14 shrink-0">
                   <p className="font-bold text-beauty-text text-xs sm:text-sm">{formatTime(cita.fecha_inicio)}</p>
                   <p className="text-gray-400 text-[10px]">{formatTime(cita.fecha_fin)}</p>
+=======
+              <div key={cita.id} className="p-4 flex items-center gap-3 hover:bg-gray-50 transition-colors">
+                {/* Time */}
+                <div className="text-center min-w-[52px] shrink-0">
+                  <p className="font-bold text-beauty-text text-sm">{formatTime(cita.fecha_inicio)}</p>
+                  <p className="text-gray-400 text-xs">{formatTime(cita.fecha_fin)}</p>
+>>>>>>> 2f2bdad9279844c19f030c971fdf2af4a6837d01
                 </div>
 
                 {/* Avatar */}
@@ -173,7 +181,9 @@ export default function Dashboard() {
                   </p>
                 </div>
 
-                <StatusBadge estado={cita.estado} />
+                <div className="shrink-0">
+                  <StatusBadge estado={cita.estado} />
+                </div>
               </div>
             ))}
           </div>

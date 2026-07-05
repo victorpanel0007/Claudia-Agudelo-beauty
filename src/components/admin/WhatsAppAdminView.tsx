@@ -144,13 +144,13 @@ export default function WhatsAppAdminView() {
   return (
     <div className="space-y-5 animate-fade-in">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2 flex-wrap">
         <div>
           <h2 className="text-xl font-bold text-beauty-text flex items-center gap-2">
             <MessageSquare size={22} className="text-green-500" />
             WhatsApp Bot
           </h2>
-          <p className="text-gray-500 text-sm">Automatización y monitoreo de conversaciones</p>
+          <p className="text-gray-500 text-sm hidden sm:block">Automatización y monitoreo de conversaciones</p>
         </div>
         <div className="flex items-center gap-2">
           {instanceStatus === 'connected' ? (
@@ -221,9 +221,9 @@ export default function WhatsAppAdminView() {
 
       {/* TAB: Conversaciones */}
       {activeTab === 'conversaciones' && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 h-[500px]">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 min-h-[400px] lg:h-[500px]">
           {/* Conversation list */}
-          <div className="beauty-card overflow-hidden flex flex-col">
+          <div className="beauty-card overflow-hidden flex flex-col max-h-[300px] lg:max-h-none">
             <div className="p-3 border-b border-gray-100">
               <p className="font-semibold text-beauty-text text-sm">
                 Conversaciones ({conversaciones.length})
@@ -273,7 +273,7 @@ export default function WhatsAppAdminView() {
           </div>
 
           {/* Chat view */}
-          <div className="lg:col-span-2 beauty-card overflow-hidden flex flex-col">
+          <div className="lg:col-span-2 beauty-card overflow-hidden flex flex-col min-h-[300px] lg:min-h-0">
             {selectedConv ? (
               <>
                 {/* Chat header */}

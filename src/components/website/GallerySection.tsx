@@ -22,7 +22,11 @@ export default function GallerySection() {
 
         {/* Header */}
         <div className="text-center mb-10 sm:mb-12">
+<<<<<<< HEAD
           <p className="text-beauty-secondary text-xs sm:text-sm font-medium tracking-widest uppercase mb-3">
+=======
+          <p className="text-beauty-secondary text-sm font-medium tracking-widest uppercase mb-3">
+>>>>>>> 2f2bdad9279844c19f030c971fdf2af4a6837d01
             ♥ Galería
           </p>
           <h2 className="font-serif text-3xl sm:text-4xl font-bold text-beauty-text-dark mb-2">
