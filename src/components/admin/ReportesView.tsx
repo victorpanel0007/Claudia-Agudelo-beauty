@@ -731,7 +731,6 @@ export default function ReportesView() {
               </div>
             </>
           )}
-        </div>
       </div>
 
       {/* Modal – Agregar Gasto */}
