@@ -118,143 +118,205 @@ export default function NotificacionesView() {
         ))}
       </div>
 
-      {/* Filtros */}
+      {/* Filtros — stack en móvil */}
       <div className="bg-white border border-beauty-primary/20 rounded-2xl p-4 shadow-sm">
-        <div className="flex flex-wrap gap-3 items-center">
-          <div className="flex items-center gap-2 text-gray-400">
-            <Filter size={16} /> <span className="text-xs font-medium">Filtrar:</span>
+        <div className="flex flex-wrap gap-2 items-center">
+          <div className="flex items-center gap-1.5 text-gray-400 w-full sm:w-auto">
+            <Filter size={15} /> <span className="text-xs font-medium">Filtrar:</span>
           </div>
           <select value={filtroEstado} onChange={e => setFiltroEstado(e.target.value)}
-            className="text-xs border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-beauty-primary">
+            className="flex-1 sm:flex-none text-sm border border-gray-200 rounded-xl px-3 py-2.5 focus:outline-none focus:border-beauty-primary min-h-[44px]">
             <option value="">Todos los estados</option>
             <option value="enviado">Enviado</option>
             <option value="error">Error</option>
             <option value="pendiente">Pendiente</option>
           </select>
           <select value={filtroEsp} onChange={e => setFiltroEsp(e.target.value)}
-            className="text-xs border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-beauty-primary">
+            className="flex-1 sm:flex-none text-sm border border-gray-200 rounded-xl px-3 py-2.5 focus:outline-none focus:border-beauty-primary min-h-[44px]">
             <option value="">Todas las especialistas</option>
             {especialistas.map(e => <option key={e.id} value={e.id}>{e.nombre}</option>)}
           </select>
-          <div className="relative flex-1 min-w-48">
-            <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          <div className="relative w-full sm:flex-1 sm:min-w-48">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
             <input value={buscar} onChange={e => setBuscar(e.target.value)}
-              placeholder="Buscar por especialista o número..."
-              className="w-full text-xs border border-gray-200 rounded-lg pl-8 pr-3 py-2 focus:outline-none focus:border-beauty-primary" />
+              placeholder="Buscar especialista o número..."
+              className="w-full text-sm border border-gray-200 rounded-xl pl-9 pr-3 py-2.5 focus:outline-none focus:border-beauty-primary min-h-[44px]" />
           </div>
           {(filtroEstado || filtroEsp || buscar) && (
             <button onClick={() => { setFiltroEstado(''); setFiltroEsp(''); setBuscar('') }}
-              className="text-xs text-gray-400 hover:text-red-500 transition-colors">
-              Limpiar filtros
+              className="text-xs text-gray-400 hover:text-red-500 transition-colors px-2 py-1 min-h-[44px]">
+              Limpiar
             </button>
           )}
         </div>
       </div>
 
-      {/* Tabla + Detalle */}
-      <div className="flex gap-4">
-        {/* Tabla */}
+      {/* Tabla + Detalle — apilado en móvil, lado a lado en lg */}
+      <div className="flex flex-col lg:flex-row gap-4">
+        {/* Lista / Tabla */}
         <div className="flex-1 bg-white border border-beauty-primary/20 rounded-2xl shadow-sm overflow-hidden min-w-0">
-          <div className="overflow-x-auto">
-            {loading ? (
-              <div className="p-10 text-center text-gray-400 text-sm">Cargando...</div>
-            ) : notifs.length === 0 ? (
-              <div className="p-10 text-center">
-                <Bell size={32} className="mx-auto text-gray-200 mb-3" />
-                <p className="text-gray-400 text-sm">No hay notificaciones</p>
-              </div>
-            ) : (
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-gray-100 bg-beauty-bg">
-                    <th className="text-left py-3 px-4 text-gray-500 font-medium text-xs">Fecha</th>
-                    <th className="text-left py-3 px-4 text-gray-500 font-medium text-xs">Especialista</th>
-                    <th className="text-left py-3 px-4 text-gray-500 font-medium text-xs">WhatsApp</th>
-                    <th className="text-left py-3 px-4 text-gray-500 font-medium text-xs">Cliente</th>
-                    <th className="text-left py-3 px-4 text-gray-500 font-medium text-xs">Estado</th>
-                    <th className="text-left py-3 px-4 text-gray-500 font-medium text-xs">Acciones</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {notifs.map(n => {
-                    const st = ESTADO_CONFIG[n.estado] || ESTADO_CONFIG.pendiente
-                    const isSelected = selected?.id === n.id
-                    return (
-                      <tr key={n.id}
-                        onClick={() => setSelected(isSelected ? null : n)}
-                        className={`border-b border-gray-50 cursor-pointer transition-colors ${
-                          isSelected ? 'bg-beauty-rosa-claro' : 'hover:bg-beauty-bg'
-                        }`}>
-                        <td className="py-3 px-4 text-gray-500 text-xs whitespace-nowrap">{fmt(n.created_at)}</td>
-                        <td className="py-3 px-4 font-medium text-beauty-text text-sm">{n.especialista_nombre}</td>
-                        <td className="py-3 px-4 text-gray-500 text-xs">{n.whatsapp_destino}</td>
-                        <td className="py-3 px-4 text-gray-500 text-xs">
-                          {(n.cita as { cliente?: { nombre?: string } } | null)?.cliente?.nombre || '—'}
-                        </td>
-                        <td className="py-3 px-4">
+          {loading ? (
+            <div className="p-10 text-center text-gray-400 text-sm">Cargando...</div>
+          ) : notifs.length === 0 ? (
+            <div className="p-10 text-center">
+              <Bell size={32} className="mx-auto text-gray-200 mb-3" />
+              <p className="text-gray-400 text-sm">No hay notificaciones</p>
+            </div>
+          ) : (
+            <>
+              {/* Tarjetas en móvil */}
+              <div className="divide-y divide-gray-50 lg:hidden">
+                {notifs.map(n => {
+                  const st = ESTADO_CONFIG[n.estado] || ESTADO_CONFIG.pendiente
+                  const isSelected = selected?.id === n.id
+                  return (
+                    <button key={n.id} onClick={() => setSelected(isSelected ? null : n)}
+                      className={`w-full p-4 text-left transition-colors active:bg-gray-100 min-h-[60px] ${isSelected ? 'bg-beauty-rosa-claro' : 'hover:bg-beauty-bg'}`}>
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-beauty-text text-sm truncate">{n.especialista_nombre}</p>
+                          <p className="text-gray-400 text-xs mt-0.5">{n.whatsapp_destino}</p>
+                          <p className="text-gray-400 text-xs">{fmt(n.created_at)}</p>
+                        </div>
+                        <div className="flex flex-col items-end gap-2 shrink-0">
                           <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full ${st.cls}`}>
                             <st.icon size={11} /> {st.label}
                           </span>
-                        </td>
-                        <td className="py-3 px-4">
-                          <div className="flex items-center gap-2">
+                          {n.estado === 'error' && (
+                            <button onClick={e => { e.stopPropagation(); reenviar(n.id) }}
+                              disabled={resending === n.id}
+                              className="flex items-center gap-1 text-xs bg-beauty-primary text-white px-2.5 py-1.5 rounded-lg min-h-[36px]">
+                              {resending === n.id ? <RefreshCw size={11} className="animate-spin" /> : <Send size={11} />}
+                              Reenviar
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </button>
+                  )
+                })}
+              </div>
+
+              {/* Tabla en desktop */}
+              <div className="hidden lg:block overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-gray-100 bg-beauty-bg">
+                      <th className="text-left py-3 px-4 text-gray-500 font-medium text-xs">Fecha</th>
+                      <th className="text-left py-3 px-4 text-gray-500 font-medium text-xs">Especialista</th>
+                      <th className="text-left py-3 px-4 text-gray-500 font-medium text-xs">WhatsApp</th>
+                      <th className="text-left py-3 px-4 text-gray-500 font-medium text-xs">Cliente</th>
+                      <th className="text-left py-3 px-4 text-gray-500 font-medium text-xs">Estado</th>
+                      <th className="text-left py-3 px-4 text-gray-500 font-medium text-xs">Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {notifs.map(n => {
+                      const st = ESTADO_CONFIG[n.estado] || ESTADO_CONFIG.pendiente
+                      const isSelected = selected?.id === n.id
+                      return (
+                        <tr key={n.id}
+                          onClick={() => setSelected(isSelected ? null : n)}
+                          className={`border-b border-gray-50 cursor-pointer transition-colors ${isSelected ? 'bg-beauty-rosa-claro' : 'hover:bg-beauty-bg'}`}>
+                          <td className="py-3 px-4 text-gray-500 text-xs whitespace-nowrap">{fmt(n.created_at)}</td>
+                          <td className="py-3 px-4 font-medium text-beauty-text text-sm">{n.especialista_nombre}</td>
+                          <td className="py-3 px-4 text-gray-500 text-xs">{n.whatsapp_destino}</td>
+                          <td className="py-3 px-4 text-gray-500 text-xs">{(n.cita as { cliente?: { nombre?: string } } | null)?.cliente?.nombre || '—'}</td>
+                          <td className="py-3 px-4">
+                            <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full ${st.cls}`}>
+                              <st.icon size={11} /> {st.label}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4">
                             {n.estado === 'error' && (
-                              <button
-                                onClick={e => { e.stopPropagation(); reenviar(n.id) }}
+                              <button onClick={e => { e.stopPropagation(); reenviar(n.id) }}
                                 disabled={resending === n.id}
-                                className="flex items-center gap-1 text-xs bg-beauty-primary text-white px-2.5 py-1.5 rounded-lg hover:bg-beauty-primary-dark transition-colors disabled:opacity-50"
-                              >
-                                {resending === n.id
-                                  ? <RefreshCw size={11} className="animate-spin" />
-                                  : <Send size={11} />
-                                }
+                                className="flex items-center gap-1 text-xs bg-beauty-primary text-white px-2.5 py-1.5 rounded-lg hover:bg-beauty-primary-dark disabled:opacity-50">
+                                {resending === n.id ? <RefreshCw size={11} className="animate-spin" /> : <Send size={11} />}
                                 Reenviar
                               </button>
                             )}
-                          </div>
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            )}
-          </div>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
         </div>
 
-        {/* Panel detalle */}
+        {/* Panel detalle — modal en móvil, sidebar en lg */}
         {selected && (
-          <div className="w-80 shrink-0 bg-white border border-beauty-primary/20 rounded-2xl shadow-sm p-4 space-y-4 overflow-y-auto max-h-[600px]">
-            <div className="flex items-center justify-between">
-              <p className="font-semibold text-beauty-text text-sm">Detalle</p>
-              <button onClick={() => setSelected(null)} className="text-gray-400 hover:text-gray-600 text-lg leading-none">×</button>
+          <>
+            {/* Móvil: modal bottom sheet */}
+            <div className="lg:hidden fixed inset-0 z-50 flex items-end bg-black/50">
+              <div className="bg-white rounded-t-3xl w-full max-h-[80vh] overflow-y-auto shadow-2xl">
+                <div className="flex justify-center pt-3 pb-1">
+                  <div className="w-10 h-1 rounded-full bg-gray-200" />
+                </div>
+                <div className="p-4 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <p className="font-semibold text-beauty-text text-sm">Detalle notificación</p>
+                    <button onClick={() => setSelected(null)} className="text-gray-400 text-2xl leading-none w-9 h-9 flex items-center justify-center">×</button>
+                  </div>
+                  <div className="bg-beauty-bg rounded-xl p-3 space-y-1.5 text-xs">
+                    <p><span className="text-gray-400">Especialista:</span> <span className="font-medium">{selected.especialista_nombre}</span></p>
+                    <p><span className="text-gray-400">WhatsApp:</span> {selected.whatsapp_destino}</p>
+                    <p><span className="text-gray-400">Tipo:</span> {selected.tipo}</p>
+                    <p><span className="text-gray-400">Fecha:</span> {fmt(selected.created_at)}</p>
+                    {selected.error_detalle && <p className="text-red-500"><span className="text-gray-400">Error:</span> {selected.error_detalle}</p>}
+                  </div>
+                  <pre className="bg-gray-50 border border-gray-200 rounded-xl p-3 text-xs text-gray-700 whitespace-pre-wrap leading-relaxed max-h-48 overflow-y-auto">
+                    {selected.mensaje}
+                  </pre>
+                  {selected.estado === 'error' && (
+                    <button onClick={() => reenviar(selected.id)} disabled={resending === selected.id}
+                      className="w-full flex items-center justify-center gap-2 bg-beauty-primary text-white py-3 rounded-xl text-sm font-semibold min-h-[48px]">
+                      {resending === selected.id ? <RefreshCw size={13} className="animate-spin" /> : <Send size={13} />}
+                      Reenviar notificación
+                    </button>
+                  )}
+                  <button onClick={() => setSelected(null)}
+                    className="w-full py-3 rounded-xl border border-gray-200 text-sm text-gray-500 min-h-[48px]">
+                    Cerrar
+                  </button>
+                </div>
+              </div>
             </div>
-            <div className="space-y-2 text-xs">
-              <div className="bg-beauty-bg rounded-xl p-3 space-y-1.5">
-                <p><span className="text-gray-400">Especialista:</span> <span className="font-medium">{selected.especialista_nombre}</span></p>
-                <p><span className="text-gray-400">WhatsApp:</span> {selected.whatsapp_destino}</p>
-                <p><span className="text-gray-400">Tipo:</span> {selected.tipo}</p>
-                <p><span className="text-gray-400">Fecha:</span> {fmt(selected.created_at)}</p>
-                <p><span className="text-gray-400">Código:</span> {selected.codigo_respuesta || '—'}</p>
-                {selected.error_detalle && (
-                  <p className="text-red-500"><span className="text-gray-400">Error:</span> {selected.error_detalle}</p>
+
+            {/* Desktop: sidebar */}
+            <div className="hidden lg:block w-80 shrink-0 bg-white border border-beauty-primary/20 rounded-2xl shadow-sm p-4 space-y-4 overflow-y-auto max-h-[600px]">
+              <div className="flex items-center justify-between">
+                <p className="font-semibold text-beauty-text text-sm">Detalle</p>
+                <button onClick={() => setSelected(null)} className="text-gray-400 hover:text-gray-600 text-lg leading-none">×</button>
+              </div>
+              <div className="space-y-2 text-xs">
+                <div className="bg-beauty-bg rounded-xl p-3 space-y-1.5">
+                  <p><span className="text-gray-400">Especialista:</span> <span className="font-medium">{selected.especialista_nombre}</span></p>
+                  <p><span className="text-gray-400">WhatsApp:</span> {selected.whatsapp_destino}</p>
+                  <p><span className="text-gray-400">Tipo:</span> {selected.tipo}</p>
+                  <p><span className="text-gray-400">Fecha:</span> {fmt(selected.created_at)}</p>
+                  <p><span className="text-gray-400">Código:</span> {selected.codigo_respuesta || '—'}</p>
+                  {selected.error_detalle && <p className="text-red-500"><span className="text-gray-400">Error:</span> {selected.error_detalle}</p>}
+                </div>
+                <div>
+                  <p className="text-gray-400 mb-1 font-medium">Mensaje enviado:</p>
+                  <pre className="bg-gray-50 border border-gray-200 rounded-xl p-3 text-xs text-gray-700 whitespace-pre-wrap leading-relaxed max-h-72 overflow-y-auto">
+                    {selected.mensaje}
+                  </pre>
+                </div>
+                {selected.estado === 'error' && (
+                  <button onClick={() => reenviar(selected.id)} disabled={resending === selected.id}
+                    className="w-full flex items-center justify-center gap-2 bg-beauty-primary text-white py-2.5 rounded-xl text-xs font-semibold hover:bg-beauty-primary-dark disabled:opacity-50">
+                    {resending === selected.id ? <RefreshCw size={13} className="animate-spin" /> : <Send size={13} />}
+                    Reenviar notificación
+                  </button>
                 )}
               </div>
-              <div>
-                <p className="text-gray-400 mb-1 font-medium">Mensaje enviado:</p>
-                <pre className="bg-gray-50 border border-gray-200 rounded-xl p-3 text-xs text-gray-700 whitespace-pre-wrap leading-relaxed max-h-72 overflow-y-auto">
-                  {selected.mensaje}
-                </pre>
-              </div>
-              {selected.estado === 'error' && (
-                <button onClick={() => reenviar(selected.id)} disabled={resending === selected.id}
-                  className="w-full flex items-center justify-center gap-2 bg-beauty-primary text-white py-2.5 rounded-xl text-xs font-semibold hover:bg-beauty-primary-dark transition-colors disabled:opacity-50">
-                  {resending === selected.id ? <RefreshCw size={13} className="animate-spin" /> : <Send size={13} />}
-                  Reenviar notificación
-                </button>
-              )}
             </div>
-          </div>
+          </>
         )}
       </div>
     </div>

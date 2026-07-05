@@ -1,17 +1,11 @@
 ﻿'use client'
 
 import { useState } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
 import Image from 'next/image'
 import { Eye, EyeOff, Lock, Mail, Loader2 } from 'lucide-react'
+import { loginAction } from '@/lib/actions/auth'
 
 export default function LoginForm() {
-  const router = useRouter()
-  const searchParams = useSearchParams()
-  const redirectTo = searchParams.get('redirect') || '/admin'
-  const supabase = createClient()
-
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -23,21 +17,13 @@ export default function LoginForm() {
     setError('')
     setLoading(true)
 
-    const { data: { session }, error: authError } = await supabase.auth.signInWithPassword({ email, password })
+    const result = await loginAction(email, password)
 
-    if (authError) {
-      setError('Credenciales incorrectas. Verifica tu email y contraseña.')
+    if (result?.error) {
+      setError(result.error)
       setLoading(false)
-      return
     }
-
-    const rol = session?.user?.user_metadata?.rol
-    if (rol === 'especialista') {
-      router.push('/especialista')
-    } else {
-      router.push(redirectTo)
-    }
-    router.refresh()
+    // Si no hay error, loginAction hace redirect() server-side
   }
 
   return (

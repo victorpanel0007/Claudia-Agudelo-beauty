@@ -36,9 +36,9 @@ const SOCIAL = [
 
 export default function Footer() {
   return (
-    <footer className="bg-beauty-bg border-t border-beauty-primary/20 py-10">
+    <footer className="bg-beauty-bg border-t border-beauty-primary/20 py-8 sm:py-10">
       <div className="max-w-5xl mx-auto px-4 sm:px-6">
-        <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+        <div className="flex flex-col md:flex-row items-center justify-between gap-5 sm:gap-6">
 
           {/* Brand */}
           <div className="text-center md:text-left">
@@ -48,8 +48,8 @@ export default function Footer() {
             <p className="text-beauty-text-muted text-sm mt-1">Salón de Belleza Premium</p>
           </div>
 
-          {/* Nav */}
-          <nav className="flex flex-wrap justify-center gap-5 text-sm">
+          {/* Nav — scroll on very small screens */}
+          <nav className="flex flex-wrap justify-center gap-4 text-sm">
             {[
               { href: '#inicio',    label: 'Inicio' },
               { href: '#servicios', label: 'Servicios' },
@@ -58,23 +58,23 @@ export default function Footer() {
               { href: '#contacto',  label: 'Contacto' },
             ].map(item => (
               <a key={item.href} href={item.href}
-                className="text-beauty-text hover:text-beauty-primary transition-colors font-medium">
+                className="text-beauty-text hover:text-beauty-primary transition-colors font-medium py-1">
                 {item.label}
               </a>
             ))}
           </nav>
         </div>
 
-        <div className="gold-divider my-6" />
+        <div className="gold-divider my-5 sm:my-6" />
 
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-beauty-text-muted">
-          <p>© 2026 Claudia Agudelo Beauty. Todos los derechos reservados.</p>
+          <p className="text-center sm:text-left">© 2026 Claudia Agudelo Beauty. Todos los derechos reservados.</p>
 
-          {/* Redes sociales */}
+          {/* Redes sociales — larger tap targets */}
           <div className="flex items-center gap-2">
             {SOCIAL.map(s => (
               <a key={s.label} href={s.href} target="_blank" rel="noopener noreferrer" aria-label={s.label}
-                className={`w-8 h-8 rounded-lg ${s.bg} flex items-center justify-center text-white hover:scale-110 transition-transform`}>
+                className={`w-10 h-10 rounded-xl ${s.bg} flex items-center justify-center text-white hover:scale-110 transition-transform`}>
                 {s.icon}
               </a>
             ))}
@@ -83,7 +83,7 @@ export default function Footer() {
           <div className="flex items-center gap-3">
             <p>Hecho con 💖 en Colombia</p>
             <Link href="/admin"
-              className="flex items-center gap-1.5 bg-beauty-secondary/10 border border-beauty-secondary/40 text-beauty-secondary hover:bg-beauty-secondary/20 px-3 py-1.5 rounded-full transition-colors font-medium">
+              className="flex items-center gap-1.5 bg-beauty-secondary/10 border border-beauty-secondary/40 text-beauty-secondary hover:bg-beauty-secondary/20 px-3 py-2 rounded-full transition-colors font-medium min-h-[40px]">
               <LayoutDashboard size={12} />
               Admin
             </Link>

@@ -227,31 +227,32 @@ export default function WhatsAppSection() {
   }
 
   return (
-    <section id="whatsapp" className="py-20 bg-beauty-bg overflow-hidden">
+    <section id="whatsapp" className="py-14 sm:py-20 bg-beauty-bg overflow-hidden">
       <div className="max-w-6xl mx-auto px-4 sm:px-6">
         {/* Header */}
-        <div className="text-center mb-14">
-          <p className="text-beauty-secondary text-sm font-medium tracking-widest uppercase mb-3">
+        <div className="text-center mb-10 sm:mb-14">
+          <p className="text-beauty-secondary text-xs sm:text-sm font-medium tracking-widest uppercase mb-3">
             WhatsApp Automático
           </p>
-          <h2 className="font-serif text-4xl md:text-5xl font-bold text-beauty-text-dark mb-4">
+          <h2 className="font-serif text-3xl sm:text-4xl md:text-5xl font-bold text-beauty-text-dark mb-4">
             Tu Recepcionista Virtual
             <span className="block text-beauty-primary">Inteligente 🤖</span>
           </h2>
-          <p className="text-beauty-text text-base max-w-xl mx-auto">
+          <p className="text-beauty-text text-sm sm:text-base max-w-xl mx-auto">
             El bot atiende, agenda y confirma citas por WhatsApp de forma completamente automática,
             sincronizando todo en tiempo real con el panel administrativo.
           </p>
           <div className="gold-divider w-24 mx-auto mt-6" />
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-start">
+        {/* Phone first on mobile, side-by-side on lg */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-10 items-start">
 
-          {/* Phone mockup */}
+          {/* Phone mockup — smaller on mobile */}
           <div className="flex justify-center">
             <div className="relative">
-              {/* Phone frame */}
-              <div className="w-72 bg-[#111B21] rounded-[2.5rem] shadow-2xl border-4 border-gray-700 overflow-hidden">
+              {/* Phone frame — w-60 on mobile, w-72 on sm+ */}
+              <div className="w-60 sm:w-72 bg-[#111B21] rounded-[2.5rem] shadow-2xl border-4 border-gray-700 overflow-hidden">
                 {/* Status bar */}
                 <div className="bg-[#1F2C34] px-5 py-2 flex items-center gap-3">
                   <div className="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center shrink-0">
@@ -266,9 +267,9 @@ export default function WhatsAppSection() {
                   </svg>
                 </div>
 
-                {/* Chat area */}
+                {/* Chat area — shorter on mobile */}
                 <div
-                  className="bg-[#0B141A] h-[480px] overflow-y-auto p-3 flex flex-col"
+                  className="bg-[#0B141A] h-[380px] sm:h-[480px] overflow-y-auto p-3 flex flex-col"
                   style={{
                     backgroundImage: `url("data:image/svg+xml,%3Csvg width='200' height='200' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='200' height='200' fill='%230B141A'/%3E%3C/svg%3E")`,
                   }}
@@ -334,7 +335,8 @@ export default function WhatsAppSection() {
 
           {/* Features grid */}
           <div className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* 2 cols on mobile too — cards are compact enough */}
+            <div className="grid grid-cols-2 gap-3 sm:gap-4">
               {FEATURES.map((f, i) => (
                 <motion.div
                   key={i}

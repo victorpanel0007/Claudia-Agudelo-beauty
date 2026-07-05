@@ -115,9 +115,9 @@ export default function BookingSection() {
 
   if (success) {
     return (
-      <section id="reservar" className="py-20 bg-white">
+      <section id="reservar" className="py-14 sm:py-20 bg-white">
         <div className="max-w-md mx-auto px-4 text-center">
-          <div className="beauty-card p-10">
+          <div className="beauty-card p-8 sm:p-10">
             <div className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-6">
               <Check size={40} className="text-green-600" />
             </div>
@@ -137,56 +137,57 @@ export default function BookingSection() {
   }
 
   return (
-    <section id="reservar" className="py-20 bg-white">
+    <section id="reservar" className="py-14 sm:py-20 bg-white">
       <Toaster position="top-center" />
       <div className="max-w-2xl mx-auto px-4 sm:px-6">
 
         {/* Header */}
-        <div className="text-center mb-10">
-          <p className="text-beauty-secondary text-sm font-medium tracking-widest uppercase mb-3">
+        <div className="text-center mb-8 sm:mb-10">
+          <p className="text-beauty-secondary text-xs sm:text-sm font-medium tracking-widest uppercase mb-3">
             ♥ Reserva Online
           </p>
-          <h2 className="font-serif text-4xl font-bold text-beauty-text-dark mb-2">
-            Tu Cita en <span className="text-beauty-primary">3 Pasos</span>
+          <h2 className="font-serif text-3xl sm:text-4xl font-bold text-beauty-text-dark mb-2">
+            Tu Cita en <span className="text-beauty-primary">Minutos</span>
           </h2>
           <div className="gold-divider w-24 mx-auto mt-4" />
         </div>
 
         {/* Indicador de pasos */}
-        <div className="flex items-center justify-center mb-8 gap-2">
+        <div className="flex items-center justify-center mb-6 sm:mb-8 gap-2">
           {[1, 2].map(s => (
             <div key={s} className="flex items-center gap-2">
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-all ${
+              <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold transition-all ${
                 step >= s ? 'bg-beauty-secondary text-white' : 'bg-gray-200 text-gray-400'
               }`}>{s}</div>
-              {s < 2 && <div className={`w-12 h-0.5 ${step >= 2 ? 'bg-beauty-secondary' : 'bg-gray-200'}`} />}
+              {s < 2 && <div className={`w-10 sm:w-16 h-0.5 ${step >= 2 ? 'bg-beauty-secondary' : 'bg-gray-200'}`} />}
             </div>
           ))}
         </div>
 
         {/* Paso 1 */}
         {step === 1 && (
-          <form onSubmit={handleSubmit(checkAvailability)} className="beauty-card p-6 space-y-5">
+          <form onSubmit={handleSubmit(checkAvailability)} className="beauty-card p-4 sm:p-6 space-y-4">
 
+            {/* Nombre y teléfono: stack on mobile */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-beauty-text mb-1">
+                <label className="block text-sm font-medium text-beauty-text mb-1.5">
                   <User size={14} className="inline mr-1" /> Nombre completo
                 </label>
-                <input {...register('nombre')} className="input-beauty" placeholder="Tu nombre" />
+                <input {...register('nombre')} className="input-beauty" placeholder="Tu nombre completo" />
                 {errors.nombre && <p className="text-red-500 text-xs mt-1">{errors.nombre.message}</p>}
               </div>
               <div>
-                <label className="block text-sm font-medium text-beauty-text mb-1">
+                <label className="block text-sm font-medium text-beauty-text mb-1.5">
                   <Phone size={14} className="inline mr-1" /> Teléfono
                 </label>
-                <input {...register('telefono')} className="input-beauty" placeholder="3001234567" />
+                <input {...register('telefono')} className="input-beauty" placeholder="3001234567" inputMode="tel" />
                 {errors.telefono && <p className="text-red-500 text-xs mt-1">{errors.telefono.message}</p>}
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-beauty-text mb-1">Categoría</label>
+              <label className="block text-sm font-medium text-beauty-text mb-1.5">Categoría</label>
               <select {...register('categoria_id')} className="input-beauty">
                 <option value="">Selecciona una categoría</option>
                 {CATEGORIAS.map(cat => (
@@ -198,7 +199,7 @@ export default function BookingSection() {
 
             {categoriaId && (
               <div>
-                <label className="block text-sm font-medium text-beauty-text mb-1">Servicio</label>
+                <label className="block text-sm font-medium text-beauty-text mb-1.5">Servicio</label>
                 <select {...register('servicio_idx')} className="input-beauty">
                   <option value="">Selecciona un servicio</option>
                   {serviciosDeCat.map((s, i) => (
@@ -214,7 +215,7 @@ export default function BookingSection() {
             )}
 
             <div>
-              <label className="block text-sm font-medium text-beauty-text mb-1">
+              <label className="block text-sm font-medium text-beauty-text mb-1.5">
                 <Calendar size={14} className="inline mr-1" /> Fecha deseada
               </label>
               <input {...register('fecha')} type="date"
@@ -223,15 +224,15 @@ export default function BookingSection() {
               {errors.fecha && <p className="text-red-500 text-xs mt-1">{errors.fecha.message}</p>}
             </div>
 
-            {/* Especialistas dinámicos desde Supabase */}
+            {/* Especialistas — grid responsivo, max 2 cols en móvil */}
             <div>
               <label className="block text-sm font-medium text-beauty-text mb-2">Especialista</label>
-              <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${Math.min(especialistas.length + 1, 3)}, 1fr)` }}>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                 <label className="cursor-pointer">
                   <input {...register('especialista_id')} type="radio" value="" className="sr-only peer" />
                   <div className="border-2 border-beauty-primary/40 rounded-xl p-3 text-center text-sm font-medium text-beauty-text
                     peer-checked:border-beauty-secondary peer-checked:text-beauty-secondary peer-checked:bg-beauty-secondary/10
-                    transition-all cursor-pointer hover:border-beauty-primary">
+                    transition-all cursor-pointer hover:border-beauty-primary min-h-[52px] flex items-center justify-center">
                     Cualquiera
                   </div>
                 </label>
@@ -240,7 +241,7 @@ export default function BookingSection() {
                     <input {...register('especialista_id')} type="radio" value={esp.id} className="sr-only peer" />
                     <div className="border-2 border-beauty-primary/40 rounded-xl p-3 text-center text-sm font-medium text-beauty-text
                       peer-checked:border-beauty-secondary peer-checked:text-beauty-secondary peer-checked:bg-beauty-secondary/10
-                      transition-all cursor-pointer hover:border-beauty-primary">
+                      transition-all cursor-pointer hover:border-beauty-primary min-h-[52px] flex items-center justify-center">
                       {esp.nombre}
                     </div>
                   </label>
@@ -249,20 +250,20 @@ export default function BookingSection() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-beauty-text mb-1">Observaciones (opcional)</label>
-              <textarea {...register('observaciones')} className="input-beauty resize-none" rows={3}
+              <label className="block text-sm font-medium text-beauty-text mb-1.5">Observaciones (opcional)</label>
+              <textarea {...register('observaciones')} className="input-beauty resize-none" rows={2}
                 placeholder="Alergias, preferencias, etc." />
             </div>
 
-            <button type="submit" disabled={loading} className="btn-beauty w-full justify-center">
-              {loading ? 'Verificando...' : <> Ver disponibilidad <ChevronRight size={18} /></>}
+            <button type="submit" disabled={loading} className="btn-beauty w-full justify-center py-4 text-base">
+              {loading ? 'Verificando disponibilidad...' : <> Ver horarios disponibles <ChevronRight size={18} /></>}
             </button>
           </form>
         )}
 
         {/* Paso 2 */}
         {step === 2 && (
-          <div className="beauty-card p-6">
+          <div className="beauty-card p-4 sm:p-6">
             <h3 className="font-semibold text-beauty-text-dark mb-1">Horarios disponibles</h3>
             <p className="text-beauty-text-muted text-sm mb-5">Selecciona el horario que prefieras</p>
 
@@ -280,7 +281,7 @@ export default function BookingSection() {
                       type="button"
                       key={i}
                       onClick={() => setSelectedSlot(slot)}
-                      className={`p-3 rounded-xl border-2 text-left transition-all ${
+                      className={`p-3 rounded-xl border-2 text-left transition-all min-h-[56px] ${
                         selectedSlot?.fecha_inicio === slot.fecha_inicio &&
                         selectedSlot?.especialista_id === slot.especialista_id
                           ? 'border-beauty-secondary bg-beauty-secondary/10'
@@ -289,18 +290,18 @@ export default function BookingSection() {
                       <div className="flex items-center gap-1 text-beauty-text-dark font-semibold text-sm">
                         <Clock size={12} /> {slot.hora}
                       </div>
-                      <p className="text-beauty-text-muted text-xs mt-0.5">{slot.especialista_nombre}</p>
+                      <p className="text-beauty-text-muted text-xs mt-0.5 truncate">{slot.especialista_nombre}</p>
                     </button>
                   ))}
                 </div>
-                <div className="flex gap-3">
-                  <button type="button" onClick={() => setStep(1)} className="btn-beauty-outline flex-1 justify-center">Volver</button>
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <button type="button" onClick={() => setStep(1)} className="btn-beauty-outline flex-1 justify-center">← Volver</button>
                   <button
                     type="button"
                     onClick={confirmarDirecto}
                     disabled={!selectedSlot || loading}
-                    className="btn-beauty flex-1 justify-center disabled:opacity-50">
-                    {loading ? 'Reservando...' : 'Confirmar'}
+                    className="btn-beauty flex-1 justify-center disabled:opacity-50 py-4">
+                    {loading ? 'Reservando...' : '✓ Confirmar cita'}
                   </button>
                 </div>
               </>

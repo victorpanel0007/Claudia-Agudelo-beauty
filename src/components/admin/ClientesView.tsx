@@ -66,15 +66,15 @@ export default function ClientesView() {
               <button
                 key={cliente.id}
                 onClick={() => setSelected(cliente)}
-                className="w-full p-4 flex items-center gap-4 hover:bg-gray-50 transition-colors text-left"
+                className="w-full p-3 sm:p-4 flex items-center gap-3 hover:bg-gray-50 active:bg-gray-100 transition-colors text-left min-h-[60px]"
               >
-                <div className="w-11 h-11 rounded-full bg-beauty-rosa-claro flex items-center justify-center shrink-0">
+                <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-beauty-rosa-claro flex items-center justify-center shrink-0">
                   <span className="text-beauty-secondary font-bold text-sm">
                     {getInitials(cliente.nombre)}
                   </span>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="font-medium text-beauty-text text-sm">{cliente.nombre}</p>
+                  <p className="font-medium text-beauty-text text-sm truncate">{cliente.nombre}</p>
                   <p className="text-gray-400 text-xs">{cliente.telefono}</p>
                 </div>
                 <div className="text-right shrink-0">
@@ -89,74 +89,58 @@ export default function ClientesView() {
         )}
       </div>
 
-      {/* Client detail modal */}
+      {/* Client detail modal — bottom sheet en móvil */}
       {selected && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/50">
           <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl w-full sm:max-w-md animate-slide-up">
-            <div className="p-6 border-b border-gray-100">
-              <div className="flex items-center gap-4">
-                <div className="w-16 h-16 rounded-full bg-beauty-secondary flex items-center justify-center">
+            {/* Handle bar móvil */}
+            <div className="flex justify-center pt-3 pb-1 sm:hidden">
+              <div className="w-10 h-1 rounded-full bg-gray-200" />
+            </div>
+
+            <div className="p-5 border-b border-gray-100">
+              <div className="flex items-center gap-3">
+                <div className="w-14 h-14 rounded-full bg-beauty-secondary flex items-center justify-center shrink-0">
                   <span className="text-beauty-text font-bold text-xl">{getInitials(selected.nombre)}</span>
                 </div>
-                <div>
-                  <h3 className="font-bold text-beauty-text text-lg">{selected.nombre}</h3>
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-bold text-beauty-text text-base sm:text-lg truncate">{selected.nombre}</h3>
                   <p className="text-gray-500 text-sm">{selected.telefono}</p>
                 </div>
+                <button onClick={() => setSelected(null)}
+                  className="p-2 hover:bg-gray-100 rounded-xl text-gray-400 shrink-0">
+                  ✕
+                </button>
               </div>
             </div>
 
-            <div className="p-6 grid grid-cols-2 gap-4">
-              <div className="bg-gray-50 rounded-xl p-4">
-                <div className="flex items-center gap-2 mb-1">
-                  <Calendar size={16} className="text-beauty-secondary" />
-                  <p className="text-gray-400 text-xs">Registro</p>
-                </div>
-                <p className="font-semibold text-beauty-text text-sm">
-                  {formatDate(selected.fecha_registro)}
-                </p>
-              </div>
-              <div className="bg-gray-50 rounded-xl p-4">
-                <div className="flex items-center gap-2 mb-1">
-                  <TrendingUp size={16} className="text-beauty-secondary" />
-                  <p className="text-gray-400 text-xs">Total gastado</p>
-                </div>
-                <p className="font-semibold text-beauty-text text-sm">
-                  {formatCurrency(selected.total_gastado || 0)}
-                </p>
-              </div>
-              <div className="bg-gray-50 rounded-xl p-4">
-                <div className="flex items-center gap-2 mb-1">
-                  <Phone size={16} className="text-beauty-secondary" />
-                  <p className="text-gray-400 text-xs">Total citas</p>
-                </div>
-                <p className="font-semibold text-beauty-text text-sm">{selected.total_citas || 0}</p>
-              </div>
-              {selected.ultima_visita && (
-                <div className="bg-gray-50 rounded-xl p-4">
-                  <div className="flex items-center gap-2 mb-1">
-                    <Calendar size={16} className="text-beauty-secondary" />
-                    <p className="text-gray-400 text-xs">Última visita</p>
+            <div className="p-4 sm:p-6 grid grid-cols-2 gap-3">
+              {[
+                { icon: <Calendar size={14} />, label: 'Registro', val: formatDate(selected.fecha_registro) },
+                { icon: <TrendingUp size={14} />, label: 'Total gastado', val: formatCurrency(selected.total_gastado || 0) },
+                { icon: <Phone size={14} />, label: 'Total citas', val: String(selected.total_citas || 0) },
+                ...(selected.ultima_visita ? [{ icon: <Calendar size={14} />, label: 'Última visita', val: formatDate(selected.ultima_visita) }] : []),
+              ].map((item, i) => (
+                <div key={i} className="bg-gray-50 rounded-xl p-3">
+                  <div className="flex items-center gap-1.5 mb-1 text-beauty-secondary">
+                    {item.icon}
+                    <p className="text-gray-400 text-xs">{item.label}</p>
                   </div>
-                  <p className="font-semibold text-beauty-text text-sm">
-                    {formatDate(selected.ultima_visita)}
-                  </p>
+                  <p className="font-semibold text-beauty-text text-sm">{item.val}</p>
                 </div>
-              )}
+              ))}
             </div>
 
-            <div className="p-6 pt-0 flex gap-3">
+            <div className="p-4 sm:p-6 pt-0 flex gap-3">
               <a
                 href={`https://wa.me/57${selected.telefono}?text=Hola ${selected.nombre}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex-1 bg-green-500 text-white py-3 rounded-xl text-sm font-medium text-center hover:bg-green-600 transition-colors"
+                target="_blank" rel="noopener noreferrer"
+                className="flex-1 bg-green-500 text-white py-3.5 rounded-xl text-sm font-semibold text-center hover:bg-green-600 transition-colors flex items-center justify-center gap-2 min-h-[52px]"
               >
-                WhatsApp
+                💬 WhatsApp
               </a>
-              <button
-                onClick={() => setSelected(null)}
-                className="flex-1 btn-beauty justify-center py-3"
-              >
+              <button onClick={() => setSelected(null)}
+                className="flex-1 btn-beauty justify-center py-3.5">
                 Cerrar
               </button>
             </div>

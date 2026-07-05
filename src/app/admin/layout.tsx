@@ -25,7 +25,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       <AdminSidebar userEmail={user.email ?? ''} />
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <AdminHeader userEmail={user.email ?? ''} />
-        <main className="flex-1 p-4 sm:p-6 overflow-y-auto">
+        {/* pb-20 on mobile reserves space for the fixed bottom nav bar */}
+        <main className="flex-1 p-4 sm:p-6 pb-24 lg:pb-6 overflow-y-auto">
           {children}
         </main>
       </div>

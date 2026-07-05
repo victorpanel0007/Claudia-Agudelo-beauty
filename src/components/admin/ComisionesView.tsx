@@ -668,8 +668,8 @@ export default function ComisionesView() {
           )}
         </div>
 
-        {/* 4. Summary Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+        {/* 4. Summary Cards — 2 cols móvil, 3 tablet, 6 desktop */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
           {[
             {
               label: 'Total Facturado',
@@ -733,7 +733,7 @@ export default function ComisionesView() {
           ))}
         </div>
 
-        {/* 5. Citas Table */}
+        {/* 5. Citas Table — cards en móvil, tabla en desktop */}
         <div className="bg-white border border-beauty-primary/20 rounded-2xl shadow-sm overflow-hidden">
           <div className="p-4 border-b border-gray-100 flex items-center gap-2">
             <CheckCircle size={17} className="text-beauty-borgona" />
@@ -742,82 +742,102 @@ export default function ComisionesView() {
               <span className="ml-auto text-xs text-beauty-text-muted">{citas.length} cita{citas.length !== 1 ? 's' : ''}</span>
             )}
           </div>
-          <div className="overflow-x-auto">
-            {loadingCitas ? (
-              <div className="space-y-2 p-4">
-                {[1, 2, 3, 4].map(i => (
-                  <div key={i} className="h-10 bg-beauty-rosa-claro/30 rounded-lg animate-pulse" />
-                ))}
+
+          {loadingCitas ? (
+            <div className="space-y-2 p-4">{[1,2,3,4].map(i => <div key={i} className="h-10 bg-beauty-rosa-claro/30 rounded-lg animate-pulse" />)}</div>
+          ) : citas.length === 0 ? (
+            <p className="text-beauty-text-muted text-sm text-center py-10">Sin citas completadas en el período</p>
+          ) : (
+            <>
+              {/* Móvil: tarjetas */}
+              <div className="divide-y divide-gray-50 lg:hidden">
+                {citas.map(c => {
+                  const pct = c.porcentaje_comision ?? (selectedEspId ? getPct(selectedEspId) : 40)
+                  const comision = c.comision_especialista ?? ((c.valor_final ?? 0) * pct / 100)
+                  const ganancia = c.ganancia_spa ?? ((c.valor_final ?? 0) - comision)
+                  return (
+                    <div key={c.id} className="p-4 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="font-medium text-beauty-text text-sm">{(c.servicio as { nombre?: string } | null)?.nombre ?? '—'}</p>
+                          <p className="text-beauty-text-muted text-xs">{fmtDate(c.fecha_inicio)} · {fmtTime(c.fecha_inicio)}</p>
+                        </div>
+                        {c.pago_estado === 'pagado' ? (
+                          <span className="bg-green-100 text-green-700 text-xs font-medium px-2 py-0.5 rounded-full">Pagado</span>
+                        ) : c.pago_estado === 'parcial' ? (
+                          <span className="bg-blue-100 text-blue-700 text-xs font-medium px-2 py-0.5 rounded-full">Parcial</span>
+                        ) : (
+                          <span className="bg-amber-100 text-amber-700 text-xs font-medium px-2 py-0.5 rounded-full">Pendiente</span>
+                        )}
+                      </div>
+                      <div className="flex gap-4 text-xs">
+                        <span className="text-beauty-text-muted">Valor: <strong className="text-beauty-text">{formatCurrency(c.valor_final ?? 0)}</strong></span>
+                        <span className="text-beauty-text-muted">Comisión <strong className="text-beauty-borgona">{formatCurrency(comision)}</strong></span>
+                        <span className="text-beauty-text-muted">Spa: <strong className="text-emerald-600">{formatCurrency(ganancia)}</strong></span>
+                      </div>
+                    </div>
+                  )
+                })}
               </div>
-            ) : citas.length === 0 ? (
-              <p className="text-beauty-text-muted text-sm text-center py-10">
-                Sin citas completadas en el período seleccionado
-              </p>
-            ) : (
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="bg-beauty-bg border-b border-gray-100">
-                    {['Fecha', 'Hora', 'Servicio', 'Valor', '% Comisión', 'Comisión', 'Ganancia Spa', 'Pago'].map(h => (
-                      <th key={h} className="text-left py-2.5 px-4 text-beauty-text-muted font-medium text-xs">{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {citas.map(c => {
-                    const pct = c.porcentaje_comision ?? (selectedEspId ? getPct(selectedEspId) : 40)
-                    const comision = c.comision_especialista ?? ((c.valor_final ?? 0) * pct / 100)
-                    const ganancia = c.ganancia_spa ?? ((c.valor_final ?? 0) - comision)
-                    return (
-                      <tr key={c.id} className="border-b border-gray-50 hover:bg-beauty-bg transition-colors">
-                        <td className="py-2.5 px-4 text-beauty-text-muted text-xs whitespace-nowrap">{fmtDate(c.fecha_inicio)}</td>
-                        <td className="py-2.5 px-4 text-beauty-text-muted text-xs">{fmtTime(c.fecha_inicio)}</td>
-                        <td className="py-2.5 px-4 text-beauty-text">{(c.servicio as { nombre?: string } | null)?.nombre ?? '—'}</td>
-                        <td className="py-2.5 px-4 font-medium text-beauty-text">{formatCurrency(c.valor_final ?? 0)}</td>
-                        <td className="py-2.5 px-4 text-center">
-                          <span className="bg-beauty-secondary/20 text-beauty-secondary text-xs font-bold px-2 py-0.5 rounded-full">{pct}%</span>
-                        </td>
-                        <td className="py-2.5 px-4 text-beauty-borgona font-medium">{formatCurrency(comision)}</td>
-                        <td className="py-2.5 px-4 text-emerald-600 font-medium">{formatCurrency(ganancia)}</td>
-                        <td className="py-2.5 px-4">
-                          {c.pago_estado === 'pagado' ? (
-                            <span className="bg-green-100 text-green-700 text-xs font-medium px-2 py-0.5 rounded-full">Pagado</span>
-                          ) : c.pago_estado === 'parcial' ? (
-                            <span className="bg-blue-100 text-blue-700 text-xs font-medium px-2 py-0.5 rounded-full">Parcial</span>
-                          ) : (
-                            <span className="bg-amber-100 text-amber-700 text-xs font-medium px-2 py-0.5 rounded-full">Pendiente</span>
-                          )}
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-                {/* Footer totals */}
-                <tfoot>
-                  <tr className="bg-beauty-bg border-t-2 border-beauty-primary/20 font-bold">
-                    <td className="py-2.5 px-4 text-xs text-beauty-borgona" colSpan={3}>TOTALES</td>
-                    <td className="py-2.5 px-4 text-beauty-text">{formatCurrency(summary.totalFacturado)}</td>
-                    <td className="py-2.5 px-4"></td>
-                    <td className="py-2.5 px-4 text-beauty-borgona">{formatCurrency(summary.comisionEspecialista)}</td>
-                    <td className="py-2.5 px-4 text-emerald-700">{formatCurrency(summary.gananciaSpa)}</td>
-                    <td className="py-2.5 px-4"></td>
-                  </tr>
-                </tfoot>
-              </table>
-            )}
-          </div>
+
+              {/* Desktop: tabla */}
+              <div className="hidden lg:block overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-beauty-bg border-b border-gray-100">
+                      {['Fecha', 'Hora', 'Servicio', 'Valor', '% Comisión', 'Comisión', 'Ganancia Spa', 'Pago'].map(h => (
+                        <th key={h} className="text-left py-2.5 px-4 text-beauty-text-muted font-medium text-xs">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {citas.map(c => {
+                      const pct = c.porcentaje_comision ?? (selectedEspId ? getPct(selectedEspId) : 40)
+                      const comision = c.comision_especialista ?? ((c.valor_final ?? 0) * pct / 100)
+                      const ganancia = c.ganancia_spa ?? ((c.valor_final ?? 0) - comision)
+                      return (
+                        <tr key={c.id} className="border-b border-gray-50 hover:bg-beauty-bg transition-colors">
+                          <td className="py-2.5 px-4 text-beauty-text-muted text-xs whitespace-nowrap">{fmtDate(c.fecha_inicio)}</td>
+                          <td className="py-2.5 px-4 text-beauty-text-muted text-xs">{fmtTime(c.fecha_inicio)}</td>
+                          <td className="py-2.5 px-4 text-beauty-text">{(c.servicio as { nombre?: string } | null)?.nombre ?? '—'}</td>
+                          <td className="py-2.5 px-4 font-medium text-beauty-text">{formatCurrency(c.valor_final ?? 0)}</td>
+                          <td className="py-2.5 px-4 text-center"><span className="bg-beauty-secondary/20 text-beauty-secondary text-xs font-bold px-2 py-0.5 rounded-full">{pct}%</span></td>
+                          <td className="py-2.5 px-4 text-beauty-borgona font-medium">{formatCurrency(comision)}</td>
+                          <td className="py-2.5 px-4 text-emerald-600 font-medium">{formatCurrency(ganancia)}</td>
+                          <td className="py-2.5 px-4">
+                            {c.pago_estado === 'pagado' ? <span className="bg-green-100 text-green-700 text-xs font-medium px-2 py-0.5 rounded-full">Pagado</span>
+                              : c.pago_estado === 'parcial' ? <span className="bg-blue-100 text-blue-700 text-xs font-medium px-2 py-0.5 rounded-full">Parcial</span>
+                              : <span className="bg-amber-100 text-amber-700 text-xs font-medium px-2 py-0.5 rounded-full">Pendiente</span>}
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                  <tfoot>
+                    <tr className="bg-beauty-bg border-t-2 border-beauty-primary/20 font-bold">
+                      <td className="py-2.5 px-4 text-xs text-beauty-borgona" colSpan={3}>TOTALES</td>
+                      <td className="py-2.5 px-4 text-beauty-text">{formatCurrency(summary.totalFacturado)}</td>
+                      <td className="py-2.5 px-4"></td>
+                      <td className="py-2.5 px-4 text-beauty-borgona">{formatCurrency(summary.comisionEspecialista)}</td>
+                      <td className="py-2.5 px-4 text-emerald-700">{formatCurrency(summary.gananciaSpa)}</td>
+                      <td className="py-2.5 px-4"></td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            </>
+          )}
         </div>
 
         {/* 6. Registrar Pago Button */}
         <div className="flex justify-end">
-          <button
-            onClick={openPagoModal}
-            className="flex items-center gap-2 bg-beauty-borgona text-white font-semibold px-5 py-2.5 rounded-xl hover:bg-beauty-borgona-dark transition-colors shadow-beauty"
-          >
+          <button onClick={openPagoModal}
+            className="flex items-center gap-2 bg-beauty-borgona text-white font-semibold px-5 py-3 rounded-xl hover:bg-beauty-borgona-dark transition-colors shadow-beauty min-h-[48px]">
             <Plus size={18} /> Registrar Pago
           </button>
         </div>
 
-        {/* 7. Historial de Pagos */}
+        {/* 7. Historial de Pagos — cards en móvil, tabla en desktop */}
         <div className="bg-white border border-beauty-primary/20 rounded-2xl shadow-sm overflow-hidden">
           <div className="p-4 border-b border-gray-100 flex items-center gap-2">
             <CreditCard size={17} className="text-beauty-borgona" />
@@ -826,50 +846,68 @@ export default function ComisionesView() {
               <span className="ml-auto text-xs text-beauty-text-muted">{pagos.length} registro{pagos.length !== 1 ? 's' : ''}</span>
             )}
           </div>
-          <div className="overflow-x-auto">
-            {loadingPagos ? (
-              <div className="space-y-2 p-4">
-                {[1, 2, 3].map(i => (
-                  <div key={i} className="h-10 bg-beauty-rosa-claro/30 rounded-lg animate-pulse" />
+
+          {loadingPagos ? (
+            <div className="space-y-2 p-4">{[1,2,3].map(i => <div key={i} className="h-10 bg-beauty-rosa-claro/30 rounded-lg animate-pulse" />)}</div>
+          ) : pagos.length === 0 ? (
+            <p className="text-beauty-text-muted text-sm text-center py-10">Sin pagos registrados en el período</p>
+          ) : (
+            <>
+              {/* Móvil: tarjetas */}
+              <div className="divide-y divide-gray-50 lg:hidden">
+                {pagos.map(p => (
+                  <div key={p.id} className="p-4">
+                    <div className="flex items-center justify-between mb-1">
+                      <p className="font-semibold text-beauty-text text-sm">{p.especialista_nombre}</p>
+                      <p className="font-bold text-beauty-borgona">{formatCurrency(p.valor_pagado)}</p>
+                    </div>
+                    <div className="flex items-center gap-2 text-xs text-beauty-text-muted">
+                      <span>{p.fecha}</span>
+                      <span className="bg-beauty-rosa-claro text-beauty-borgona px-2 py-0.5 rounded-full capitalize">{p.periodo}</span>
+                      <span className="capitalize">{p.metodo_pago}</span>
+                    </div>
+                    {p.observaciones && <p className="text-xs text-beauty-text-muted mt-1 truncate">{p.observaciones}</p>}
+                  </div>
                 ))}
+                <div className="p-4 bg-beauty-bg font-bold flex justify-between text-sm">
+                  <span className="text-beauty-borgona">TOTAL PAGADO</span>
+                  <span className="text-beauty-borgona">{formatCurrency(summary.totalPagado)}</span>
+                </div>
               </div>
-            ) : pagos.length === 0 ? (
-              <p className="text-beauty-text-muted text-sm text-center py-10">
-                Sin pagos registrados en el período seleccionado
-              </p>
-            ) : (
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="bg-beauty-bg border-b border-gray-100">
-                    {['Fecha', 'Período', 'Especialista', 'Valor', 'Método', 'Observaciones'].map(h => (
-                      <th key={h} className="text-left py-2.5 px-4 text-beauty-text-muted font-medium text-xs">{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {pagos.map(p => (
-                    <tr key={p.id} className="border-b border-gray-50 hover:bg-beauty-bg transition-colors">
-                      <td className="py-2.5 px-4 text-beauty-text-muted text-xs whitespace-nowrap">{p.fecha}</td>
-                      <td className="py-2.5 px-4">
-                        <span className="bg-beauty-rosa-claro text-beauty-borgona text-xs font-medium px-2 py-0.5 rounded-full capitalize">{p.periodo}</span>
-                      </td>
-                      <td className="py-2.5 px-4 text-beauty-text font-medium">{p.especialista_nombre}</td>
-                      <td className="py-2.5 px-4 text-beauty-borgona font-bold">{formatCurrency(p.valor_pagado)}</td>
-                      <td className="py-2.5 px-4 capitalize text-beauty-text-muted">{p.metodo_pago}</td>
-                      <td className="py-2.5 px-4 text-beauty-text-muted text-xs max-w-[200px] truncate">{p.observaciones ?? '—'}</td>
+
+              {/* Desktop: tabla */}
+              <div className="hidden lg:block overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-beauty-bg border-b border-gray-100">
+                      {['Fecha', 'Período', 'Especialista', 'Valor', 'Método', 'Observaciones'].map(h => (
+                        <th key={h} className="text-left py-2.5 px-4 text-beauty-text-muted font-medium text-xs">{h}</th>
+                      ))}
                     </tr>
-                  ))}
-                </tbody>
-                <tfoot>
-                  <tr className="bg-beauty-bg border-t-2 border-beauty-primary/20 font-bold">
-                    <td className="py-2.5 px-4 text-xs text-beauty-borgona" colSpan={3}>TOTAL PAGADO</td>
-                    <td className="py-2.5 px-4 text-beauty-borgona">{formatCurrency(summary.totalPagado)}</td>
-                    <td className="py-2.5 px-4" colSpan={2}></td>
-                  </tr>
-                </tfoot>
-              </table>
-            )}
-          </div>
+                  </thead>
+                  <tbody>
+                    {pagos.map(p => (
+                      <tr key={p.id} className="border-b border-gray-50 hover:bg-beauty-bg transition-colors">
+                        <td className="py-2.5 px-4 text-beauty-text-muted text-xs whitespace-nowrap">{p.fecha}</td>
+                        <td className="py-2.5 px-4"><span className="bg-beauty-rosa-claro text-beauty-borgona text-xs font-medium px-2 py-0.5 rounded-full capitalize">{p.periodo}</span></td>
+                        <td className="py-2.5 px-4 text-beauty-text font-medium">{p.especialista_nombre}</td>
+                        <td className="py-2.5 px-4 text-beauty-borgona font-bold">{formatCurrency(p.valor_pagado)}</td>
+                        <td className="py-2.5 px-4 capitalize text-beauty-text-muted">{p.metodo_pago}</td>
+                        <td className="py-2.5 px-4 text-beauty-text-muted text-xs max-w-[200px] truncate">{p.observaciones ?? '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr className="bg-beauty-bg border-t-2 border-beauty-primary/20 font-bold">
+                      <td className="py-2.5 px-4 text-xs text-beauty-borgona" colSpan={3}>TOTAL PAGADO</td>
+                      <td className="py-2.5 px-4 text-beauty-borgona">{formatCurrency(summary.totalPagado)}</td>
+                      <td className="py-2.5 px-4" colSpan={2}></td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            </>
+          )}
         </div>
 
       </div>{/* end print:hidden */}

@@ -756,9 +756,12 @@ export default function AgendaView() {
   const [selectedCita, setSelectedCita] = useState<Cita | null>(null)
   const [citaACompletar, setCitaACompletar] = useState<Cita | null>(null)
   const [loading, setLoading] = useState(true)
-  const [viewMode, setViewMode] = useState<'day' | 'week' | 'month'>('week')
+  // Default to 'day' on mobile — detected via initial render
+  const [viewMode, setViewMode] = useState<'day' | 'week' | 'month'>('day')
   const [currentDate, setCurrentDate] = useState(new Date())
   const [showNuevaCita, setShowNuevaCita] = useState(false)
+  // Mobile: show list instead of timeline grid
+  const [mobileListMode, setMobileListMode] = useState(true)
 
   const loadCitas = useCallback(async () => {
     const { data, error } = await supabase
@@ -870,34 +873,113 @@ export default function AgendaView() {
   return (
     <div className="flex flex-col h-full animate-fade-in">
       {/* Title bar */}
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-3">
         <div>
-          <h2 className="text-xl font-bold text-gray-800">Agenda</h2>
-          <p className="text-sm text-gray-400">Gestiona tus citas y servicios</p>
+          <h2 className="text-lg sm:text-xl font-bold text-gray-800">Agenda</h2>
+          <p className="text-xs sm:text-sm text-gray-400">Gestiona tus citas</p>
         </div>
         <div className="flex items-center gap-2">
+          {/* Limpiar: solo icono en móvil */}
           <button onClick={eliminarTodasLasCitas}
-            className="flex items-center gap-1.5 text-xs text-red-500 border border-red-200 px-3 py-2 rounded-xl hover:bg-red-50 transition-colors">
-            🗑️ Limpiar agenda
+            className="flex items-center gap-1.5 text-xs text-red-500 border border-red-200 px-2.5 py-2 rounded-xl hover:bg-red-50 transition-colors">
+            <span className="hidden sm:inline">🗑️ Limpiar</span>
+            <span className="sm:hidden">🗑️</span>
           </button>
           <button onClick={() => setShowNuevaCita(true)}
-            className="flex items-center gap-2 bg-beauty-primary text-white text-sm font-semibold px-4 py-2.5 rounded-xl hover:bg-beauty-primary-dark transition-colors shadow-sm">
-            <Plus size={16} /> Nueva Cita
+            className="flex items-center gap-1.5 sm:gap-2 bg-beauty-primary text-white text-xs sm:text-sm font-semibold px-3 sm:px-4 py-2.5 rounded-xl hover:bg-beauty-primary-dark transition-colors shadow-sm">
+            <Plus size={16} />
+            <span className="hidden sm:inline">Nueva Cita</span>
+            <span className="sm:hidden">Nueva</span>
           </button>
         </div>
       </div>
 
-      {/* Stat cards */}
-      <div className="grid grid-cols-2 xl:grid-cols-5 gap-3 mb-4">
-        <StatCard icon={<span className="text-xl">📅</span>} label="Citas Hoy" value={citasHoy.length} sub="▲ actualizado" iconBg="bg-pink-50" />
-        <StatCard icon={<span className="text-xl">⏳</span>} label="Pendientes" value={pendientes.length} sub="▲ por confirmar" iconBg="bg-amber-50" />
-        <StatCard icon={<span className="text-xl">✅</span>} label="Confirmadas" value={confirmadas.length} sub="▲ esta semana" iconBg="bg-green-50" />
-        <StatCard icon={<span className="text-xl">💵</span>} label="Ingresos del día" value={formatCurrency(ingresosDia)} sub="▲ completadas" iconBg="bg-blue-50" />
-        <StatCard icon={<span className="text-xl">👩</span>} label="Profesionales" value="2/2" sub="▲ disponibles" iconBg="bg-purple-50" />
+      {/* Stat cards — 2 cols on mobile, 5 on xl */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-2 sm:gap-3 mb-3">
+        <StatCard icon={<span className="text-lg">📅</span>} label="Citas Hoy" value={citasHoy.length} sub="actualizado" iconBg="bg-pink-50" />
+        <StatCard icon={<span className="text-lg">⏳</span>} label="Pendientes" value={pendientes.length} sub="por confirmar" iconBg="bg-amber-50" />
+        <StatCard icon={<span className="text-lg">✅</span>} label="Confirmadas" value={confirmadas.length} sub="esta semana" iconBg="bg-green-50" />
+        <StatCard icon={<span className="text-lg">💵</span>} label="Ingresos" value={formatCurrency(ingresosDia)} sub="del día" iconBg="bg-blue-50" />
+        <StatCard icon={<span className="text-lg">👩</span>} label="Profesionales" value="2/2" sub="disponibles" iconBg="bg-purple-50" />
       </div>
 
-      {/* Calendar + detail panel */}
-      <div className="flex flex-1 bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden min-h-0">
+      {/* ── MOBILE LIST VIEW ───────────────────────────────────────── */}
+      <div className="sm:hidden flex flex-col flex-1 bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden min-h-0">
+        {/* Mobile toolbar */}
+        <div className="flex items-center justify-between px-3 py-2.5 border-b border-gray-100 gap-2">
+          <div className="flex items-center gap-1">
+            <button onClick={() => setCurrentDate(new Date())}
+              className="text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 min-h-[36px]">
+              Hoy
+            </button>
+            <button onClick={goPrev} className="p-2 hover:bg-gray-100 rounded-lg min-h-[36px] min-w-[36px] flex items-center justify-center">
+              <ChevronLeft size={16} />
+            </button>
+            <button onClick={goNext} className="p-2 hover:bg-gray-100 rounded-lg min-h-[36px] min-w-[36px] flex items-center justify-center">
+              <ChevronRight size={16} />
+            </button>
+          </div>
+          <p className="font-semibold text-gray-700 text-xs capitalize flex-1 text-center truncate">
+            {format(currentDate, "EEE d 'de' MMM", { locale: es })}
+          </p>
+          {/* Mobile: toggle list/grid mode */}
+          <button
+            onClick={() => setMobileListMode(v => !v)}
+            className="text-[10px] font-medium px-2 py-1.5 rounded-lg bg-gray-100 text-gray-600 min-h-[36px] shrink-0"
+          >
+            {mobileListMode ? 'Grid' : 'Lista'}
+          </button>
+        </div>
+
+        {/* Mobile appointment list */}
+        <div className="flex-1 overflow-y-auto">
+          {loading ? (
+            <div className="p-6 space-y-3">
+              {[1,2,3].map(i => <div key={i} className="h-16 skeleton rounded-xl" />)}
+            </div>
+          ) : citasHoy.length === 0 ? (
+            <div className="p-8 text-center">
+              <p className="text-4xl mb-3">📅</p>
+              <p className="text-gray-400 text-sm">Sin citas para hoy</p>
+            </div>
+          ) : (
+            <div className="divide-y divide-gray-50">
+              {citasHoy.map(cita => {
+                const st = STATUS_CONFIG[cita.estado] ?? STATUS_CONFIG.pendiente
+                return (
+                  <button key={cita.id} onClick={() => setSelectedCita(cita)}
+                    className="w-full p-3 flex items-center gap-3 hover:bg-gray-50 text-left min-h-[60px] active:bg-gray-100 transition-colors">
+                    <div className="bg-beauty-primary/10 rounded-xl px-2.5 py-2 text-center shrink-0 min-w-[52px]">
+                      <p className="text-beauty-primary font-bold text-xs">{formatTime(cita.fecha_inicio)}</p>
+                      <p className="text-beauty-text-muted text-[10px]">{formatTime(cita.fecha_fin)}</p>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-gray-800 text-sm truncate">{cita.cliente?.nombre}</p>
+                      <p className="text-gray-500 text-xs truncate">{cita.servicio?.nombre}</p>
+                    </div>
+                    <span className={`text-[10px] font-semibold px-2 py-1 rounded-full border shrink-0 ${st.bg} ${st.color}`}>
+                      {st.label}
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Legend */}
+        <div className="px-3 py-2 border-t border-gray-100 flex flex-wrap gap-2">
+          {Object.entries(STATUS_CONFIG).slice(0, 4).map(([key, s]) => (
+            <div key={key} className="flex items-center gap-1">
+              <div className={`w-2 h-2 rounded-full ${s.dot}`} />
+              <span className="text-[10px] text-gray-500">{s.label}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ── DESKTOP CALENDAR + DETAIL PANEL ───────────────────────── */}
+      <div className="hidden sm:flex flex-1 bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden min-h-0">
 
         {/* Calendar column */}
         <div className="flex flex-col flex-1 min-w-0">
@@ -905,10 +987,8 @@ export default function AgendaView() {
           {/* Toolbar */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
             <div className="flex items-center gap-2">
-              <button
-                onClick={() => setCurrentDate(new Date())}
-                className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors"
-              >
+              <button onClick={() => setCurrentDate(new Date())}
+                className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors">
                 Hoy
               </button>
               <button onClick={goPrev} className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors">
@@ -1063,15 +1143,32 @@ export default function AgendaView() {
           </div>
         </div>
 
-        {/* Detail panel */}
+        {/* Detail panel — sidebar on desktop, modal on mobile */}
         {selectedCita && (
-          <DetailPanel
-            cita={selectedCita}
-            onClose={() => setSelectedCita(null)}
-            onCompletar={solicitarCompletar}
-            onCancelar={cancelarCita}
-            onEliminar={eliminarCita}
-          />
+          <>
+            {/* Mobile overlay */}
+            <div className="sm:hidden fixed inset-0 z-50 flex items-end justify-center bg-black/50">
+              <div className="bg-white rounded-t-3xl w-full max-h-[85vh] overflow-y-auto shadow-2xl">
+                <DetailPanel
+                  cita={selectedCita}
+                  onClose={() => setSelectedCita(null)}
+                  onCompletar={solicitarCompletar}
+                  onCancelar={cancelarCita}
+                  onEliminar={eliminarCita}
+                />
+              </div>
+            </div>
+            {/* Desktop sidebar */}
+            <div className="hidden sm:block">
+              <DetailPanel
+                cita={selectedCita}
+                onClose={() => setSelectedCita(null)}
+                onCompletar={solicitarCompletar}
+                onCancelar={cancelarCita}
+                onEliminar={eliminarCita}
+              />
+            </div>
+          </>
         )}
       </div>
 

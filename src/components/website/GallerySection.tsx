@@ -17,21 +17,22 @@ const gallery = [
 
 export default function GallerySection() {
   return (
-    <section id="galeria" className="py-20 bg-beauty-bg">
+    <section id="galeria" className="py-14 sm:py-20 bg-beauty-bg">
       <div className="max-w-6xl mx-auto px-4 sm:px-6">
 
         {/* Header */}
-        <div className="text-center mb-12">
-          <p className="text-beauty-secondary text-sm font-medium tracking-widest uppercase mb-3">
+        <div className="text-center mb-10 sm:mb-12">
+          <p className="text-beauty-secondary text-xs sm:text-sm font-medium tracking-widest uppercase mb-3">
             ♥ Galería
           </p>
-          <h2 className="font-serif text-4xl font-bold text-beauty-text-dark mb-2">
+          <h2 className="font-serif text-3xl sm:text-4xl font-bold text-beauty-text-dark mb-2">
             Nuestro <span className="text-beauty-primary">Trabajo</span>
           </h2>
           <div className="gold-divider w-24 mx-auto mt-4" />
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+        {/* 2 cols on mobile, 3 on sm+ */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
           {gallery.map((item, i) => (
             <motion.div
               key={i}
@@ -40,19 +41,19 @@ export default function GallerySection() {
               viewport={{ once: true, margin: '100px' }}
               transition={{ delay: i * 0.05 }}
               className={`aspect-square rounded-2xl ${item.bg} border border-beauty-primary/30
-                flex flex-col items-center justify-center gap-3
+                flex flex-col items-center justify-center gap-2 sm:gap-3
                 hover:border-beauty-secondary hover:shadow-card
                 transition-all duration-300 cursor-pointer group`}
             >
-              <span className="text-5xl group-hover:scale-110 transition-transform duration-300">
+              <span className="text-4xl sm:text-5xl group-hover:scale-110 transition-transform duration-300">
                 {item.emoji}
               </span>
-              <p className="text-beauty-text text-sm font-medium">{item.label}</p>
+              <p className="text-beauty-text text-xs sm:text-sm font-medium">{item.label}</p>
             </motion.div>
           ))}
         </div>
 
-        <p className="text-center text-beauty-text-muted text-xs mt-8">
+        <p className="text-center text-beauty-text-muted text-xs mt-6 sm:mt-8">
           * Las imágenes reales se agregan desde el panel administrativo
         </p>
       </div>
