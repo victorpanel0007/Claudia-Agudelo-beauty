@@ -1,6 +1,6 @@
 ﻿'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
@@ -486,15 +486,11 @@ function NuevaCitaTab({ espId, onSaved }: { espId: string | null; onSaved: () =>
             {/* Servicio */}
             <div>
               <label className="block text-xs font-semibold text-gray-600 mb-2">Servicio *</label>
-              <select value={form.servicio_id} onChange={e => setForm(f => ({ ...f, servicio_id: e.target.value }))}
-                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:border-beauty-primary">
-                <option value="">Selecciona un servicio...</option>
-                {servicios.map(s => (
-                  <option key={s.id} value={s.id}>
-                    {s.nombre} — {s.duracion_minutos} min{s.precio ? ` · $${Number(s.precio).toLocaleString('es-CO')}` : ''}
-                  </option>
-                ))}
-              </select>
+              <ServicioBuscador
+                servicios={servicios}
+                value={form.servicio_id}
+                onChange={id => setForm(f => ({ ...f, servicio_id: id }))}
+              />
             </div>
 
             {/* Fecha */}
@@ -556,7 +552,102 @@ function NuevaCitaTab({ espId, onSaved }: { espId: string | null; onSaved: () =>
   )
 }
 
-// ── ComisionesTab ──────────────────────────────────────────────────────────
+// ── ServicioBuscador ───────────────────────────────────────────────────────
+
+function ServicioBuscador({ servicios, value, onChange }: {
+  servicios: Servicio[]
+  value: string
+  onChange: (id: string) => void
+}) {
+  const [query, setQuery] = useState('')
+  const [open, setOpen] = useState(false)
+  const containerRef = useRef<HTMLDivElement>(null)
+  const [dropPos, setDropPos] = useState({ top: 0, left: 0, width: 0 })
+
+  const seleccionado = servicios.find(s => s.id === value)
+
+  const filtrados = query.trim()
+    ? servicios.filter(s => s.nombre.toLowerCase().includes(query.toLowerCase()))
+    : servicios
+
+  function abrirDrop() {
+    if (containerRef.current) {
+      const r = containerRef.current.getBoundingClientRect()
+      setDropPos({ top: r.bottom + window.scrollY + 4, left: r.left + window.scrollX, width: r.width })
+    }
+    setOpen(true)
+  }
+
+  function seleccionar(s: Servicio) {
+    onChange(s.id)
+    setQuery('')
+    setOpen(false)
+  }
+
+  function limpiar() {
+    onChange('')
+    setQuery('')
+    setOpen(false)
+  }
+
+  return (
+    <div ref={containerRef} className="relative">
+      {seleccionado ? (
+        <div className="flex items-center gap-2 bg-beauty-primary/10 border border-beauty-primary/30 rounded-xl px-3 py-2.5">
+          <Check size={14} className="text-beauty-primary shrink-0" />
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-semibold text-beauty-primary truncate">{seleccionado.nombre}</p>
+            <p className="text-[11px] text-beauty-primary/70">
+              {seleccionado.duracion_minutos} min
+              {seleccionado.precio ? ` · $${Number(seleccionado.precio).toLocaleString('es-CO')}` : ''}
+            </p>
+          </div>
+          <button onClick={limpiar} className="shrink-0 text-beauty-primary/60 hover:text-beauty-primary">
+            <X size={14} />
+          </button>
+        </div>
+      ) : (
+        <div className="relative">
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+          <input
+            value={query}
+            onChange={e => { setQuery(e.target.value); abrirDrop() }}
+            onFocus={abrirDrop}
+            placeholder="Escribe el nombre del servicio..."
+            className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-xs pl-8 focus:outline-none focus:border-beauty-primary"
+          />
+        </div>
+      )}
+
+      {open && !seleccionado && typeof document !== 'undefined' && createPortal(
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+          <div className="absolute z-50 bg-white border border-gray-200 rounded-xl shadow-xl overflow-y-auto"
+            style={{ position: 'fixed', top: dropPos.top, left: dropPos.left, width: dropPos.width, maxHeight: '240px' }}>
+            {filtrados.length === 0 ? (
+              <p className="text-center text-gray-400 text-xs py-4">Sin resultados para "{query}"</p>
+            ) : (
+              filtrados.map(s => (
+                <button key={s.id} onClick={() => seleccionar(s)}
+                  className="w-full text-left px-3 py-2.5 hover:bg-beauty-bg border-b border-gray-50 last:border-0 transition-colors">
+                  <p className="text-xs font-semibold text-gray-800">{s.nombre}</p>
+                  <p className="text-[11px] text-gray-400 mt-0.5">
+                    {s.duracion_minutos} min
+                    {s.precio ? ` · $${Number(s.precio).toLocaleString('es-CO')}`
+                      : s.precio_desde ? ` · desde $${Number(s.precio_desde).toLocaleString('es-CO')}`
+                      : ' · Valoración'}
+                  </p>
+                </button>
+              ))
+            )}
+          </div>
+        </>,
+        document.body
+      )}
+    </div>
+  )
+}
+
 
 function ComisionesTab({ espId }: { espId: string | null }) {
   const [periodo, setPeriodo] = useState<'semana'|'quincena'|'mes'>('mes')
