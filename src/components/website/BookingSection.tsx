@@ -137,16 +137,16 @@ export default function BookingSection() {
   }
 
   return (
-    <section id="reservar" className="py-20 bg-white">
+    <section id="reservar" className="py-14 sm:py-20 bg-white">
       <Toaster position="top-center" />
       <div className="max-w-2xl mx-auto px-4 sm:px-6">
 
         {/* Header */}
-        <div className="text-center mb-10">
+        <div className="text-center mb-8 sm:mb-10">
           <p className="text-beauty-secondary text-sm font-medium tracking-widest uppercase mb-3">
             ♥ Reserva Online
           </p>
-          <h2 className="font-serif text-4xl font-bold text-beauty-text-dark mb-2">
+          <h2 className="font-serif text-3xl sm:text-4xl font-bold text-beauty-text-dark mb-2">
             Tu Cita en <span className="text-beauty-primary">3 Pasos</span>
           </h2>
           <div className="gold-divider w-24 mx-auto mt-4" />
@@ -226,12 +226,12 @@ export default function BookingSection() {
             {/* Especialistas dinámicos desde Supabase */}
             <div>
               <label className="block text-sm font-medium text-beauty-text mb-2">Especialista</label>
-              <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${Math.min(especialistas.length + 1, 3)}, 1fr)` }}>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                 <label className="cursor-pointer">
                   <input {...register('especialista_id')} type="radio" value="" className="sr-only peer" />
                   <div className="border-2 border-beauty-primary/40 rounded-xl p-3 text-center text-sm font-medium text-beauty-text
                     peer-checked:border-beauty-secondary peer-checked:text-beauty-secondary peer-checked:bg-beauty-secondary/10
-                    transition-all cursor-pointer hover:border-beauty-primary">
+                    transition-all cursor-pointer hover:border-beauty-primary min-h-[48px] flex items-center justify-center">
                     Cualquiera
                   </div>
                 </label>
@@ -240,7 +240,7 @@ export default function BookingSection() {
                     <input {...register('especialista_id')} type="radio" value={esp.id} className="sr-only peer" />
                     <div className="border-2 border-beauty-primary/40 rounded-xl p-3 text-center text-sm font-medium text-beauty-text
                       peer-checked:border-beauty-secondary peer-checked:text-beauty-secondary peer-checked:bg-beauty-secondary/10
-                      transition-all cursor-pointer hover:border-beauty-primary">
+                      transition-all cursor-pointer hover:border-beauty-primary min-h-[48px] flex items-center justify-center">
                       {esp.nombre}
                     </div>
                   </label>

@@ -20,19 +20,19 @@ export default function HeroSection() {
               ✦ Salón de Belleza Premium ✦
             </p>
 
-            <h1 className="font-serif text-5xl sm:text-6xl font-bold text-beauty-text leading-tight mb-4">
+            <h1 className="font-serif text-4xl sm:text-5xl lg:text-6xl font-bold text-beauty-text leading-tight mb-4">
               Realzamos<br />
               tu belleza
-              <span className="block text-beauty-borgona italic font-serif mt-1 text-4xl sm:text-5xl">
+              <span className="block text-beauty-borgona italic font-serif mt-1 text-3xl sm:text-4xl lg:text-5xl">
                 y tu esencia
               </span>
             </h1>
 
-            <p className="text-beauty-text text-base leading-relaxed mb-8 max-w-md">
+            <p className="text-beauty-text text-sm sm:text-base leading-relaxed mb-8 max-w-md">
               En nuestro salón, cada detalle está pensado para que te sientas única, hermosa y renovada.
             </p>
 
-            <div className="flex flex-col sm:flex-row gap-4">
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
               <a href="#reservar"
                 className="bg-beauty-primary text-white font-semibold px-8 py-4 rounded-full text-sm hover:bg-beauty-primary-dark transition-all shadow-beauty hover:shadow-beauty-lg inline-flex items-center justify-center gap-2">
                 Agenda tu Cita

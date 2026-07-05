@@ -33,22 +33,22 @@ export default function ServicesSection() {
   const [selectedCat, setSelectedCat] = useState<string | null>(null)
 
   return (
-    <section id="servicios" className="py-20 bg-white">
+    <section id="servicios" className="py-14 sm:py-20 bg-white">
       <div className="max-w-6xl mx-auto px-4 sm:px-6">
 
         {/* Header */}
-        <div className="text-center mb-14">
+        <div className="text-center mb-10 sm:mb-14">
           <p className="text-beauty-secondary text-sm font-medium tracking-widest uppercase mb-3">
             ♥ Nuestros Servicios
           </p>
-          <h2 className="font-serif text-4xl md:text-5xl font-bold text-beauty-text-dark mb-3">
+          <h2 className="font-serif text-3xl sm:text-4xl md:text-5xl font-bold text-beauty-text-dark mb-3">
             Nuestros Servicios
           </h2>
           <div className="gold-divider w-20 mx-auto mt-4" />
         </div>
 
-        {/* Featured service icons — como en la imagen */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-6 mb-12">
+        {/* Featured service icons */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 sm:gap-6 mb-10 sm:mb-12">
           {FEATURED.map((item, i) => (
             <motion.button
               key={i}

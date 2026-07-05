@@ -136,15 +136,15 @@ export default function Dashboard() {
         ) : (
           <div className="divide-y divide-gray-50">
             {citasHoy.map(cita => (
-              <div key={cita.id} className="p-4 flex items-center gap-4 hover:bg-gray-50 transition-colors">
+              <div key={cita.id} className="p-4 flex items-center gap-3 hover:bg-gray-50 transition-colors">
                 {/* Time */}
-                <div className="text-center min-w-[60px]">
+                <div className="text-center min-w-[52px] shrink-0">
                   <p className="font-bold text-beauty-text text-sm">{formatTime(cita.fecha_inicio)}</p>
                   <p className="text-gray-400 text-xs">{formatTime(cita.fecha_fin)}</p>
                 </div>
 
                 {/* Avatar */}
-                <div className="w-10 h-10 rounded-full bg-beauty-rosa-claro flex items-center justify-center shrink-0">
+                <div className="w-9 h-9 rounded-full bg-beauty-rosa-claro flex items-center justify-center shrink-0">
                   <span className="text-beauty-secondary font-bold text-sm">
                     {(cita.cliente?.nombre || 'C').charAt(0)}
                   </span>
@@ -160,7 +160,9 @@ export default function Dashboard() {
                   </p>
                 </div>
 
-                <StatusBadge estado={cita.estado} />
+                <div className="shrink-0">
+                  <StatusBadge estado={cita.estado} />
+                </div>
               </div>
             ))}
           </div>

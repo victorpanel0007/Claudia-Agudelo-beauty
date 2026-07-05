@@ -6,15 +6,15 @@ export default function ContactSection() {
   const waNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || '3022197673'
 
   return (
-    <section id="contacto" className="py-20 bg-white">
+    <section id="contacto" className="py-14 sm:py-20 bg-white">
       <div className="max-w-5xl mx-auto px-4 sm:px-6">
 
         {/* Header */}
-        <div className="text-center mb-12">
+        <div className="text-center mb-10 sm:mb-12">
           <p className="text-beauty-secondary text-sm font-medium tracking-widest uppercase mb-3">
             ♥ Contacto
           </p>
-          <h2 className="font-serif text-4xl font-bold text-beauty-text-dark mb-2">
+          <h2 className="font-serif text-3xl sm:text-4xl font-bold text-beauty-text-dark mb-2">
             Encuéntranos &{' '}
             <span className="text-beauty-primary">Contáctanos</span>
           </h2>
@@ -95,11 +95,10 @@ export default function ContactSection() {
 
           {/* Right: map */}
           <div className="rounded-2xl overflow-hidden border border-beauty-primary/25 shadow-card flex flex-col">
-            <div className="relative w-full" style={{ height: '300px' }}>
+            <div className="relative w-full" style={{ paddingBottom: '56.25%', minHeight: '220px' }}>
               <iframe
                 src="https://maps.google.com/maps?q=Claudia+Agudelo+Beauty&output=embed&z=15"
-                width="100%"
-                height="300"
+                className="absolute inset-0 w-full h-full"
                 style={{ border: 0 }}
                 allowFullScreen
                 loading="lazy"

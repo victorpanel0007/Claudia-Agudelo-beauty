@@ -158,44 +158,46 @@ export default function ServiciosView() {
         ) : (
           <div className="divide-y divide-gray-50">
             {filtered.map(s => (
-              <div key={s.id} className="p-4 flex items-center gap-4 hover:bg-gray-50 transition-colors">
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium text-beauty-text text-sm">{s.nombre}</p>
-                  <p className="text-gray-400 text-xs">
-                    {(s.categoria as Categoria | null)?.nombre || '—'}
-                  </p>
-                </div>
-                <div className="flex items-center gap-3 shrink-0">
-                  <div className="flex items-center gap-1 text-gray-400 text-xs">
-                    <Clock size={12} /> {s.duracion_minutos}min
+              <div key={s.id} className="p-4 hover:bg-gray-50 transition-colors">
+                <div className="flex items-start gap-3">
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-beauty-text text-sm">{s.nombre}</p>
+                    <p className="text-gray-400 text-xs">
+                      {(s.categoria as Categoria | null)?.nombre || '—'}
+                    </p>
+                    <div className="flex items-center gap-3 mt-1.5">
+                      <div className="flex items-center gap-1 text-gray-400 text-xs">
+                        <Clock size={12} /> {s.duracion_minutos}min
+                      </div>
+                      {s.tipo_precio === 'fijo' && s.precio ? (
+                        <span className="text-beauty-secondary font-semibold text-sm">
+                          {formatCurrency(s.precio)}
+                        </span>
+                      ) : s.tipo_precio === 'desde' && s.precio_desde ? (
+                        <span className="text-beauty-secondary font-semibold text-xs">
+                          Desde {formatCurrency(s.precio_desde)}
+                        </span>
+                      ) : (
+                        <span className="text-gray-400 text-xs italic">Valoración</span>
+                      )}
+                    </div>
                   </div>
-                  <div className="text-right min-w-[90px]">
-                    {s.tipo_precio === 'fijo' && s.precio ? (
-                      <span className="text-beauty-secondary font-semibold text-sm">
-                        {formatCurrency(s.precio)}
-                      </span>
-                    ) : s.tipo_precio === 'desde' && s.precio_desde ? (
-                      <span className="text-beauty-secondary font-semibold text-xs">
-                        Desde {formatCurrency(s.precio_desde)}
-                      </span>
-                    ) : (
-                      <span className="text-gray-400 text-xs italic">Valoración</span>
-                    )}
+                  <div className="flex items-center gap-1 shrink-0">
+                    <button
+                      onClick={() => openEdit(s)}
+                      className="p-2 hover:bg-beauty-rosa-claro rounded-lg transition-colors"
+                      title="Editar"
+                    >
+                      <Edit size={15} className="text-beauty-secondary" />
+                    </button>
+                    <button
+                      onClick={() => deleteServicio(s.id)}
+                      className="p-2 hover:bg-red-50 rounded-lg transition-colors"
+                      title="Eliminar"
+                    >
+                      <Trash2 size={15} className="text-red-400" />
+                    </button>
                   </div>
-                  <button
-                    onClick={() => openEdit(s)}
-                    className="p-1.5 hover:bg-beauty-rosa-claro rounded-lg transition-colors"
-                    title="Editar"
-                  >
-                    <Edit size={14} className="text-beauty-secondary" />
-                  </button>
-                  <button
-                    onClick={() => deleteServicio(s.id)}
-                    className="p-1.5 hover:bg-red-50 rounded-lg transition-colors"
-                    title="Eliminar"
-                  >
-                    <Trash2 size={14} className="text-red-400" />
-                  </button>
                 </div>
               </div>
             ))}

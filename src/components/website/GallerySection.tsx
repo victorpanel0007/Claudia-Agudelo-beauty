@@ -17,15 +17,15 @@ const gallery = [
 
 export default function GallerySection() {
   return (
-    <section id="galeria" className="py-20 bg-beauty-bg">
+    <section id="galeria" className="py-14 sm:py-20 bg-beauty-bg">
       <div className="max-w-6xl mx-auto px-4 sm:px-6">
 
         {/* Header */}
-        <div className="text-center mb-12">
+        <div className="text-center mb-10 sm:mb-12">
           <p className="text-beauty-secondary text-sm font-medium tracking-widest uppercase mb-3">
             ♥ Galería
           </p>
-          <h2 className="font-serif text-4xl font-bold text-beauty-text-dark mb-2">
+          <h2 className="font-serif text-3xl sm:text-4xl font-bold text-beauty-text-dark mb-2">
             Nuestro <span className="text-beauty-primary">Trabajo</span>
           </h2>
           <div className="gold-divider w-24 mx-auto mt-4" />

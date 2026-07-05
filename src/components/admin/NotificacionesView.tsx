@@ -120,141 +120,206 @@ export default function NotificacionesView() {
 
       {/* Filtros */}
       <div className="bg-white border border-beauty-primary/20 rounded-2xl p-4 shadow-sm">
-        <div className="flex flex-wrap gap-3 items-center">
+        <div className="flex flex-wrap gap-2 sm:gap-3 items-center">
           <div className="flex items-center gap-2 text-gray-400">
             <Filter size={16} /> <span className="text-xs font-medium">Filtrar:</span>
           </div>
           <select value={filtroEstado} onChange={e => setFiltroEstado(e.target.value)}
-            className="text-xs border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-beauty-primary">
+            className="text-xs border border-gray-200 rounded-lg px-2 sm:px-3 py-2 focus:outline-none focus:border-beauty-primary min-w-0">
             <option value="">Todos los estados</option>
             <option value="enviado">Enviado</option>
             <option value="error">Error</option>
             <option value="pendiente">Pendiente</option>
           </select>
           <select value={filtroEsp} onChange={e => setFiltroEsp(e.target.value)}
-            className="text-xs border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-beauty-primary">
+            className="text-xs border border-gray-200 rounded-lg px-2 sm:px-3 py-2 focus:outline-none focus:border-beauty-primary min-w-0 max-w-[160px] sm:max-w-none">
             <option value="">Todas las especialistas</option>
             {especialistas.map(e => <option key={e.id} value={e.id}>{e.nombre}</option>)}
           </select>
-          <div className="relative flex-1 min-w-48">
+          <div className="relative flex-1 min-w-0 w-full sm:w-auto">
             <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
             <input value={buscar} onChange={e => setBuscar(e.target.value)}
-              placeholder="Buscar por especialista o número..."
+              placeholder="Buscar..."
               className="w-full text-xs border border-gray-200 rounded-lg pl-8 pr-3 py-2 focus:outline-none focus:border-beauty-primary" />
           </div>
           {(filtroEstado || filtroEsp || buscar) && (
             <button onClick={() => { setFiltroEstado(''); setFiltroEsp(''); setBuscar('') }}
               className="text-xs text-gray-400 hover:text-red-500 transition-colors">
-              Limpiar filtros
+              Limpiar
             </button>
           )}
         </div>
       </div>
 
       {/* Tabla + Detalle */}
-      <div className="flex gap-4">
-        {/* Tabla */}
+      <div className="flex flex-col sm:flex-row gap-4">
+        {/* Tabla / Cards */}
         <div className="flex-1 bg-white border border-beauty-primary/20 rounded-2xl shadow-sm overflow-hidden min-w-0">
-          <div className="overflow-x-auto">
-            {loading ? (
-              <div className="p-10 text-center text-gray-400 text-sm">Cargando...</div>
-            ) : notifs.length === 0 ? (
-              <div className="p-10 text-center">
-                <Bell size={32} className="mx-auto text-gray-200 mb-3" />
-                <p className="text-gray-400 text-sm">No hay notificaciones</p>
+          {loading ? (
+            <div className="p-10 text-center text-gray-400 text-sm">Cargando...</div>
+          ) : notifs.length === 0 ? (
+            <div className="p-10 text-center">
+              <Bell size={32} className="mx-auto text-gray-200 mb-3" />
+              <p className="text-gray-400 text-sm">No hay notificaciones</p>
+            </div>
+          ) : (
+            <>
+              {/* Desktop: tabla */}
+              <div className="hidden sm:block overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-gray-100 bg-beauty-bg">
+                      <th className="text-left py-3 px-4 text-gray-500 font-medium text-xs">Fecha</th>
+                      <th className="text-left py-3 px-4 text-gray-500 font-medium text-xs">Especialista</th>
+                      <th className="text-left py-3 px-4 text-gray-500 font-medium text-xs">WhatsApp</th>
+                      <th className="text-left py-3 px-4 text-gray-500 font-medium text-xs">Cliente</th>
+                      <th className="text-left py-3 px-4 text-gray-500 font-medium text-xs">Estado</th>
+                      <th className="text-left py-3 px-4 text-gray-500 font-medium text-xs">Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {notifs.map(n => {
+                      const st = ESTADO_CONFIG[n.estado] || ESTADO_CONFIG.pendiente
+                      const isSelected = selected?.id === n.id
+                      return (
+                        <tr key={n.id}
+                          onClick={() => setSelected(isSelected ? null : n)}
+                          className={`border-b border-gray-50 cursor-pointer transition-colors ${
+                            isSelected ? 'bg-beauty-rosa-claro' : 'hover:bg-beauty-bg'
+                          }`}>
+                          <td className="py-3 px-4 text-gray-500 text-xs whitespace-nowrap">{fmt(n.created_at)}</td>
+                          <td className="py-3 px-4 font-medium text-beauty-text text-sm">{n.especialista_nombre}</td>
+                          <td className="py-3 px-4 text-gray-500 text-xs">{n.whatsapp_destino}</td>
+                          <td className="py-3 px-4 text-gray-500 text-xs">
+                            {(n.cita as { cliente?: { nombre?: string } } | null)?.cliente?.nombre || '—'}
+                          </td>
+                          <td className="py-3 px-4">
+                            <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full ${st.cls}`}>
+                              <st.icon size={11} /> {st.label}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4">
+                            <div className="flex items-center gap-2">
+                              {n.estado === 'error' && (
+                                <button
+                                  onClick={e => { e.stopPropagation(); reenviar(n.id) }}
+                                  disabled={resending === n.id}
+                                  className="flex items-center gap-1 text-xs bg-beauty-primary text-white px-2.5 py-1.5 rounded-lg hover:bg-beauty-primary-dark transition-colors disabled:opacity-50"
+                                >
+                                  {resending === n.id
+                                    ? <RefreshCw size={11} className="animate-spin" />
+                                    : <Send size={11} />
+                                  }
+                                  Reenviar
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
               </div>
-            ) : (
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-gray-100 bg-beauty-bg">
-                    <th className="text-left py-3 px-4 text-gray-500 font-medium text-xs">Fecha</th>
-                    <th className="text-left py-3 px-4 text-gray-500 font-medium text-xs">Especialista</th>
-                    <th className="text-left py-3 px-4 text-gray-500 font-medium text-xs">WhatsApp</th>
-                    <th className="text-left py-3 px-4 text-gray-500 font-medium text-xs">Cliente</th>
-                    <th className="text-left py-3 px-4 text-gray-500 font-medium text-xs">Estado</th>
-                    <th className="text-left py-3 px-4 text-gray-500 font-medium text-xs">Acciones</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {notifs.map(n => {
-                    const st = ESTADO_CONFIG[n.estado] || ESTADO_CONFIG.pendiente
-                    const isSelected = selected?.id === n.id
-                    return (
-                      <tr key={n.id}
-                        onClick={() => setSelected(isSelected ? null : n)}
-                        className={`border-b border-gray-50 cursor-pointer transition-colors ${
-                          isSelected ? 'bg-beauty-rosa-claro' : 'hover:bg-beauty-bg'
-                        }`}>
-                        <td className="py-3 px-4 text-gray-500 text-xs whitespace-nowrap">{fmt(n.created_at)}</td>
-                        <td className="py-3 px-4 font-medium text-beauty-text text-sm">{n.especialista_nombre}</td>
-                        <td className="py-3 px-4 text-gray-500 text-xs">{n.whatsapp_destino}</td>
-                        <td className="py-3 px-4 text-gray-500 text-xs">
-                          {(n.cita as { cliente?: { nombre?: string } } | null)?.cliente?.nombre || '—'}
-                        </td>
-                        <td className="py-3 px-4">
-                          <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full ${st.cls}`}>
-                            <st.icon size={11} /> {st.label}
-                          </span>
-                        </td>
-                        <td className="py-3 px-4">
-                          <div className="flex items-center gap-2">
-                            {n.estado === 'error' && (
-                              <button
-                                onClick={e => { e.stopPropagation(); reenviar(n.id) }}
-                                disabled={resending === n.id}
-                                className="flex items-center gap-1 text-xs bg-beauty-primary text-white px-2.5 py-1.5 rounded-lg hover:bg-beauty-primary-dark transition-colors disabled:opacity-50"
-                              >
-                                {resending === n.id
-                                  ? <RefreshCw size={11} className="animate-spin" />
-                                  : <Send size={11} />
-                                }
-                                Reenviar
-                              </button>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            )}
-          </div>
+
+              {/* Mobile: cards */}
+              <div className="sm:hidden divide-y divide-gray-50">
+                {notifs.map(n => {
+                  const st = ESTADO_CONFIG[n.estado] || ESTADO_CONFIG.pendiente
+                  return (
+                    <button
+                      key={n.id}
+                      onClick={() => setSelected(selected?.id === n.id ? null : n)}
+                      className={`w-full text-left p-4 transition-colors ${
+                        selected?.id === n.id ? 'bg-beauty-rosa-claro' : 'hover:bg-beauty-bg'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-2 mb-1">
+                        <p className="font-semibold text-sm text-beauty-text">{n.especialista_nombre}</p>
+                        <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full shrink-0 ${st.cls}`}>
+                          <st.icon size={10} /> {st.label}
+                        </span>
+                      </div>
+                      <p className="text-xs text-gray-500">{n.whatsapp_destino}</p>
+                      <p className="text-xs text-gray-400 mt-0.5">{fmt(n.created_at)}</p>
+                    </button>
+                  )
+                })}
+              </div>
+            </>
+          )}
         </div>
 
-        {/* Panel detalle */}
+        {/* Panel detalle — overlay en móvil, sidebar en desktop */}
         {selected && (
-          <div className="w-80 shrink-0 bg-white border border-beauty-primary/20 rounded-2xl shadow-sm p-4 space-y-4 overflow-y-auto max-h-[600px]">
-            <div className="flex items-center justify-between">
-              <p className="font-semibold text-beauty-text text-sm">Detalle</p>
-              <button onClick={() => setSelected(null)} className="text-gray-400 hover:text-gray-600 text-lg leading-none">×</button>
+          <>
+            {/* Mobile: bottom sheet */}
+            <div className="sm:hidden fixed inset-0 z-50 bg-black/50 flex items-end" onClick={() => setSelected(null)}>
+              <div className="w-full bg-white rounded-t-2xl max-h-[80vh] overflow-y-auto p-4 space-y-4" onClick={e => e.stopPropagation()}>
+                <div className="flex items-center justify-between">
+                  <p className="font-semibold text-beauty-text text-sm">Detalle</p>
+                  <button onClick={() => setSelected(null)} className="text-gray-400 hover:text-gray-600 text-2xl leading-none p-1">×</button>
+                </div>
+                <div className="space-y-2 text-xs">
+                  <div className="bg-beauty-bg rounded-xl p-3 space-y-1.5">
+                    <p><span className="text-gray-400">Especialista:</span> <span className="font-medium">{selected.especialista_nombre}</span></p>
+                    <p><span className="text-gray-400">WhatsApp:</span> {selected.whatsapp_destino}</p>
+                    <p><span className="text-gray-400">Tipo:</span> {selected.tipo}</p>
+                    <p><span className="text-gray-400">Fecha:</span> {fmt(selected.created_at)}</p>
+                    <p><span className="text-gray-400">Código:</span> {selected.codigo_respuesta || '—'}</p>
+                    {selected.error_detalle && (
+                      <p className="text-red-500"><span className="text-gray-400">Error:</span> {selected.error_detalle}</p>
+                    )}
+                  </div>
+                  <div>
+                    <p className="text-gray-400 mb-1 font-medium">Mensaje enviado:</p>
+                    <pre className="bg-gray-50 border border-gray-200 rounded-xl p-3 text-xs text-gray-700 whitespace-pre-wrap leading-relaxed max-h-48 overflow-y-auto">
+                      {selected.mensaje}
+                    </pre>
+                  </div>
+                  {selected.estado === 'error' && (
+                    <button onClick={() => reenviar(selected.id)} disabled={resending === selected.id}
+                      className="w-full flex items-center justify-center gap-2 bg-beauty-primary text-white py-3 rounded-xl text-sm font-semibold hover:bg-beauty-primary-dark transition-colors disabled:opacity-50">
+                      {resending === selected.id ? <RefreshCw size={13} className="animate-spin" /> : <Send size={13} />}
+                      Reenviar notificación
+                    </button>
+                  )}
+                </div>
+              </div>
             </div>
-            <div className="space-y-2 text-xs">
-              <div className="bg-beauty-bg rounded-xl p-3 space-y-1.5">
-                <p><span className="text-gray-400">Especialista:</span> <span className="font-medium">{selected.especialista_nombre}</span></p>
-                <p><span className="text-gray-400">WhatsApp:</span> {selected.whatsapp_destino}</p>
-                <p><span className="text-gray-400">Tipo:</span> {selected.tipo}</p>
-                <p><span className="text-gray-400">Fecha:</span> {fmt(selected.created_at)}</p>
-                <p><span className="text-gray-400">Código:</span> {selected.codigo_respuesta || '—'}</p>
-                {selected.error_detalle && (
-                  <p className="text-red-500"><span className="text-gray-400">Error:</span> {selected.error_detalle}</p>
+            {/* Desktop: sidebar */}
+            <div className="hidden sm:block w-80 shrink-0 bg-white border border-beauty-primary/20 rounded-2xl shadow-sm p-4 space-y-4 overflow-y-auto max-h-[600px]">
+              <div className="flex items-center justify-between">
+                <p className="font-semibold text-beauty-text text-sm">Detalle</p>
+                <button onClick={() => setSelected(null)} className="text-gray-400 hover:text-gray-600 text-lg leading-none">×</button>
+              </div>
+              <div className="space-y-2 text-xs">
+                <div className="bg-beauty-bg rounded-xl p-3 space-y-1.5">
+                  <p><span className="text-gray-400">Especialista:</span> <span className="font-medium">{selected.especialista_nombre}</span></p>
+                  <p><span className="text-gray-400">WhatsApp:</span> {selected.whatsapp_destino}</p>
+                  <p><span className="text-gray-400">Tipo:</span> {selected.tipo}</p>
+                  <p><span className="text-gray-400">Fecha:</span> {fmt(selected.created_at)}</p>
+                  <p><span className="text-gray-400">Código:</span> {selected.codigo_respuesta || '—'}</p>
+                  {selected.error_detalle && (
+                    <p className="text-red-500"><span className="text-gray-400">Error:</span> {selected.error_detalle}</p>
+                  )}
+                </div>
+                <div>
+                  <p className="text-gray-400 mb-1 font-medium">Mensaje enviado:</p>
+                  <pre className="bg-gray-50 border border-gray-200 rounded-xl p-3 text-xs text-gray-700 whitespace-pre-wrap leading-relaxed max-h-72 overflow-y-auto">
+                    {selected.mensaje}
+                  </pre>
+                </div>
+                {selected.estado === 'error' && (
+                  <button onClick={() => reenviar(selected.id)} disabled={resending === selected.id}
+                    className="w-full flex items-center justify-center gap-2 bg-beauty-primary text-white py-2.5 rounded-xl text-xs font-semibold hover:bg-beauty-primary-dark transition-colors disabled:opacity-50">
+                    {resending === selected.id ? <RefreshCw size={13} className="animate-spin" /> : <Send size={13} />}
+                    Reenviar notificación
+                  </button>
                 )}
               </div>
-              <div>
-                <p className="text-gray-400 mb-1 font-medium">Mensaje enviado:</p>
-                <pre className="bg-gray-50 border border-gray-200 rounded-xl p-3 text-xs text-gray-700 whitespace-pre-wrap leading-relaxed max-h-72 overflow-y-auto">
-                  {selected.mensaje}
-                </pre>
-              </div>
-              {selected.estado === 'error' && (
-                <button onClick={() => reenviar(selected.id)} disabled={resending === selected.id}
-                  className="w-full flex items-center justify-center gap-2 bg-beauty-primary text-white py-2.5 rounded-xl text-xs font-semibold hover:bg-beauty-primary-dark transition-colors disabled:opacity-50">
-                  {resending === selected.id ? <RefreshCw size={13} className="animate-spin" /> : <Send size={13} />}
-                  Reenviar notificación
-                </button>
-              )}
             </div>
-          </div>
+          </>
         )}
       </div>
     </div>
