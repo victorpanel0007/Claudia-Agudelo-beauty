@@ -24,11 +24,7 @@ export default function ServicesSection() {
 
         {/* Header */}
         <div className="text-center mb-10 sm:mb-14">
-<<<<<<< HEAD
           <p className="text-beauty-secondary text-xs sm:text-sm font-medium tracking-widest uppercase mb-3">
-=======
-          <p className="text-beauty-secondary text-sm font-medium tracking-widest uppercase mb-3">
->>>>>>> 2f2bdad9279844c19f030c971fdf2af4a6837d01
             ♥ Nuestros Servicios
           </p>
           <h2 className="font-serif text-3xl sm:text-4xl md:text-5xl font-bold text-beauty-text-dark mb-3">
@@ -37,13 +33,8 @@ export default function ServicesSection() {
           <div className="gold-divider w-20 mx-auto mt-4" />
         </div>
 
-<<<<<<< HEAD
         {/* Featured service icons grid — 2 cols on mobile, 3 on sm+ */}
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-6 mb-8 sm:mb-12">
-=======
-        {/* Featured service icons */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 sm:gap-6 mb-10 sm:mb-12">
->>>>>>> 2f2bdad9279844c19f030c971fdf2af4a6837d01
           {FEATURED.map((item, i) => (
             <motion.button
               key={i}

@@ -742,7 +742,6 @@ export default function ComisionesView() {
               <span className="ml-auto text-xs text-beauty-text-muted">{citas.length} cita{citas.length !== 1 ? 's' : ''}</span>
             )}
           </div>
-<<<<<<< HEAD
 
           {loadingCitas ? (
             <div className="space-y-2 p-4">{[1,2,3,4].map(i => <div key={i} className="h-10 bg-beauty-rosa-claro/30 rounded-lg animate-pulse" />)}</div>
@@ -825,113 +824,6 @@ export default function ComisionesView() {
                     </tr>
                   </tfoot>
                 </table>
-=======
-          {loadingCitas ? (
-            <div className="space-y-2 p-4">
-              {[1, 2, 3, 4].map(i => (
-                <div key={i} className="h-10 bg-beauty-rosa-claro/30 rounded-lg animate-pulse" />
-              ))}
-            </div>
-          ) : citas.length === 0 ? (
-            <p className="text-beauty-text-muted text-sm text-center py-10">
-              Sin citas completadas en el período seleccionado
-            </p>
-          ) : (
-            <>
-              {/* Desktop tabla */}
-              <div className="hidden sm:block overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="bg-beauty-bg border-b border-gray-100">
-                      {['Fecha', 'Hora', 'Servicio', 'Valor', '% Comisión', 'Comisión', 'Ganancia Spa', 'Pago'].map(h => (
-                        <th key={h} className="text-left py-2.5 px-4 text-beauty-text-muted font-medium text-xs">{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {citas.map(c => {
-                      const pct = c.porcentaje_comision ?? (selectedEspId ? getPct(selectedEspId) : 40)
-                      const comision = c.comision_especialista ?? ((c.valor_final ?? 0) * pct / 100)
-                      const ganancia = c.ganancia_spa ?? ((c.valor_final ?? 0) - comision)
-                      return (
-                        <tr key={c.id} className="border-b border-gray-50 hover:bg-beauty-bg transition-colors">
-                          <td className="py-2.5 px-4 text-beauty-text-muted text-xs whitespace-nowrap">{fmtDate(c.fecha_inicio)}</td>
-                          <td className="py-2.5 px-4 text-beauty-text-muted text-xs">{fmtTime(c.fecha_inicio)}</td>
-                          <td className="py-2.5 px-4 text-beauty-text">{(c.servicio as { nombre?: string } | null)?.nombre ?? '—'}</td>
-                          <td className="py-2.5 px-4 font-medium text-beauty-text">{formatCurrency(c.valor_final ?? 0)}</td>
-                          <td className="py-2.5 px-4 text-center">
-                            <span className="bg-beauty-secondary/20 text-beauty-secondary text-xs font-bold px-2 py-0.5 rounded-full">{pct}%</span>
-                          </td>
-                          <td className="py-2.5 px-4 text-beauty-borgona font-medium">{formatCurrency(comision)}</td>
-                          <td className="py-2.5 px-4 text-emerald-600 font-medium">{formatCurrency(ganancia)}</td>
-                          <td className="py-2.5 px-4">
-                            {c.pago_estado === 'pagado' ? (
-                              <span className="bg-green-100 text-green-700 text-xs font-medium px-2 py-0.5 rounded-full">Pagado</span>
-                            ) : c.pago_estado === 'parcial' ? (
-                              <span className="bg-blue-100 text-blue-700 text-xs font-medium px-2 py-0.5 rounded-full">Parcial</span>
-                            ) : (
-                              <span className="bg-amber-100 text-amber-700 text-xs font-medium px-2 py-0.5 rounded-full">Pendiente</span>
-                            )}
-                          </td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                  <tfoot>
-                    <tr className="bg-beauty-bg border-t-2 border-beauty-primary/20 font-bold">
-                      <td className="py-2.5 px-4 text-xs text-beauty-borgona" colSpan={3}>TOTALES</td>
-                      <td className="py-2.5 px-4 text-beauty-text">{formatCurrency(summary.totalFacturado)}</td>
-                      <td className="py-2.5 px-4"></td>
-                      <td className="py-2.5 px-4 text-beauty-borgona">{formatCurrency(summary.comisionEspecialista)}</td>
-                      <td className="py-2.5 px-4 text-emerald-700">{formatCurrency(summary.gananciaSpa)}</td>
-                      <td className="py-2.5 px-4"></td>
-                    </tr>
-                  </tfoot>
-                </table>
-              </div>
-              {/* Mobile cards */}
-              <div className="sm:hidden divide-y divide-gray-50">
-                {citas.map(c => {
-                  const pct = c.porcentaje_comision ?? (selectedEspId ? getPct(selectedEspId) : 40)
-                  const comision = c.comision_especialista ?? ((c.valor_final ?? 0) * pct / 100)
-                  const ganancia = c.ganancia_spa ?? ((c.valor_final ?? 0) - comision)
-                  return (
-                    <div key={c.id} className="p-4 space-y-2">
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <p className="font-medium text-beauty-text text-sm">{(c.servicio as { nombre?: string } | null)?.nombre ?? '—'}</p>
-                          <p className="text-xs text-beauty-text-muted">{fmtDate(c.fecha_inicio)} · {fmtTime(c.fecha_inicio)}</p>
-                        </div>
-                        {c.pago_estado === 'pagado' ? (
-                          <span className="bg-green-100 text-green-700 text-xs font-medium px-2 py-0.5 rounded-full">Pagado</span>
-                        ) : c.pago_estado === 'parcial' ? (
-                          <span className="bg-blue-100 text-blue-700 text-xs font-medium px-2 py-0.5 rounded-full">Parcial</span>
-                        ) : (
-                          <span className="bg-amber-100 text-amber-700 text-xs font-medium px-2 py-0.5 rounded-full">Pendiente</span>
-                        )}
-                      </div>
-                      <div className="grid grid-cols-3 gap-2 text-xs">
-                        <div className="bg-beauty-bg rounded-lg p-2 text-center">
-                          <p className="font-bold text-beauty-text">{formatCurrency(c.valor_final ?? 0)}</p>
-                          <p className="text-beauty-text-muted">Valor</p>
-                        </div>
-                        <div className="bg-beauty-bg rounded-lg p-2 text-center">
-                          <p className="font-bold text-beauty-borgona">{formatCurrency(comision)}</p>
-                          <p className="text-beauty-text-muted">Comisión {pct}%</p>
-                        </div>
-                        <div className="bg-beauty-bg rounded-lg p-2 text-center">
-                          <p className="font-bold text-emerald-600">{formatCurrency(ganancia)}</p>
-                          <p className="text-beauty-text-muted">Ganancia</p>
-                        </div>
-                      </div>
-                    </div>
-                  )
-                })}
-                <div className="p-4 bg-beauty-bg flex justify-between text-xs font-bold text-beauty-borgona">
-                  <span>TOTALES</span>
-                  <span>{formatCurrency(summary.totalFacturado)}</span>
-                </div>
->>>>>>> 2f2bdad9279844c19f030c971fdf2af4a6837d01
               </div>
             </>
           )}
@@ -954,7 +846,6 @@ export default function ComisionesView() {
               <span className="ml-auto text-xs text-beauty-text-muted">{pagos.length} registro{pagos.length !== 1 ? 's' : ''}</span>
             )}
           </div>
-<<<<<<< HEAD
 
           {loadingPagos ? (
             <div className="space-y-2 p-4">{[1,2,3].map(i => <div key={i} className="h-10 bg-beauty-rosa-claro/30 rounded-lg animate-pulse" />)}</div>
@@ -986,22 +877,6 @@ export default function ComisionesView() {
 
               {/* Desktop: tabla */}
               <div className="hidden lg:block overflow-x-auto">
-=======
-          {loadingPagos ? (
-            <div className="space-y-2 p-4">
-              {[1, 2, 3].map(i => (
-                <div key={i} className="h-10 bg-beauty-rosa-claro/30 rounded-lg animate-pulse" />
-              ))}
-            </div>
-          ) : pagos.length === 0 ? (
-            <p className="text-beauty-text-muted text-sm text-center py-10">
-              Sin pagos registrados en el período seleccionado
-            </p>
-          ) : (
-            <>
-              {/* Desktop tabla */}
-              <div className="hidden sm:block overflow-x-auto">
->>>>>>> 2f2bdad9279844c19f030c971fdf2af4a6837d01
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="bg-beauty-bg border-b border-gray-100">
@@ -1014,13 +889,7 @@ export default function ComisionesView() {
                     {pagos.map(p => (
                       <tr key={p.id} className="border-b border-gray-50 hover:bg-beauty-bg transition-colors">
                         <td className="py-2.5 px-4 text-beauty-text-muted text-xs whitespace-nowrap">{p.fecha}</td>
-<<<<<<< HEAD
                         <td className="py-2.5 px-4"><span className="bg-beauty-rosa-claro text-beauty-borgona text-xs font-medium px-2 py-0.5 rounded-full capitalize">{p.periodo}</span></td>
-=======
-                        <td className="py-2.5 px-4">
-                          <span className="bg-beauty-rosa-claro text-beauty-borgona text-xs font-medium px-2 py-0.5 rounded-full capitalize">{p.periodo}</span>
-                        </td>
->>>>>>> 2f2bdad9279844c19f030c971fdf2af4a6837d01
                         <td className="py-2.5 px-4 text-beauty-text font-medium">{p.especialista_nombre}</td>
                         <td className="py-2.5 px-4 text-beauty-borgona font-bold">{formatCurrency(p.valor_pagado)}</td>
                         <td className="py-2.5 px-4 capitalize text-beauty-text-muted">{p.metodo_pago}</td>
@@ -1037,30 +906,6 @@ export default function ComisionesView() {
                   </tfoot>
                 </table>
               </div>
-<<<<<<< HEAD
-=======
-              {/* Mobile cards */}
-              <div className="sm:hidden divide-y divide-gray-50">
-                {pagos.map(p => (
-                  <div key={p.id} className="p-4">
-                    <div className="flex justify-between items-start mb-1">
-                      <p className="font-medium text-beauty-text text-sm">{p.especialista_nombre}</p>
-                      <p className="font-bold text-beauty-borgona text-sm">{formatCurrency(p.valor_pagado)}</p>
-                    </div>
-                    <div className="flex flex-wrap gap-1.5 text-xs">
-                      <span className="text-beauty-text-muted">{p.fecha}</span>
-                      <span className="bg-beauty-rosa-claro text-beauty-borgona px-2 py-0.5 rounded-full capitalize">{p.periodo}</span>
-                      <span className="text-beauty-text-muted capitalize">{p.metodo_pago}</span>
-                    </div>
-                    {p.observaciones && <p className="text-xs text-beauty-text-muted mt-1">{p.observaciones}</p>}
-                  </div>
-                ))}
-                <div className="p-4 bg-beauty-bg flex justify-between text-xs font-bold text-beauty-borgona">
-                  <span>TOTAL PAGADO</span>
-                  <span>{formatCurrency(summary.totalPagado)}</span>
-                </div>
-              </div>
->>>>>>> 2f2bdad9279844c19f030c971fdf2af4a6837d01
             </>
           )}
         </div>

@@ -11,11 +11,7 @@ export default function ContactSection() {
 
         {/* Header */}
         <div className="text-center mb-10 sm:mb-12">
-<<<<<<< HEAD
           <p className="text-beauty-secondary text-xs sm:text-sm font-medium tracking-widest uppercase mb-3">
-=======
-          <p className="text-beauty-secondary text-sm font-medium tracking-widest uppercase mb-3">
->>>>>>> 2f2bdad9279844c19f030c971fdf2af4a6837d01
             ♥ Contacto
           </p>
           <h2 className="font-serif text-3xl sm:text-4xl font-bold text-beauty-text-dark mb-2">
@@ -107,20 +103,12 @@ export default function ContactSection() {
 
           {/* Right: map */}
           <div className="rounded-2xl overflow-hidden border border-beauty-primary/25 shadow-card flex flex-col">
-<<<<<<< HEAD
             <div className="relative w-full">
               <iframe
                 src="https://maps.google.com/maps?q=Claudia+Agudelo+Beauty&output=embed&z=15"
                 width="100%"
                 height="280"
                 style={{ border: 0, display: 'block' }}
-=======
-            <div className="relative w-full" style={{ paddingBottom: '56.25%', minHeight: '220px' }}>
-              <iframe
-                src="https://maps.google.com/maps?q=Claudia+Agudelo+Beauty&output=embed&z=15"
-                className="absolute inset-0 w-full h-full"
-                style={{ border: 0 }}
->>>>>>> 2f2bdad9279844c19f030c971fdf2af4a6837d01
                 allowFullScreen
                 loading="lazy"
                 referrerPolicy="no-referrer-when-downgrade"

@@ -576,17 +576,12 @@ export default function ReportesView() {
           </button>
         </div>
 
-<<<<<<< HEAD
-=======
-        {/* Gastos table */}
->>>>>>> 2f2bdad9279844c19f030c971fdf2af4a6837d01
         {gastosLoading ? (
           <p className="text-gray-400 text-sm text-center py-8">Cargando...</p>
         ) : gastos.length === 0 ? (
           <p className="text-gray-400 text-sm text-center py-8">No hay gastos registrados</p>
         ) : (
           <>
-<<<<<<< HEAD
             {/* Móvil: cards */}
             <div className="divide-y divide-gray-50 lg:hidden">
               {gastos.map(g => (
@@ -610,10 +605,6 @@ export default function ReportesView() {
             </div>
             {/* Desktop: tabla */}
             <div className="hidden lg:block overflow-x-auto">
-=======
-            {/* Desktop tabla */}
-            <div className="hidden sm:block overflow-x-auto">
->>>>>>> 2f2bdad9279844c19f030c971fdf2af4a6837d01
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-gray-100 bg-[#FFF8EE]">
@@ -628,25 +619,11 @@ export default function ReportesView() {
                   {gastos.map(g => (
                     <tr key={g.id} className="border-b border-gray-50 hover:bg-[#FFF8EE]">
                       <td className="py-2 px-4 text-gray-600">{g.fecha}</td>
-<<<<<<< HEAD
                       <td className="py-2 px-4"><span className="bg-[#FAD6E0] text-[#8B1E3F] text-xs px-2 py-0.5 rounded-full">{g.categoria}</span></td>
                       <td className="py-2 px-4 text-[#222222]">{g.descripcion}</td>
                       <td className="py-2 px-4 text-right font-medium text-[#8B1E3F]">{fmt(g.valor)}</td>
                       <td className="py-2 px-4 text-right">
                         <button onClick={() => deleteGasto(g.id)} className="text-red-400 hover:text-red-600 transition-colors" title="Eliminar">
-=======
-                      <td className="py-2 px-4">
-                        <span className="bg-[#FAD6E0] text-[#8B1E3F] text-xs px-2 py-0.5 rounded-full">{g.categoria}</span>
-                      </td>
-                      <td className="py-2 px-4 text-[#222222]">{g.descripcion}</td>
-                      <td className="py-2 px-4 text-right font-medium text-[#8B1E3F]">{fmt(g.valor)}</td>
-                      <td className="py-2 px-4 text-right">
-                        <button
-                          onClick={() => deleteGasto(g.id)}
-                          className="text-red-400 hover:text-red-600 transition-colors"
-                          title="Eliminar"
-                        >
->>>>>>> 2f2bdad9279844c19f030c971fdf2af4a6837d01
                           <Trash2 size={15} />
                         </button>
                       </td>
@@ -655,33 +632,6 @@ export default function ReportesView() {
                 </tbody>
               </table>
             </div>
-<<<<<<< HEAD
-=======
-            {/* Mobile cards */}
-            <div className="sm:hidden divide-y divide-gray-50">
-              {gastos.map(g => (
-                <div key={g.id} className="p-4 flex items-start justify-between gap-3">
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-[#222222] text-sm truncate">{g.descripcion}</p>
-                    <div className="flex flex-wrap gap-1.5 mt-1">
-                      <span className="text-xs text-gray-500">{g.fecha}</span>
-                      <span className="bg-[#FAD6E0] text-[#8B1E3F] text-xs px-2 py-0.5 rounded-full">{g.categoria}</span>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <p className="font-bold text-[#8B1E3F] text-sm">{fmt(g.valor)}</p>
-                    <button
-                      onClick={() => deleteGasto(g.id)}
-                      className="text-red-400 hover:text-red-600 transition-colors p-1"
-                      title="Eliminar"
-                    >
-                      <Trash2 size={15} />
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
->>>>>>> 2f2bdad9279844c19f030c971fdf2af4a6837d01
           </>
         )}
       </div>
@@ -693,7 +643,6 @@ export default function ReportesView() {
           <h3 className="font-semibold text-[#222222]">Top Servicios</h3>
           <span className="text-xs text-gray-400 ml-1">— período seleccionado</span>
         </div>
-<<<<<<< HEAD
         {/* Top servicios — cards móvil, tabla desktop */}
           {topLoading ? (
             <p className="text-gray-400 text-sm text-center py-8">Cargando...</p>
@@ -714,63 +663,23 @@ export default function ReportesView() {
               <div className="hidden lg:block overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead><tr className="border-b border-gray-100 bg-[#FFF8EE]">
-=======
-        {topLoading ? (
-          <p className="text-gray-400 text-sm text-center py-8">Cargando...</p>
-        ) : topServicios.length === 0 ? (
-          <p className="text-gray-400 text-sm text-center py-8">Sin datos para el período</p>
-        ) : (
-          <>
-            <div className="hidden sm:block overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-gray-100 bg-[#FFF8EE]">
->>>>>>> 2f2bdad9279844c19f030c971fdf2af4a6837d01
                     <th className="text-left py-2 px-4 text-gray-500 font-medium text-xs">#</th>
                     <th className="text-left py-2 px-4 text-gray-500 font-medium text-xs">Servicio</th>
                     <th className="text-right py-2 px-4 text-gray-500 font-medium text-xs">Cantidad</th>
                     <th className="text-right py-2 px-4 text-gray-500 font-medium text-xs">Total Facturado</th>
-<<<<<<< HEAD
                   </tr></thead>
                   <tbody>{topServicios.map((s, i) => (
-=======
-                  </tr>
-                </thead>
-                <tbody>
-                  {topServicios.map((s, i) => (
->>>>>>> 2f2bdad9279844c19f030c971fdf2af4a6837d01
                     <tr key={i} className="border-b border-gray-50 hover:bg-[#FFF8EE]">
                       <td className="py-2 px-4 text-[#D4AF37] font-bold">{i + 1}</td>
                       <td className="py-2 px-4 text-[#222222]">{s.nombre}</td>
                       <td className="py-2 px-4 text-right text-gray-600">{s.cantidad}</td>
                       <td className="py-2 px-4 text-right font-medium text-[#8B1E3F]">{fmt(s.total)}</td>
                     </tr>
-<<<<<<< HEAD
                   ))}</tbody>
                 </table>
               </div>
             </>
           )}
-=======
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <div className="sm:hidden divide-y divide-gray-50">
-              {topServicios.map((s, i) => (
-                <div key={i} className="p-4 flex items-center gap-3">
-                  <span className="text-lg font-bold text-[#D4AF37] w-6 shrink-0">{i + 1}</span>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-[#222222] text-sm truncate">{s.nombre}</p>
-                    <p className="text-xs text-gray-500">{s.cantidad} cita{s.cantidad !== 1 ? 's' : ''}</p>
-                  </div>
-                  <p className="font-bold text-[#8B1E3F] text-sm shrink-0">{fmt(s.total)}</p>
-                </div>
-              ))}
-            </div>
-          </>
-        )}
->>>>>>> 2f2bdad9279844c19f030c971fdf2af4a6837d01
       </div>
 
       {/* Section 6 – Historial simple */}
@@ -780,7 +689,6 @@ export default function ReportesView() {
           <h3 className="font-semibold text-[#222222]">Historial Reciente</h3>
           <span className="text-xs text-gray-400 ml-1">— últimas 50 citas completadas</span>
         </div>
-<<<<<<< HEAD
           {histLoading ? (
             <p className="text-gray-400 text-sm text-center py-8">Cargando...</p>
           ) : historial.length === 0 ? (
@@ -804,74 +712,26 @@ export default function ReportesView() {
               <div className="hidden lg:block overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead><tr className="border-b border-gray-100 bg-[#FFF8EE]">
-=======
-        {histLoading ? (
-          <p className="text-gray-400 text-sm text-center py-8">Cargando...</p>
-        ) : historial.length === 0 ? (
-          <p className="text-gray-400 text-sm text-center py-8">Sin citas en el período</p>
-        ) : (
-          <>
-            <div className="hidden sm:block overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-gray-100 bg-[#FFF8EE]">
->>>>>>> 2f2bdad9279844c19f030c971fdf2af4a6837d01
                     <th className="text-left py-2 px-4 text-gray-500 font-medium text-xs">Fecha</th>
                     <th className="text-left py-2 px-4 text-gray-500 font-medium text-xs">Cliente</th>
                     <th className="text-left py-2 px-4 text-gray-500 font-medium text-xs">Servicio</th>
                     <th className="text-left py-2 px-4 text-gray-500 font-medium text-xs">Especialista</th>
                     <th className="text-right py-2 px-4 text-gray-500 font-medium text-xs">Valor</th>
-<<<<<<< HEAD
                   </tr></thead>
                   <tbody>{historial.map(h => (
                     <tr key={h.id} className="border-b border-gray-50 hover:bg-[#FFF8EE]">
                       <td className="py-2 px-4 text-gray-500 text-xs whitespace-nowrap">{new Date(h.fecha).toLocaleDateString('es-CO', { timeZone: 'America/Bogota', day: '2-digit', month: 'short', year: 'numeric' })}</td>
-=======
-                  </tr>
-                </thead>
-                <tbody>
-                  {historial.map(h => (
-                    <tr key={h.id} className="border-b border-gray-50 hover:bg-[#FFF8EE]">
-                      <td className="py-2 px-4 text-gray-500 text-xs whitespace-nowrap">
-                        {new Date(h.fecha).toLocaleDateString('es-CO', { timeZone: 'America/Bogota', day: '2-digit', month: 'short', year: 'numeric' })}
-                      </td>
->>>>>>> 2f2bdad9279844c19f030c971fdf2af4a6837d01
                       <td className="py-2 px-4 text-[#222222]">{h.cliente}</td>
                       <td className="py-2 px-4 text-gray-600">{h.servicio}</td>
                       <td className="py-2 px-4 text-gray-600">{h.especialista}</td>
                       <td className="py-2 px-4 text-right font-medium text-[#8B1E3F]">{fmt(h.valor)}</td>
                     </tr>
-<<<<<<< HEAD
                   ))}</tbody>
                 </table>
               </div>
             </>
           )}
         </div>
-=======
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <div className="sm:hidden divide-y divide-gray-50">
-              {historial.map(h => (
-                <div key={h.id} className="p-4">
-                  <div className="flex justify-between items-start mb-1">
-                    <p className="font-medium text-[#222222] text-sm">{h.cliente}</p>
-                    <p className="font-bold text-[#8B1E3F] text-sm">{fmt(h.valor)}</p>
-                  </div>
-                  <p className="text-xs text-gray-600 truncate">{h.servicio}</p>
-                  <div className="flex gap-2 mt-1 text-xs text-gray-400">
-                    <span>{new Date(h.fecha).toLocaleDateString('es-CO', { timeZone: 'America/Bogota', day: '2-digit', month: 'short' })}</span>
-                    <span>·</span>
-                    <span>{h.especialista}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </>
-        )}
->>>>>>> 2f2bdad9279844c19f030c971fdf2af4a6837d01
       </div>
 
       {/* Modal – Agregar Gasto */}

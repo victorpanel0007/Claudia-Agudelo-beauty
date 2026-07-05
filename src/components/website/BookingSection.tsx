@@ -143,19 +143,11 @@ export default function BookingSection() {
 
         {/* Header */}
         <div className="text-center mb-8 sm:mb-10">
-<<<<<<< HEAD
           <p className="text-beauty-secondary text-xs sm:text-sm font-medium tracking-widest uppercase mb-3">
             ♥ Reserva Online
           </p>
           <h2 className="font-serif text-3xl sm:text-4xl font-bold text-beauty-text-dark mb-2">
             Tu Cita en <span className="text-beauty-primary">Minutos</span>
-=======
-          <p className="text-beauty-secondary text-sm font-medium tracking-widest uppercase mb-3">
-            ♥ Reserva Online
-          </p>
-          <h2 className="font-serif text-3xl sm:text-4xl font-bold text-beauty-text-dark mb-2">
-            Tu Cita en <span className="text-beauty-primary">3 Pasos</span>
->>>>>>> 2f2bdad9279844c19f030c971fdf2af4a6837d01
           </h2>
           <div className="gold-divider w-24 mx-auto mt-4" />
         </div>
@@ -240,11 +232,7 @@ export default function BookingSection() {
                   <input {...register('especialista_id')} type="radio" value="" className="sr-only peer" />
                   <div className="border-2 border-beauty-primary/40 rounded-xl p-3 text-center text-sm font-medium text-beauty-text
                     peer-checked:border-beauty-secondary peer-checked:text-beauty-secondary peer-checked:bg-beauty-secondary/10
-<<<<<<< HEAD
                     transition-all cursor-pointer hover:border-beauty-primary min-h-[52px] flex items-center justify-center">
-=======
-                    transition-all cursor-pointer hover:border-beauty-primary min-h-[48px] flex items-center justify-center">
->>>>>>> 2f2bdad9279844c19f030c971fdf2af4a6837d01
                     Cualquiera
                   </div>
                 </label>
@@ -253,11 +241,7 @@ export default function BookingSection() {
                     <input {...register('especialista_id')} type="radio" value={esp.id} className="sr-only peer" />
                     <div className="border-2 border-beauty-primary/40 rounded-xl p-3 text-center text-sm font-medium text-beauty-text
                       peer-checked:border-beauty-secondary peer-checked:text-beauty-secondary peer-checked:bg-beauty-secondary/10
-<<<<<<< HEAD
                       transition-all cursor-pointer hover:border-beauty-primary min-h-[52px] flex items-center justify-center">
-=======
-                      transition-all cursor-pointer hover:border-beauty-primary min-h-[48px] flex items-center justify-center">
->>>>>>> 2f2bdad9279844c19f030c971fdf2af4a6837d01
                       {esp.nombre}
                     </div>
                   </label>

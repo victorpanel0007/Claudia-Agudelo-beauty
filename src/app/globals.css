@@ -19,9 +19,6 @@
 * { padding: 0; margin: 0; }
 html { scroll-behavior: smooth; }
 
-/* Prevent horizontal overflow globally */
-body { overflow-x: hidden; max-width: 100%; }
-
 body {
   font-family: var(--font-inter), system-ui, sans-serif;
   background: var(--background);
@@ -171,26 +168,12 @@ a, button {
   transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* ── Touch targets — mínimo 44px para accesibilidad táctil ──────────────── */
-@media (pointer: coarse) {
-  button, a, [role="button"], input[type="checkbox"], input[type="radio"] {
-    min-height: 44px;
-    min-width: 44px;
-  }
-  /* Excepciones para elementos inline pequeños */
-  .badge-confirmada, .badge-pendiente, .badge-completada, .badge-cancelada, .badge-en_proceso {
-    min-height: unset;
-    min-width: unset;
-  }
-}
-
 /* ── Calendario ──────────────────────────────────────────────────────────── */
 .rbc-calendar  { font-family: var(--font-inter) !important; background: white !important; }
 .rbc-header    { font-weight: 600 !important; padding: 8px !important; background: #FFF8EE !important; color: #222222 !important; }
 .rbc-event     { background: #EFA1B5 !important; border: none !important; border-radius: 6px !important; color: #FFFFFF !important; font-size: 12px !important; font-weight: 500 !important; }
 .rbc-today     { background: #FAD6E0 !important; }
 
-<<<<<<< HEAD
 /* ── Mobile-first utilities ──────────────────────────────────────────────── */
 
 /* Cards that fill available width on mobile */
@@ -227,39 +210,4 @@ a, button {
 }
 .scroll-snap-x > * {
   scroll-snap-align: start;
-=======
-/* ── Móvil — mejoras adicionales ─────────────────────────────────────────── */
-
-/* Asegura que los select nativos tengan buen tamaño en iOS */
-select {
-  -webkit-appearance: none;
-  appearance: none;
-}
-
-/* Evita zoom automático en inputs en iOS (font-size < 16px lo dispara) */
-@media screen and (max-width: 640px) {
-  input[type="text"],
-  input[type="email"],
-  input[type="password"],
-  input[type="number"],
-  input[type="tel"],
-  input[type="date"],
-  input[type="search"],
-  select,
-  textarea {
-    font-size: 16px !important;
-  }
-}
-
-/* Scroll suave en contenedores con overflow en iOS */
-.overflow-y-auto,
-.overflow-x-auto {
-  -webkit-overflow-scrolling: touch;
-}
-
-/* Mejora legibilidad de texto pequeño en móvil */
-@media screen and (max-width: 640px) {
-  .text-\[10px\] { font-size: 11px !important; }
-  .text-\[11px\] { font-size: 12px !important; }
->>>>>>> 2f2bdad9279844c19f030c971fdf2af4a6837d01
 }

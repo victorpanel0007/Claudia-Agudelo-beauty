@@ -120,28 +120,18 @@ export default function NotificacionesView() {
 
       {/* Filtros — stack en móvil */}
       <div className="bg-white border border-beauty-primary/20 rounded-2xl p-4 shadow-sm">
-<<<<<<< HEAD
         <div className="flex flex-wrap gap-2 items-center">
           <div className="flex items-center gap-1.5 text-gray-400 w-full sm:w-auto">
             <Filter size={15} /> <span className="text-xs font-medium">Filtrar:</span>
           </div>
           <select value={filtroEstado} onChange={e => setFiltroEstado(e.target.value)}
             className="flex-1 sm:flex-none text-sm border border-gray-200 rounded-xl px-3 py-2.5 focus:outline-none focus:border-beauty-primary min-h-[44px]">
-=======
-        <div className="flex flex-wrap gap-2 sm:gap-3 items-center">
-          <div className="flex items-center gap-2 text-gray-400">
-            <Filter size={16} /> <span className="text-xs font-medium">Filtrar:</span>
-          </div>
-          <select value={filtroEstado} onChange={e => setFiltroEstado(e.target.value)}
-            className="text-xs border border-gray-200 rounded-lg px-2 sm:px-3 py-2 focus:outline-none focus:border-beauty-primary min-w-0">
->>>>>>> 2f2bdad9279844c19f030c971fdf2af4a6837d01
             <option value="">Todos los estados</option>
             <option value="enviado">Enviado</option>
             <option value="error">Error</option>
             <option value="pendiente">Pendiente</option>
           </select>
           <select value={filtroEsp} onChange={e => setFiltroEsp(e.target.value)}
-<<<<<<< HEAD
             className="flex-1 sm:flex-none text-sm border border-gray-200 rounded-xl px-3 py-2.5 focus:outline-none focus:border-beauty-primary min-h-[44px]">
             <option value="">Todas las especialistas</option>
             {especialistas.map(e => <option key={e.id} value={e.id}>{e.nombre}</option>)}
@@ -155,36 +145,15 @@ export default function NotificacionesView() {
           {(filtroEstado || filtroEsp || buscar) && (
             <button onClick={() => { setFiltroEstado(''); setFiltroEsp(''); setBuscar('') }}
               className="text-xs text-gray-400 hover:text-red-500 transition-colors px-2 py-1 min-h-[44px]">
-=======
-            className="text-xs border border-gray-200 rounded-lg px-2 sm:px-3 py-2 focus:outline-none focus:border-beauty-primary min-w-0 max-w-[160px] sm:max-w-none">
-            <option value="">Todas las especialistas</option>
-            {especialistas.map(e => <option key={e.id} value={e.id}>{e.nombre}</option>)}
-          </select>
-          <div className="relative flex-1 min-w-0 w-full sm:w-auto">
-            <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-            <input value={buscar} onChange={e => setBuscar(e.target.value)}
-              placeholder="Buscar..."
-              className="w-full text-xs border border-gray-200 rounded-lg pl-8 pr-3 py-2 focus:outline-none focus:border-beauty-primary" />
-          </div>
-          {(filtroEstado || filtroEsp || buscar) && (
-            <button onClick={() => { setFiltroEstado(''); setFiltroEsp(''); setBuscar('') }}
-              className="text-xs text-gray-400 hover:text-red-500 transition-colors">
->>>>>>> 2f2bdad9279844c19f030c971fdf2af4a6837d01
               Limpiar
             </button>
           )}
         </div>
       </div>
 
-<<<<<<< HEAD
       {/* Tabla + Detalle — apilado en móvil, lado a lado en lg */}
       <div className="flex flex-col lg:flex-row gap-4">
         {/* Lista / Tabla */}
-=======
-      {/* Tabla + Detalle */}
-      <div className="flex flex-col sm:flex-row gap-4">
-        {/* Tabla / Cards */}
->>>>>>> 2f2bdad9279844c19f030c971fdf2af4a6837d01
         <div className="flex-1 bg-white border border-beauty-primary/20 rounded-2xl shadow-sm overflow-hidden min-w-0">
           {loading ? (
             <div className="p-10 text-center text-gray-400 text-sm">Cargando...</div>
@@ -195,7 +164,6 @@ export default function NotificacionesView() {
             </div>
           ) : (
             <>
-<<<<<<< HEAD
               {/* Tarjetas en móvil */}
               <div className="divide-y divide-gray-50 lg:hidden">
                 {notifs.map(n => {
@@ -231,10 +199,6 @@ export default function NotificacionesView() {
 
               {/* Tabla en desktop */}
               <div className="hidden lg:block overflow-x-auto">
-=======
-              {/* Desktop: tabla */}
-              <div className="hidden sm:block overflow-x-auto">
->>>>>>> 2f2bdad9279844c19f030c971fdf2af4a6837d01
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-gray-100 bg-beauty-bg">
@@ -253,30 +217,17 @@ export default function NotificacionesView() {
                       return (
                         <tr key={n.id}
                           onClick={() => setSelected(isSelected ? null : n)}
-<<<<<<< HEAD
                           className={`border-b border-gray-50 cursor-pointer transition-colors ${isSelected ? 'bg-beauty-rosa-claro' : 'hover:bg-beauty-bg'}`}>
                           <td className="py-3 px-4 text-gray-500 text-xs whitespace-nowrap">{fmt(n.created_at)}</td>
                           <td className="py-3 px-4 font-medium text-beauty-text text-sm">{n.especialista_nombre}</td>
                           <td className="py-3 px-4 text-gray-500 text-xs">{n.whatsapp_destino}</td>
                           <td className="py-3 px-4 text-gray-500 text-xs">{(n.cita as { cliente?: { nombre?: string } } | null)?.cliente?.nombre || '—'}</td>
-=======
-                          className={`border-b border-gray-50 cursor-pointer transition-colors ${
-                            isSelected ? 'bg-beauty-rosa-claro' : 'hover:bg-beauty-bg'
-                          }`}>
-                          <td className="py-3 px-4 text-gray-500 text-xs whitespace-nowrap">{fmt(n.created_at)}</td>
-                          <td className="py-3 px-4 font-medium text-beauty-text text-sm">{n.especialista_nombre}</td>
-                          <td className="py-3 px-4 text-gray-500 text-xs">{n.whatsapp_destino}</td>
-                          <td className="py-3 px-4 text-gray-500 text-xs">
-                            {(n.cita as { cliente?: { nombre?: string } } | null)?.cliente?.nombre || '—'}
-                          </td>
->>>>>>> 2f2bdad9279844c19f030c971fdf2af4a6837d01
                           <td className="py-3 px-4">
                             <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full ${st.cls}`}>
                               <st.icon size={11} /> {st.label}
                             </span>
                           </td>
                           <td className="py-3 px-4">
-<<<<<<< HEAD
                             {n.estado === 'error' && (
                               <button onClick={e => { e.stopPropagation(); reenviar(n.id) }}
                                 disabled={resending === n.id}
@@ -285,23 +236,6 @@ export default function NotificacionesView() {
                                 Reenviar
                               </button>
                             )}
-=======
-                            <div className="flex items-center gap-2">
-                              {n.estado === 'error' && (
-                                <button
-                                  onClick={e => { e.stopPropagation(); reenviar(n.id) }}
-                                  disabled={resending === n.id}
-                                  className="flex items-center gap-1 text-xs bg-beauty-primary text-white px-2.5 py-1.5 rounded-lg hover:bg-beauty-primary-dark transition-colors disabled:opacity-50"
-                                >
-                                  {resending === n.id
-                                    ? <RefreshCw size={11} className="animate-spin" />
-                                    : <Send size={11} />
-                                  }
-                                  Reenviar
-                                </button>
-                              )}
-                            </div>
->>>>>>> 2f2bdad9279844c19f030c971fdf2af4a6837d01
                           </td>
                         </tr>
                       )
@@ -309,39 +243,10 @@ export default function NotificacionesView() {
                   </tbody>
                 </table>
               </div>
-<<<<<<< HEAD
-=======
-
-              {/* Mobile: cards */}
-              <div className="sm:hidden divide-y divide-gray-50">
-                {notifs.map(n => {
-                  const st = ESTADO_CONFIG[n.estado] || ESTADO_CONFIG.pendiente
-                  return (
-                    <button
-                      key={n.id}
-                      onClick={() => setSelected(selected?.id === n.id ? null : n)}
-                      className={`w-full text-left p-4 transition-colors ${
-                        selected?.id === n.id ? 'bg-beauty-rosa-claro' : 'hover:bg-beauty-bg'
-                      }`}
-                    >
-                      <div className="flex items-start justify-between gap-2 mb-1">
-                        <p className="font-semibold text-sm text-beauty-text">{n.especialista_nombre}</p>
-                        <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full shrink-0 ${st.cls}`}>
-                          <st.icon size={10} /> {st.label}
-                        </span>
-                      </div>
-                      <p className="text-xs text-gray-500">{n.whatsapp_destino}</p>
-                      <p className="text-xs text-gray-400 mt-0.5">{fmt(n.created_at)}</p>
-                    </button>
-                  )
-                })}
-              </div>
->>>>>>> 2f2bdad9279844c19f030c971fdf2af4a6837d01
             </>
           )}
         </div>
 
-<<<<<<< HEAD
         {/* Panel detalle — modal en móvil, sidebar en lg */}
         {selected && (
           <>
@@ -357,25 +262,10 @@ export default function NotificacionesView() {
                     <button onClick={() => setSelected(null)} className="text-gray-400 text-2xl leading-none w-9 h-9 flex items-center justify-center">×</button>
                   </div>
                   <div className="bg-beauty-bg rounded-xl p-3 space-y-1.5 text-xs">
-=======
-        {/* Panel detalle — overlay en móvil, sidebar en desktop */}
-        {selected && (
-          <>
-            {/* Mobile: bottom sheet */}
-            <div className="sm:hidden fixed inset-0 z-50 bg-black/50 flex items-end" onClick={() => setSelected(null)}>
-              <div className="w-full bg-white rounded-t-2xl max-h-[80vh] overflow-y-auto p-4 space-y-4" onClick={e => e.stopPropagation()}>
-                <div className="flex items-center justify-between">
-                  <p className="font-semibold text-beauty-text text-sm">Detalle</p>
-                  <button onClick={() => setSelected(null)} className="text-gray-400 hover:text-gray-600 text-2xl leading-none p-1">×</button>
-                </div>
-                <div className="space-y-2 text-xs">
-                  <div className="bg-beauty-bg rounded-xl p-3 space-y-1.5">
->>>>>>> 2f2bdad9279844c19f030c971fdf2af4a6837d01
                     <p><span className="text-gray-400">Especialista:</span> <span className="font-medium">{selected.especialista_nombre}</span></p>
                     <p><span className="text-gray-400">WhatsApp:</span> {selected.whatsapp_destino}</p>
                     <p><span className="text-gray-400">Tipo:</span> {selected.tipo}</p>
                     <p><span className="text-gray-400">Fecha:</span> {fmt(selected.created_at)}</p>
-<<<<<<< HEAD
                     {selected.error_detalle && <p className="text-red-500"><span className="text-gray-400">Error:</span> {selected.error_detalle}</p>}
                   </div>
                   <pre className="bg-gray-50 border border-gray-200 rounded-xl p-3 text-xs text-gray-700 whitespace-pre-wrap leading-relaxed max-h-48 overflow-y-auto">
@@ -384,27 +274,10 @@ export default function NotificacionesView() {
                   {selected.estado === 'error' && (
                     <button onClick={() => reenviar(selected.id)} disabled={resending === selected.id}
                       className="w-full flex items-center justify-center gap-2 bg-beauty-primary text-white py-3 rounded-xl text-sm font-semibold min-h-[48px]">
-=======
-                    <p><span className="text-gray-400">Código:</span> {selected.codigo_respuesta || '—'}</p>
-                    {selected.error_detalle && (
-                      <p className="text-red-500"><span className="text-gray-400">Error:</span> {selected.error_detalle}</p>
-                    )}
-                  </div>
-                  <div>
-                    <p className="text-gray-400 mb-1 font-medium">Mensaje enviado:</p>
-                    <pre className="bg-gray-50 border border-gray-200 rounded-xl p-3 text-xs text-gray-700 whitespace-pre-wrap leading-relaxed max-h-48 overflow-y-auto">
-                      {selected.mensaje}
-                    </pre>
-                  </div>
-                  {selected.estado === 'error' && (
-                    <button onClick={() => reenviar(selected.id)} disabled={resending === selected.id}
-                      className="w-full flex items-center justify-center gap-2 bg-beauty-primary text-white py-3 rounded-xl text-sm font-semibold hover:bg-beauty-primary-dark transition-colors disabled:opacity-50">
->>>>>>> 2f2bdad9279844c19f030c971fdf2af4a6837d01
                       {resending === selected.id ? <RefreshCw size={13} className="animate-spin" /> : <Send size={13} />}
                       Reenviar notificación
                     </button>
                   )}
-<<<<<<< HEAD
                   <button onClick={() => setSelected(null)}
                     className="w-full py-3 rounded-xl border border-gray-200 text-sm text-gray-500 min-h-[48px]">
                     Cerrar
@@ -415,13 +288,6 @@ export default function NotificacionesView() {
 
             {/* Desktop: sidebar */}
             <div className="hidden lg:block w-80 shrink-0 bg-white border border-beauty-primary/20 rounded-2xl shadow-sm p-4 space-y-4 overflow-y-auto max-h-[600px]">
-=======
-                </div>
-              </div>
-            </div>
-            {/* Desktop: sidebar */}
-            <div className="hidden sm:block w-80 shrink-0 bg-white border border-beauty-primary/20 rounded-2xl shadow-sm p-4 space-y-4 overflow-y-auto max-h-[600px]">
->>>>>>> 2f2bdad9279844c19f030c971fdf2af4a6837d01
               <div className="flex items-center justify-between">
                 <p className="font-semibold text-beauty-text text-sm">Detalle</p>
                 <button onClick={() => setSelected(null)} className="text-gray-400 hover:text-gray-600 text-lg leading-none">×</button>
@@ -433,13 +299,7 @@ export default function NotificacionesView() {
                   <p><span className="text-gray-400">Tipo:</span> {selected.tipo}</p>
                   <p><span className="text-gray-400">Fecha:</span> {fmt(selected.created_at)}</p>
                   <p><span className="text-gray-400">Código:</span> {selected.codigo_respuesta || '—'}</p>
-<<<<<<< HEAD
                   {selected.error_detalle && <p className="text-red-500"><span className="text-gray-400">Error:</span> {selected.error_detalle}</p>}
-=======
-                  {selected.error_detalle && (
-                    <p className="text-red-500"><span className="text-gray-400">Error:</span> {selected.error_detalle}</p>
-                  )}
->>>>>>> 2f2bdad9279844c19f030c971fdf2af4a6837d01
                 </div>
                 <div>
                   <p className="text-gray-400 mb-1 font-medium">Mensaje enviado:</p>
@@ -449,11 +309,7 @@ export default function NotificacionesView() {
                 </div>
                 {selected.estado === 'error' && (
                   <button onClick={() => reenviar(selected.id)} disabled={resending === selected.id}
-<<<<<<< HEAD
                     className="w-full flex items-center justify-center gap-2 bg-beauty-primary text-white py-2.5 rounded-xl text-xs font-semibold hover:bg-beauty-primary-dark disabled:opacity-50">
-=======
-                    className="w-full flex items-center justify-center gap-2 bg-beauty-primary text-white py-2.5 rounded-xl text-xs font-semibold hover:bg-beauty-primary-dark transition-colors disabled:opacity-50">
->>>>>>> 2f2bdad9279844c19f030c971fdf2af4a6837d01
                     {resending === selected.id ? <RefreshCw size={13} className="animate-spin" /> : <Send size={13} />}
                     Reenviar notificación
                   </button>

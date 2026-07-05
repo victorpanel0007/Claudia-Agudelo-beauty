@@ -1,6 +1,6 @@
 ﻿'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import type { Servicio, Categoria } from '@/types/database'
 import { Plus, Edit, Trash2, Search, Clock, X } from 'lucide-react'
@@ -28,7 +28,6 @@ export default function ServiciosView() {
   const [loading, setLoading]       = useState(true)
   const [saving, setSaving]         = useState(false)
   const supabase = createClient()
-  const scrollRef = useRef<HTMLDivElement>(null)
 
   const { register, handleSubmit, reset, watch, formState: { errors } } = useForm<ServiceForm>()
   const tipoPrecio = watch('tipo_precio')
@@ -65,13 +64,6 @@ export default function ServiciosView() {
     })
     setShowForm(true)
   }
-
-  // Resetea el scroll interno cada vez que el modal se abre
-  useEffect(() => {
-    if (showForm && scrollRef.current) {
-      scrollRef.current.scrollTop = 0
-    }
-  }, [showForm])
 
   function closeForm() {
     setShowForm(false)
@@ -166,46 +158,44 @@ export default function ServiciosView() {
         ) : (
           <div className="divide-y divide-gray-50">
             {filtered.map(s => (
-              <div key={s.id} className="p-4 hover:bg-gray-50 transition-colors">
-                <div className="flex items-start gap-3">
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-beauty-text text-sm">{s.nombre}</p>
-                    <p className="text-gray-400 text-xs">
-                      {(s.categoria as Categoria | null)?.nombre || '—'}
-                    </p>
-                    <div className="flex items-center gap-3 mt-1.5">
-                      <div className="flex items-center gap-1 text-gray-400 text-xs">
-                        <Clock size={12} /> {s.duracion_minutos}min
-                      </div>
-                      {s.tipo_precio === 'fijo' && s.precio ? (
-                        <span className="text-beauty-secondary font-semibold text-sm">
-                          {formatCurrency(s.precio)}
-                        </span>
-                      ) : s.tipo_precio === 'desde' && s.precio_desde ? (
-                        <span className="text-beauty-secondary font-semibold text-xs">
-                          Desde {formatCurrency(s.precio_desde)}
-                        </span>
-                      ) : (
-                        <span className="text-gray-400 text-xs italic">Valoración</span>
-                      )}
-                    </div>
+              <div key={s.id} className="p-4 flex items-center gap-4 hover:bg-gray-50 transition-colors">
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-beauty-text text-sm">{s.nombre}</p>
+                  <p className="text-gray-400 text-xs">
+                    {(s.categoria as Categoria | null)?.nombre || '—'}
+                  </p>
+                </div>
+                <div className="flex items-center gap-3 shrink-0">
+                  <div className="flex items-center gap-1 text-gray-400 text-xs">
+                    <Clock size={12} /> {s.duracion_minutos}min
                   </div>
-                  <div className="flex items-center gap-1 shrink-0">
-                    <button
-                      onClick={() => openEdit(s)}
-                      className="p-2 hover:bg-beauty-rosa-claro rounded-lg transition-colors"
-                      title="Editar"
-                    >
-                      <Edit size={15} className="text-beauty-secondary" />
-                    </button>
-                    <button
-                      onClick={() => deleteServicio(s.id)}
-                      className="p-2 hover:bg-red-50 rounded-lg transition-colors"
-                      title="Eliminar"
-                    >
-                      <Trash2 size={15} className="text-red-400" />
-                    </button>
+                  <div className="text-right min-w-[90px]">
+                    {s.tipo_precio === 'fijo' && s.precio ? (
+                      <span className="text-beauty-secondary font-semibold text-sm">
+                        {formatCurrency(s.precio)}
+                      </span>
+                    ) : s.tipo_precio === 'desde' && s.precio_desde ? (
+                      <span className="text-beauty-secondary font-semibold text-xs">
+                        Desde {formatCurrency(s.precio_desde)}
+                      </span>
+                    ) : (
+                      <span className="text-gray-400 text-xs italic">Valoración</span>
+                    )}
                   </div>
+                  <button
+                    onClick={() => openEdit(s)}
+                    className="p-1.5 hover:bg-beauty-rosa-claro rounded-lg transition-colors"
+                    title="Editar"
+                  >
+                    <Edit size={14} className="text-beauty-secondary" />
+                  </button>
+                  <button
+                    onClick={() => deleteServicio(s.id)}
+                    className="p-1.5 hover:bg-red-50 rounded-lg transition-colors"
+                    title="Eliminar"
+                  >
+                    <Trash2 size={14} className="text-red-400" />
+                  </button>
                 </div>
               </div>
             ))}
@@ -213,10 +203,9 @@ export default function ServiciosView() {
         )}
       </div>
 
-      {/* Modal formulario — mismo patrón que NuevaCitaModal */}
+      {/* Modal formulario */}
       {showForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-<<<<<<< HEAD
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md animate-slide-up overflow-hidden">
 
             {/* Header modal */}
@@ -230,34 +219,15 @@ export default function ServiciosView() {
             </div>
 
             <form onSubmit={handleSubmit(onSubmit)} className="p-5 space-y-4 overflow-y-auto max-h-[75vh]">
-=======
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg animate-slide-up overflow-hidden">
-
-            {/* Header */}
-            <div className="flex items-center justify-between p-5 border-b border-gray-100">
-              <div>
-                <h3 className="font-bold text-gray-800">
-                  {editing ? 'Editar Servicio' : 'Nuevo Servicio'}
-                </h3>
-              </div>
-              <button onClick={closeForm} className="p-2 hover:bg-gray-100 rounded-xl transition-colors">
-                <X size={18} />
-              </button>
-            </div>
-
-            {/* Cuerpo scrollable — scroll reseteado por useEffect */}
-            <div ref={scrollRef} className="p-5 overflow-y-auto max-h-[70vh] space-y-4">
->>>>>>> 2f2bdad9279844c19f030c971fdf2af4a6837d01
 
               {/* Nombre */}
               <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Nombre <span className="text-red-500">*</span>
                 </label>
                 <input
                   {...register('nombre', { required: 'El nombre es requerido' })}
-                  autoFocus={false}
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:border-beauty-primary focus:ring-2 focus:ring-beauty-primary/20"
+                  className="input-beauty"
                   placeholder="Ej: Limpieza facial"
                 />
                 {errors.nombre && <p className="text-red-500 text-xs mt-1">{errors.nombre.message}</p>}
@@ -265,12 +235,12 @@ export default function ServiciosView() {
 
               {/* Categoría */}
               <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Categoría <span className="text-red-500">*</span>
                 </label>
                 <select
                   {...register('categoria_id', { required: 'Selecciona una categoría' })}
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:border-beauty-primary focus:ring-2 focus:ring-beauty-primary/20"
+                  className="input-beauty"
                 >
                   <option value="">— Selecciona —</option>
                   {categorias.map(c => (
@@ -282,11 +252,8 @@ export default function ServiciosView() {
 
               {/* Tipo de precio */}
               <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-2">Tipo de precio</label>
-                <select
-                  {...register('tipo_precio')}
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:border-beauty-primary focus:ring-2 focus:ring-beauty-primary/20"
-                >
+                <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de precio</label>
+                <select {...register('tipo_precio')} className="input-beauty">
                   <option value="fijo">Precio fijo</option>
                   <option value="desde">Precio desde</option>
                   <option value="valoracion">Requiere valoración</option>
@@ -296,12 +263,12 @@ export default function ServiciosView() {
               {/* Precio fijo */}
               {tipoPrecio === 'fijo' && (
                 <div>
-                  <label className="block text-xs font-semibold text-gray-600 mb-2">Precio (COP)</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Precio (COP)</label>
                   <input
                     {...register('precio', { valueAsNumber: true })}
                     type="number"
                     min="0"
-                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:border-beauty-primary focus:ring-2 focus:ring-beauty-primary/20"
+                    className="input-beauty"
                     placeholder="Ej: 50000"
                   />
                 </div>
@@ -310,12 +277,12 @@ export default function ServiciosView() {
               {/* Precio desde */}
               {tipoPrecio === 'desde' && (
                 <div>
-                  <label className="block text-xs font-semibold text-gray-600 mb-2">Precio desde (COP)</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Precio desde (COP)</label>
                   <input
                     {...register('precio_desde', { valueAsNumber: true })}
                     type="number"
                     min="0"
-                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:border-beauty-primary focus:ring-2 focus:ring-beauty-primary/20"
+                    className="input-beauty"
                     placeholder="Ej: 80000"
                   />
                 </div>
@@ -323,7 +290,7 @@ export default function ServiciosView() {
 
               {/* Duración */}
               <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Duración (minutos) <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -335,7 +302,7 @@ export default function ServiciosView() {
                   type="number"
                   min="5"
                   step="5"
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:border-beauty-primary focus:ring-2 focus:ring-beauty-primary/20"
+                  className="input-beauty"
                 />
                 {errors.duracion_minutos && (
                   <p className="text-red-500 text-xs mt-1">{errors.duracion_minutos.message}</p>
@@ -357,43 +324,43 @@ export default function ServiciosView() {
                   className="rounded accent-beauty-primary cursor-pointer"
                   onClick={e => e.stopPropagation()}
                 />
-                <label htmlFor="valoracion" className="text-xs text-gray-700 cursor-pointer">
+                <label htmlFor="valoracion" className="text-sm text-gray-700 cursor-pointer">
                   Requiere valoración previa
                 </label>
               </div>
 
               {/* Descripción */}
               <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Descripción <span className="text-gray-400 font-normal">(opcional)</span>
                 </label>
                 <textarea
                   {...register('descripcion')}
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-xs resize-none focus:outline-none focus:border-beauty-primary focus:ring-2 focus:ring-beauty-primary/20"
+                  className="input-beauty resize-none"
                   rows={2}
                   placeholder="Descripción breve del servicio..."
                 />
               </div>
 
               {/* Botones */}
-              <div className="flex gap-2 pt-1">
+              <div className="flex gap-3 pt-2">
                 <button
                   type="button"
                   onClick={closeForm}
-                  className="flex-1 text-sm font-semibold py-2.5 rounded-xl border-2 border-beauty-primary/30 text-beauty-text-muted hover:bg-beauty-bg transition-colors"
+                  className="flex-1 border-2 border-gray-200 py-3 rounded-xl text-sm font-medium hover:bg-gray-50 transition-colors"
                 >
                   Cancelar
                 </button>
                 <button
-                  onClick={handleSubmit(onSubmit)}
+                  type="submit"
                   disabled={saving}
-                  className="flex-1 text-sm font-semibold py-2.5 rounded-xl bg-beauty-borgona text-white hover:bg-beauty-borgona-dark transition-colors disabled:opacity-40 flex items-center justify-center gap-2"
+                  className="flex-1 btn-beauty justify-center py-3 disabled:opacity-50"
                 >
-                  {saving ? 'Guardando...' : editing ? 'Actualizar' : 'Crear servicio'}
+                  {saving ? 'Guardando...' : editing ? 'Actualizar' : 'Crear'}
                 </button>
               </div>
 
-            </div>
+            </form>
           </div>
         </div>
       )}
