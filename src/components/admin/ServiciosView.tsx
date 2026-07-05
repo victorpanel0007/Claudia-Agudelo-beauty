@@ -1,6 +1,6 @@
 ﻿'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import type { Servicio, Categoria } from '@/types/database'
 import { Plus, Edit, Trash2, Search, Clock, X } from 'lucide-react'
@@ -28,6 +28,7 @@ export default function ServiciosView() {
   const [loading, setLoading]       = useState(true)
   const [saving, setSaving]         = useState(false)
   const supabase = createClient()
+  const scrollRef = useRef<HTMLDivElement>(null)
 
   const { register, handleSubmit, reset, watch, formState: { errors } } = useForm<ServiceForm>()
   const tipoPrecio = watch('tipo_precio')
@@ -64,6 +65,13 @@ export default function ServiciosView() {
     })
     setShowForm(true)
   }
+
+  // Resetea el scroll interno cada vez que el modal se abre
+  useEffect(() => {
+    if (showForm && scrollRef.current) {
+      scrollRef.current.scrollTop = 0
+    }
+  }, [showForm])
 
   function closeForm() {
     setShowForm(false)
@@ -205,167 +213,170 @@ export default function ServiciosView() {
         )}
       </div>
 
-      {/* Modal formulario */}
+      {/* Modal formulario — mismo patrón que NuevaCitaModal */}
       {showForm && (
-        <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm">
-          <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl w-full sm:max-w-md overflow-hidden"
-               style={{ maxHeight: '92dvh' }}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg animate-slide-up overflow-hidden">
 
-            {/* Header modal — sticky */}
-            <div className="p-5 border-b border-gray-100 bg-white flex items-center justify-between">
-              <h3 className="font-bold text-beauty-text">
-                {editing ? 'Editar Servicio' : 'Nuevo Servicio'}
-              </h3>
-              <button onClick={closeForm} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
-                <X size={18} className="text-gray-500" />
+            {/* Header */}
+            <div className="flex items-center justify-between p-5 border-b border-gray-100">
+              <div>
+                <h3 className="font-bold text-gray-800">
+                  {editing ? 'Editar Servicio' : 'Nuevo Servicio'}
+                </h3>
+              </div>
+              <button onClick={closeForm} className="p-2 hover:bg-gray-100 rounded-xl transition-colors">
+                <X size={18} />
               </button>
             </div>
 
-            {/* Cuerpo scrollable */}
-            <div className="overflow-y-auto" style={{ maxHeight: 'calc(92dvh - 68px)' }}>
-              <form onSubmit={handleSubmit(onSubmit)} className="p-5 space-y-4">
+            {/* Cuerpo scrollable — scroll reseteado por useEffect */}
+            <div ref={scrollRef} className="p-5 overflow-y-auto max-h-[70vh] space-y-4">
 
-                {/* Nombre */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Nombre <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    {...register('nombre', { required: 'El nombre es requerido' })}
-                    className="input-beauty"
-                    placeholder="Ej: Limpieza facial"
-                  />
-                  {errors.nombre && <p className="text-red-500 text-xs mt-1">{errors.nombre.message}</p>}
-                </div>
+              {/* Nombre */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-2">
+                  Nombre <span className="text-red-500">*</span>
+                </label>
+                <input
+                  {...register('nombre', { required: 'El nombre es requerido' })}
+                  autoFocus={false}
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:border-beauty-primary focus:ring-2 focus:ring-beauty-primary/20"
+                  placeholder="Ej: Limpieza facial"
+                />
+                {errors.nombre && <p className="text-red-500 text-xs mt-1">{errors.nombre.message}</p>}
+              </div>
 
-                {/* Categoría */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Categoría <span className="text-red-500">*</span>
-                  </label>
-                  <select
-                    {...register('categoria_id', { required: 'Selecciona una categoría' })}
-                    className="input-beauty"
-                  >
-                    <option value="">— Selecciona —</option>
-                    {categorias.map(c => (
-                      <option key={c.id} value={c.id}>{c.nombre}</option>
-                    ))}
-                  </select>
-                  {errors.categoria_id && <p className="text-red-500 text-xs mt-1">{errors.categoria_id.message}</p>}
-                </div>
-
-                {/* Tipo de precio */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de precio</label>
-                  <select {...register('tipo_precio')} className="input-beauty">
-                    <option value="fijo">Precio fijo</option>
-                    <option value="desde">Precio desde</option>
-                    <option value="valoracion">Requiere valoración</option>
-                  </select>
-                </div>
-
-                {/* Precio fijo */}
-                {tipoPrecio === 'fijo' && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Precio (COP)</label>
-                    <input
-                      {...register('precio', { valueAsNumber: true })}
-                      type="number"
-                      min="0"
-                      className="input-beauty"
-                      placeholder="Ej: 50000"
-                    />
-                  </div>
-                )}
-
-                {/* Precio desde */}
-                {tipoPrecio === 'desde' && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Precio desde (COP)</label>
-                    <input
-                      {...register('precio_desde', { valueAsNumber: true })}
-                      type="number"
-                      min="0"
-                      className="input-beauty"
-                      placeholder="Ej: 80000"
-                    />
-                  </div>
-                )}
-
-                {/* Duración */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Duración (minutos) <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    {...register('duracion_minutos', {
-                      valueAsNumber: true,
-                      required: 'La duración es requerida',
-                      min: { value: 5, message: 'Mínimo 5 minutos' },
-                    })}
-                    type="number"
-                    min="5"
-                    step="5"
-                    className="input-beauty"
-                  />
-                  {errors.duracion_minutos && (
-                    <p className="text-red-500 text-xs mt-1">{errors.duracion_minutos.message}</p>
-                  )}
-                </div>
-
-                {/* Requiere valoración */}
-                <div
-                  className="flex items-center gap-3 bg-gray-50 rounded-xl p-3 cursor-pointer"
-                  onClick={() => {
-                    const cur = watch('requiere_valoracion')
-                    reset({ ...watch(), requiere_valoracion: !cur })
-                  }}
+              {/* Categoría */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-2">
+                  Categoría <span className="text-red-500">*</span>
+                </label>
+                <select
+                  {...register('categoria_id', { required: 'Selecciona una categoría' })}
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:border-beauty-primary focus:ring-2 focus:ring-beauty-primary/20"
                 >
-                  <input
-                    {...register('requiere_valoracion')}
-                    type="checkbox"
-                    id="valoracion"
-                    className="rounded accent-beauty-primary cursor-pointer"
-                    onClick={e => e.stopPropagation()}
-                  />
-                  <label htmlFor="valoracion" className="text-sm text-gray-700 cursor-pointer">
-                    Requiere valoración previa
-                  </label>
-                </div>
+                  <option value="">— Selecciona —</option>
+                  {categorias.map(c => (
+                    <option key={c.id} value={c.id}>{c.nombre}</option>
+                  ))}
+                </select>
+                {errors.categoria_id && <p className="text-red-500 text-xs mt-1">{errors.categoria_id.message}</p>}
+              </div>
 
-                {/* Descripción */}
+              {/* Tipo de precio */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-2">Tipo de precio</label>
+                <select
+                  {...register('tipo_precio')}
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:border-beauty-primary focus:ring-2 focus:ring-beauty-primary/20"
+                >
+                  <option value="fijo">Precio fijo</option>
+                  <option value="desde">Precio desde</option>
+                  <option value="valoracion">Requiere valoración</option>
+                </select>
+              </div>
+
+              {/* Precio fijo */}
+              {tipoPrecio === 'fijo' && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Descripción <span className="text-gray-400 font-normal">(opcional)</span>
-                  </label>
-                  <textarea
-                    {...register('descripcion')}
-                    className="input-beauty resize-none"
-                    rows={2}
-                    placeholder="Descripción breve del servicio..."
+                  <label className="block text-xs font-semibold text-gray-600 mb-2">Precio (COP)</label>
+                  <input
+                    {...register('precio', { valueAsNumber: true })}
+                    type="number"
+                    min="0"
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:border-beauty-primary focus:ring-2 focus:ring-beauty-primary/20"
+                    placeholder="Ej: 50000"
                   />
                 </div>
+              )}
 
-                {/* Botones */}
-                <div className="flex gap-3 pt-2 pb-2">
-                  <button
-                    type="button"
-                    onClick={closeForm}
-                    className="flex-1 border-2 border-gray-200 py-3 rounded-xl text-sm font-medium hover:bg-gray-50 transition-colors"
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={saving}
-                    className="flex-1 btn-beauty justify-center py-3 disabled:opacity-50"
-                  >
-                    {saving ? 'Guardando...' : editing ? 'Actualizar' : 'Crear'}
-                  </button>
+              {/* Precio desde */}
+              {tipoPrecio === 'desde' && (
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-2">Precio desde (COP)</label>
+                  <input
+                    {...register('precio_desde', { valueAsNumber: true })}
+                    type="number"
+                    min="0"
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:border-beauty-primary focus:ring-2 focus:ring-beauty-primary/20"
+                    placeholder="Ej: 80000"
+                  />
                 </div>
+              )}
 
-              </form>
+              {/* Duración */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-2">
+                  Duración (minutos) <span className="text-red-500">*</span>
+                </label>
+                <input
+                  {...register('duracion_minutos', {
+                    valueAsNumber: true,
+                    required: 'La duración es requerida',
+                    min: { value: 5, message: 'Mínimo 5 minutos' },
+                  })}
+                  type="number"
+                  min="5"
+                  step="5"
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:border-beauty-primary focus:ring-2 focus:ring-beauty-primary/20"
+                />
+                {errors.duracion_minutos && (
+                  <p className="text-red-500 text-xs mt-1">{errors.duracion_minutos.message}</p>
+                )}
+              </div>
+
+              {/* Requiere valoración */}
+              <div
+                className="flex items-center gap-3 bg-gray-50 rounded-xl p-3 cursor-pointer"
+                onClick={() => {
+                  const cur = watch('requiere_valoracion')
+                  reset({ ...watch(), requiere_valoracion: !cur })
+                }}
+              >
+                <input
+                  {...register('requiere_valoracion')}
+                  type="checkbox"
+                  id="valoracion"
+                  className="rounded accent-beauty-primary cursor-pointer"
+                  onClick={e => e.stopPropagation()}
+                />
+                <label htmlFor="valoracion" className="text-xs text-gray-700 cursor-pointer">
+                  Requiere valoración previa
+                </label>
+              </div>
+
+              {/* Descripción */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-2">
+                  Descripción <span className="text-gray-400 font-normal">(opcional)</span>
+                </label>
+                <textarea
+                  {...register('descripcion')}
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-xs resize-none focus:outline-none focus:border-beauty-primary focus:ring-2 focus:ring-beauty-primary/20"
+                  rows={2}
+                  placeholder="Descripción breve del servicio..."
+                />
+              </div>
+
+              {/* Botones */}
+              <div className="flex gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={closeForm}
+                  className="flex-1 text-sm font-semibold py-2.5 rounded-xl border-2 border-beauty-primary/30 text-beauty-text-muted hover:bg-beauty-bg transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleSubmit(onSubmit)}
+                  disabled={saving}
+                  className="flex-1 text-sm font-semibold py-2.5 rounded-xl bg-beauty-borgona text-white hover:bg-beauty-borgona-dark transition-colors disabled:opacity-40 flex items-center justify-center gap-2"
+                >
+                  {saving ? 'Guardando...' : editing ? 'Actualizar' : 'Crear servicio'}
+                </button>
+              </div>
+
             </div>
           </div>
         </div>
