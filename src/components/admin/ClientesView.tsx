@@ -3,14 +3,17 @@
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import type { Cliente } from '@/types/database'
-import { Search, User, Phone, Calendar, TrendingUp } from 'lucide-react'
+import { Search, User, Phone, Calendar, TrendingUp, Trash2 } from 'lucide-react'
 import { formatCurrency, formatDate, getInitials } from '@/lib/utils'
+
+import toast from 'react-hot-toast'
 
 export default function ClientesView() {
   const [clientes, setClientes] = useState<Cliente[]>([])
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(true)
   const [selected, setSelected] = useState<Cliente | null>(null)
+  const [deleting, setDeleting] = useState(false)
   const supabase = createClient()
 
   useEffect(() => {
@@ -24,6 +27,20 @@ export default function ClientesView() {
       .order('fecha_registro', { ascending: false })
     setClientes((data as Cliente[]) || [])
     setLoading(false)
+  }
+
+  async function deleteCliente(cliente: Cliente) {
+    if (!confirm(`¿Eliminar a ${cliente.nombre}? Esta acción no se puede deshacer.`)) return
+    setDeleting(true)
+    const res = await fetch(`/api/clientes?id=${cliente.id}`, { method: 'DELETE' })
+    if (!res.ok) {
+      toast.error('Error al eliminar cliente')
+    } else {
+      toast.success('Cliente eliminado')
+      setSelected(null)
+      loadClientes()
+    }
+    setDeleting(false)
   }
 
   const filtered = clientes.filter(c =>
@@ -142,6 +159,15 @@ export default function ClientesView() {
               <button onClick={() => setSelected(null)}
                 className="flex-1 btn-beauty justify-center py-3.5">
                 Cerrar
+              </button>
+            </div>
+            <div className="px-4 sm:px-6 pb-5">
+              <button
+                onClick={() => deleteCliente(selected)}
+                disabled={deleting}
+                className="w-full text-xs text-red-400 hover:text-red-600 hover:bg-red-50 py-2.5 rounded-xl transition-colors border border-red-100 flex items-center justify-center gap-1.5 disabled:opacity-50"
+              >
+                <Trash2 size={13} /> Eliminar cliente permanentemente
               </button>
             </div>
           </div>

@@ -60,3 +60,18 @@ export async function PATCH(request: NextRequest) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json(data)
 }
+
+export async function DELETE(request: NextRequest) {
+  const rol = await getUserRole()
+  if (rol !== 'admin') return forbidden('Solo administradores pueden eliminar clientes')
+
+  const supabase = await createAdminClient()
+  const { searchParams } = new URL(request.url)
+  const id = searchParams.get('id')
+
+  if (!id) return NextResponse.json({ error: 'id requerido' }, { status: 400 })
+
+  const { error } = await supabase.from('clientes').delete().eq('id', id)
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  return NextResponse.json({ ok: true })
+}

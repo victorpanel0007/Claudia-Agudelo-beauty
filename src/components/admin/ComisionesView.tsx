@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import {
   DollarSign, Users, CheckCircle, Wallet, CreditCard,
   AlertCircle, FileText, Download, Printer, Plus, X,
-  ChevronDown, Pencil, Check,
+  ChevronDown, Pencil, Check, Trash2,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -316,6 +316,17 @@ export default function ComisionesView() {
     toast.success('Pago registrado exitosamente')
     setSavingPago(false)
     setShowPagoModal(false)
+    loadPagos()
+    loadCitas()
+  }
+
+  // ── Eliminar Pago ─────────────────────────────────────────────────────────
+
+  async function deletePago(id: string, nombre: string, valor: number) {
+    if (!confirm(`¿Eliminar el pago de ${formatCurrency(valor)} a ${nombre}? Esto también eliminará el gasto asociado.`)) return
+    const res = await fetch(`/api/pagos?id=${id}`, { method: 'DELETE' })
+    if (!res.ok) { toast.error('Error eliminando pago'); return }
+    toast.success('Pago eliminado')
     loadPagos()
     loadCitas()
   }
@@ -859,7 +870,13 @@ export default function ComisionesView() {
                   <div key={p.id} className="p-4">
                     <div className="flex items-center justify-between mb-1">
                       <p className="font-semibold text-beauty-text text-sm">{p.especialista_nombre}</p>
-                      <p className="font-bold text-beauty-borgona">{formatCurrency(p.valor_pagado)}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="font-bold text-beauty-borgona">{formatCurrency(p.valor_pagado)}</p>
+                        <button onClick={() => deletePago(p.id, p.especialista_nombre, p.valor_pagado)}
+                          className="p-1.5 hover:bg-red-50 rounded-lg transition-colors" title="Eliminar">
+                          <Trash2 size={13} className="text-red-400" />
+                        </button>
+                      </div>
                     </div>
                     <div className="flex items-center gap-2 text-xs text-beauty-text-muted">
                       <span>{p.fecha}</span>
@@ -880,7 +897,7 @@ export default function ComisionesView() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="bg-beauty-bg border-b border-gray-100">
-                      {['Fecha', 'Período', 'Especialista', 'Valor', 'Método', 'Observaciones'].map(h => (
+                      {['Fecha', 'Período', 'Especialista', 'Valor', 'Método', 'Observaciones', ''].map(h => (
                         <th key={h} className="text-left py-2.5 px-4 text-beauty-text-muted font-medium text-xs">{h}</th>
                       ))}
                     </tr>
@@ -894,6 +911,12 @@ export default function ComisionesView() {
                         <td className="py-2.5 px-4 text-beauty-borgona font-bold">{formatCurrency(p.valor_pagado)}</td>
                         <td className="py-2.5 px-4 capitalize text-beauty-text-muted">{p.metodo_pago}</td>
                         <td className="py-2.5 px-4 text-beauty-text-muted text-xs max-w-[200px] truncate">{p.observaciones ?? '—'}</td>
+                        <td className="py-2.5 px-4">
+                          <button onClick={() => deletePago(p.id, p.especialista_nombre, p.valor_pagado)}
+                            className="p-1.5 hover:bg-red-50 rounded-lg transition-colors" title="Eliminar">
+                            <Trash2 size={14} className="text-red-400" />
+                          </button>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
