@@ -206,10 +206,10 @@ export default function ServiciosView() {
       {/* Modal formulario */}
       {showForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md animate-slide-up overflow-hidden">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md animate-slide-up flex flex-col max-h-[90vh]">
 
-            {/* Header modal */}
-            <div className="p-5 border-b border-gray-100 flex items-center justify-between">
+            {/* Header modal — siempre visible */}
+            <div className="p-5 border-b border-gray-100 flex items-center justify-between shrink-0">
               <h3 className="font-bold text-beauty-text">
                 {editing ? 'Editar Servicio' : 'Nuevo Servicio'}
               </h3>
@@ -218,7 +218,7 @@ export default function ServiciosView() {
               </button>
             </div>
 
-            <form onSubmit={handleSubmit(onSubmit)} className="p-5 space-y-4 overflow-y-auto max-h-[75vh]">
+            <form onSubmit={handleSubmit(onSubmit)} className="p-5 space-y-4 overflow-y-auto flex-1">
 
               {/* Nombre */}
               <div>
