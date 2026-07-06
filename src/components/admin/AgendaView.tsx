@@ -284,11 +284,12 @@ function DetailPanel({ cita, onClose, onCompletar, onCancelar, onEliminar }: {
 function CompletarModal({ cita, onClose, onConfirm }: {
   cita: Cita
   onClose: () => void
-  onConfirm: (id: string, valor: number) => Promise<void>
+  onConfirm: (id: string, valor: number, metodoPago: string) => Promise<void>
 }) {
   const [valor, setValor] = useState<string>(
     cita.valor_final?.toString() ?? cita.servicio?.precio?.toString() ?? ''
   )
+  const [metodoPago, setMetodoPago] = useState<string>('efectivo')
   const [loading, setLoading] = useState(false)
 
   async function handleConfirm() {
@@ -297,7 +298,7 @@ function CompletarModal({ cita, onClose, onConfirm }: {
       return
     }
     setLoading(true)
-    await onConfirm(cita.id, Number(valor))
+    await onConfirm(cita.id, Number(valor), metodoPago)
     setLoading(false)
   }
 
@@ -321,7 +322,7 @@ function CompletarModal({ cita, onClose, onConfirm }: {
         </div>
 
         {/* Campo valor */}
-        <div className="mb-5">
+        <div className="mb-4">
           <label className="block text-sm font-semibold text-beauty-text mb-2">
             Valor cobrado <span className="text-red-500">*</span>
           </label>
@@ -343,6 +344,37 @@ function CompletarModal({ cita, onClose, onConfirm }: {
               Precio sugerido: ${Number(cita.servicio.precio).toLocaleString('es-CO')}
             </p>
           )}
+        </div>
+
+        {/* Método de pago */}
+        <div className="mb-5">
+          <label className="block text-sm font-semibold text-beauty-text mb-2">
+            Método de pago <span className="text-red-500">*</span>
+          </label>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => setMetodoPago('efectivo')}
+              className={`flex items-center justify-center gap-2 py-2.5 rounded-xl border-2 text-sm font-semibold transition-colors ${
+                metodoPago === 'efectivo'
+                  ? 'border-beauty-primary bg-beauty-primary/10 text-beauty-primary'
+                  : 'border-gray-200 text-beauty-text-muted hover:bg-beauty-bg'
+              }`}
+            >
+              💵 Efectivo
+            </button>
+            <button
+              type="button"
+              onClick={() => setMetodoPago('transferencia')}
+              className={`flex items-center justify-center gap-2 py-2.5 rounded-xl border-2 text-sm font-semibold transition-colors ${
+                metodoPago === 'transferencia'
+                  ? 'border-beauty-primary bg-beauty-primary/10 text-beauty-primary'
+                  : 'border-gray-200 text-beauty-text-muted hover:bg-beauty-bg'
+              }`}
+            >
+              📲 Transferencia
+            </button>
+          </div>
         </div>
 
         <div className="flex gap-2">
@@ -819,10 +851,10 @@ export default function AgendaView() {
     setCitaACompletar(cita)
   }
 
-  async function completarCita(id: string, valor: number) {
+  async function completarCita(id: string, valor: number, metodoPago: string) {
     const { error } = await supabase
       .from('citas')
-      .update({ estado: 'completada', valor_final: valor })
+      .update({ estado: 'completada', valor_final: valor, metodo_pago: metodoPago })
       .eq('id', id)
     if (error) {
       toast.error('Error al completar')
