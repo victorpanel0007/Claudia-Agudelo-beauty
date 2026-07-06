@@ -137,10 +137,10 @@ export default function NotificacionesView() {
             {especialistas.map(e => <option key={e.id} value={e.id}>{e.nombre}</option>)}
           </select>
           <div className="relative w-full sm:flex-1 sm:min-w-48">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
             <input value={buscar} onChange={e => setBuscar(e.target.value)}
               placeholder="Buscar especialista o número..."
-              className="w-full text-sm border border-gray-200 rounded-xl pl-9 pr-3 py-2.5 focus:outline-none focus:border-beauty-primary min-h-[44px]" />
+              className="w-full text-sm border border-gray-200 rounded-xl pl-10 pr-3 py-2.5 focus:outline-none focus:border-beauty-primary min-h-[44px]" />
           </div>
           {(filtroEstado || filtroEsp || buscar) && (
             <button onClick={() => { setFiltroEstado(''); setFiltroEsp(''); setBuscar('') }}

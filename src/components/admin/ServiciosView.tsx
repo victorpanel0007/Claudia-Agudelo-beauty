@@ -139,12 +139,12 @@ export default function ServiciosView() {
 
       {/* Buscador */}
       <div className="relative">
-        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+        <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
         <input
           value={search}
           onChange={e => setSearch(e.target.value)}
           placeholder="Buscar servicios..."
-          className="input-beauty pl-9"
+          className="input-beauty pl-10"
         />
       </div>
 
