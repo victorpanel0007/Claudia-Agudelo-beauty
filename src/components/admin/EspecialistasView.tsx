@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Clock, Plus, Edit, Save, X, CheckCircle, XCircle, User, Send, RefreshCw, Wifi, WifiOff } from 'lucide-react'
+import { Clock, Plus, Edit, Save, X, CheckCircle, XCircle, User, Send, RefreshCw, Wifi, WifiOff, CalendarOff, Trash2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 interface Especialista {
@@ -15,6 +15,13 @@ interface Especialista {
   dias_laborales: number[]
   whatsapp?: string
   notificaciones?: boolean
+}
+
+interface DiaBloqueado {
+  id: string
+  especialista_id: string
+  fecha: string
+  motivo?: string
 }
 
 interface FormState {
@@ -82,10 +89,17 @@ export default function EspecialistasView() {
   const [diasSelected, setDiasSelected] = useState<number[]>([1, 2, 3, 4, 5, 6])
   const [sendingTest, setSendingTest] = useState<string | null>(null)
   const [waStatus, setWaStatus] = useState<'checking' | 'connected' | 'disconnected'>('checking')
+  // Días bloqueados
+  const [diasBloqueados, setDiasBloqueados] = useState<DiaBloqueado[]>([])
+  const [bloqEspId, setBloqEspId] = useState<string | null>(null)
+  const [bloqFecha, setBloqFecha] = useState('')
+  const [bloqMotivo, setBloqMotivo] = useState('')
+  const [savingBloq, setSavingBloq] = useState(false)
   const supabase = createClient()
 
   useEffect(() => {
     loadData()
+    loadDiasBloqueados()
     checkWaStatus()
   }, [])
 
@@ -105,6 +119,45 @@ export default function EspecialistasView() {
     const { data } = await supabase.from('especialistas').select('*').order('nombre')
     setEspecialistas((data as Especialista[]) || [])
     setLoading(false)
+  }
+
+  async function loadDiasBloqueados() {
+    const hoy = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Bogota' })
+    const { data } = await supabase
+      .from('dias_bloqueados')
+      .select('*')
+      .gte('fecha', hoy)
+      .order('fecha')
+    setDiasBloqueados((data as DiaBloqueado[]) || [])
+  }
+
+  async function agregarDiaBloqueado() {
+    if (!bloqEspId || !bloqFecha) { toast.error('Selecciona especialista y fecha'); return }
+    setSavingBloq(true)
+    const { error } = await supabase.from('dias_bloqueados').insert({
+      especialista_id: bloqEspId,
+      fecha: bloqFecha,
+      motivo: bloqMotivo.trim() || null,
+    })
+    if (error) {
+      toast.error('Error al bloquear: ' + error.message)
+    } else {
+      toast.success('Día bloqueado ✓')
+      setBloqFecha('')
+      setBloqMotivo('')
+      loadDiasBloqueados()
+    }
+    setSavingBloq(false)
+  }
+
+  async function eliminarDiaBloqueado(id: string) {
+    const { error } = await supabase.from('dias_bloqueados').delete().eq('id', id)
+    if (error) {
+      toast.error('Error al eliminar')
+    } else {
+      toast.success('Día desbloqueado ✓')
+      loadDiasBloqueados()
+    }
   }
 
   function openEdit(e: Especialista) {
@@ -365,6 +418,93 @@ export default function EspecialistasView() {
           ))}
         </div>
       )}
+
+      {/* ── Días bloqueados ─────────────────────────────────────────────────── */}
+      <div className="beauty-card p-5 space-y-4">
+        <div className="flex items-center gap-2 mb-1">
+          <CalendarOff size={18} className="text-red-400" />
+          <h3 className="font-bold text-beauty-text">Días no disponibles</h3>
+        </div>
+        <p className="text-sm text-gray-500">Bloquea días específicos por vacaciones, festivos o ausencias.</p>
+
+        {/* Formulario agregar */}
+        <div className="bg-gray-50 rounded-xl p-4 space-y-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Especialista</label>
+              <select
+                value={bloqEspId ?? ''}
+                onChange={e => setBloqEspId(e.target.value || null)}
+                className="input-beauty text-sm"
+              >
+                <option value="">Seleccionar...</option>
+                {especialistas.map(e => (
+                  <option key={e.id} value={e.id}>{e.nombre}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Fecha</label>
+              <input
+                type="date"
+                value={bloqFecha}
+                onChange={e => setBloqFecha(e.target.value)}
+                min={new Date().toLocaleDateString('en-CA', { timeZone: 'America/Bogota' })}
+                className="input-beauty text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Motivo (opcional)</label>
+              <input
+                type="text"
+                value={bloqMotivo}
+                onChange={e => setBloqMotivo(e.target.value)}
+                placeholder="Ej: Vacaciones"
+                className="input-beauty text-sm"
+              />
+            </div>
+          </div>
+          <button
+            onClick={agregarDiaBloqueado}
+            disabled={savingBloq || !bloqEspId || !bloqFecha}
+            className="btn-beauty text-sm py-2 disabled:opacity-40"
+          >
+            {savingBloq ? <RefreshCw size={14} className="animate-spin" /> : <Plus size={14} />}
+            Bloquear día
+          </button>
+        </div>
+
+        {/* Lista de días bloqueados */}
+        {diasBloqueados.length === 0 ? (
+          <p className="text-sm text-gray-400 text-center py-2">No hay días bloqueados próximos</p>
+        ) : (
+          <div className="space-y-2">
+            {diasBloqueados.map(d => {
+              const esp = especialistas.find(e => e.id === d.especialista_id)
+              const fecha = new Date(d.fecha + 'T12:00:00').toLocaleDateString('es-CO', {
+                weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
+              })
+              return (
+                <div key={d.id} className="flex items-center justify-between bg-red-50 border border-red-100 rounded-xl px-4 py-2.5">
+                  <div>
+                    <p className="text-sm font-semibold text-beauty-text capitalize">{fecha}</p>
+                    <p className="text-xs text-gray-500">
+                      {esp?.nombre ?? 'Especialista'}{d.motivo ? ` — ${d.motivo}` : ''}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => eliminarDiaBloqueado(d.id)}
+                    className="p-1.5 hover:bg-red-100 rounded-lg transition-colors text-red-400 hover:text-red-600"
+                    title="Desbloquear"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
 
       {/* Modal formulario */}
       {showForm && (
