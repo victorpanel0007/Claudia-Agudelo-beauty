@@ -4,12 +4,12 @@ import { motion } from 'framer-motion'
 import { Star, Quote } from 'lucide-react'
 
 const testimonials = [
-  { name: 'María González',   service: 'Manicura Semipermanente', rating: 5, text: 'Excelente servicio, Claudia es una artista. Mis uñas quedaron perfectas y el ambiente del salón es increíble.', initials: 'MG' },
-  { name: 'Valentina Torres', service: 'Maquillaje Social',       rating: 5, text: 'Me encantó el resultado de mi maquillaje. Andrea tiene un talento único y supo exactamente lo que quería.', initials: 'VT' },
-  { name: 'Laura Martínez',   service: 'Masaje de Relajación',   rating: 5, text: 'El masaje fue espectacular. Salí completamente renovada. Sin duda el mejor salón de la ciudad.', initials: 'LM' },
-  { name: 'Sofía Ramírez',    service: 'Lifting de Pestañas',     rating: 5, text: 'Resultado natural y duradero. Ya no necesito pestañina. 100% recomendado.', initials: 'SR' },
-  { name: 'Catalina López',   service: 'Keratina',                rating: 5, text: 'Mi cabello nunca había lucido tan bien. La keratina duró más de 3 meses. Volveré siempre.', initials: 'CL' },
-  { name: 'Daniela Herrera',  service: 'Peinado de Novia',        rating: 5, text: 'Para mi boda confié en Claudia y fue la mejor decisión. Profesional, puntual y talentosa.', initials: 'DH' },
+  { name: 'María González',   service: 'Manicura Semipermanente', rating: 5, text: 'Claudia es una artista. Mis uñas quedaron perfectas, el detalle y el cuidado que pone en cada trabajo es increíble. ¡Siempre vuelvo!', initials: 'MG' },
+  { name: 'Valentina Torres', service: 'Maquillaje Social',       rating: 5, text: 'Claudia tiene un talento único, supo exactamente lo que quería y el resultado superó mis expectativas. Me sentí hermosa todo el día.', initials: 'VT' },
+  { name: 'Laura Martínez',   service: 'Masaje de Relajación',   rating: 5, text: 'El masaje con Claudia fue espectacular. Salí completamente renovada y relajada. Sin duda la mejor profesional que he visitado.', initials: 'LM' },
+  { name: 'Sofía Ramírez',    service: 'Lifting de Pestañas',     rating: 5, text: 'Claudia logró un resultado natural y duradero que enamoré. Ya no necesito pestañina. Su trabajo habla por sí solo. 100% recomendada.', initials: 'SR' },
+  { name: 'Catalina López',   service: 'Keratina',                rating: 5, text: 'Mi cabello nunca había lucido tan bien gracias a Claudia. La keratina duró más de 3 meses impecable. ¡Volveré siempre con ella!', initials: 'CL' },
+  { name: 'Daniela Herrera',  service: 'Peinado de Novia',        rating: 5, text: 'Para mi boda confié en Claudia y fue la mejor decisión de mi vida. Profesional, puntual, talentosa y con un trato muy especial.', initials: 'DH' },
 ]
 
 export default function TestimonialsSection() {
