@@ -124,7 +124,7 @@ export default function Header() {
               </a>
               <Link href="/admin" onClick={() => setIsOpen(false)}
                 className="flex items-center justify-center gap-2 border border-beauty-secondary/50 text-beauty-secondary py-3 rounded-xl text-sm font-semibold hover:bg-beauty-secondary/10 transition-colors min-h-[48px]">
-                <LayoutDashboard size={15} />Panel Administrativo
+                Panel Administrativo
               </Link>
             </div>
           </nav>
