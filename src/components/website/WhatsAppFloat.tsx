@@ -14,7 +14,7 @@ export default function WhatsAppFloat() {
   }, [])
 
   return (
-    <div className="fixed bottom-6 right-4 z-50 flex flex-col items-end gap-3">
+    <div className="fixed bottom-24 right-4 z-50 flex flex-col items-end gap-3">
       {/* Tooltip */}
       {showTooltip && (
         <div className="relative bg-white rounded-2xl shadow-card-hover border border-gray-100 p-3 max-w-[200px] animate-slide-up">
