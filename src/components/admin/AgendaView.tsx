@@ -1146,34 +1146,38 @@ export default function AgendaView() {
           </div>
         </div>
 
-        {/* Detail panel — sidebar on desktop, modal on mobile */}
+        {/* Detail panel — sidebar en desktop únicamente */}
         {selectedCita && (
-          <>
-            {/* Mobile overlay */}
-            <div className="sm:hidden fixed inset-0 z-50 flex items-end justify-center bg-black/50">
-              <div className="bg-white rounded-t-3xl w-full max-h-[85vh] overflow-y-auto shadow-2xl">
-                <DetailPanel
-                  cita={selectedCita}
-                  onClose={() => setSelectedCita(null)}
-                  onCompletar={solicitarCompletar}
-                  onCancelar={cancelarCita}
-                  onEliminar={eliminarCita}
-                />
-              </div>
-            </div>
-            {/* Desktop sidebar */}
-            <div className="hidden sm:block">
-              <DetailPanel
-                cita={selectedCita}
-                onClose={() => setSelectedCita(null)}
-                onCompletar={solicitarCompletar}
-                onCancelar={cancelarCita}
-                onEliminar={eliminarCita}
-              />
-            </div>
-          </>
+          <div className="hidden sm:block">
+            <DetailPanel
+              cita={selectedCita}
+              onClose={() => setSelectedCita(null)}
+              onCompletar={solicitarCompletar}
+              onCancelar={cancelarCita}
+              onEliminar={eliminarCita}
+            />
+          </div>
         )}
       </div>
+
+      {/* Modal detalle cita — MÓVIL (fuera del contenedor desktop para que fixed funcione) */}
+      {selectedCita && (
+        <div className="sm:hidden fixed inset-0 z-50 flex items-end justify-center bg-black/50 backdrop-blur-sm">
+          <div className="bg-white rounded-t-3xl w-full max-h-[90vh] overflow-y-auto shadow-2xl animate-slide-up">
+            {/* Handle bar */}
+            <div className="flex justify-center pt-3 pb-1">
+              <div className="w-10 h-1 rounded-full bg-gray-200" />
+            </div>
+            <DetailPanel
+              cita={selectedCita}
+              onClose={() => setSelectedCita(null)}
+              onCompletar={solicitarCompletar}
+              onCancelar={cancelarCita}
+              onEliminar={eliminarCita}
+            />
+          </div>
+        </div>
+      )}
 
       {/* Completar modal */}
       {citaACompletar && (
