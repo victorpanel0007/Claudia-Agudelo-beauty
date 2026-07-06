@@ -1,5 +1,4 @@
 import Link from 'next/link'
-import { LayoutDashboard } from 'lucide-react'
 
 const SOCIAL = [
   {
@@ -81,12 +80,12 @@ export default function Footer() {
           </div>
 
           <div className="flex items-center gap-3">
-            <p>Hecho con 💖 en Colombia</p>
-            <Link href="/admin"
-              className="flex items-center gap-1.5 bg-beauty-secondary/10 border border-beauty-secondary/40 text-beauty-secondary hover:bg-beauty-secondary/20 px-3 py-2 rounded-full transition-colors font-medium min-h-[40px]">
-              <LayoutDashboard size={12} />
-              Admin
-            </Link>
+            <p>Hecho en Colombia 🇨🇴 por{' '}
+              <a href="https://www.victorh4k.com/" target="_blank" rel="noopener noreferrer"
+                className="text-beauty-secondary font-semibold hover:underline transition-colors">
+                Victorh4k
+              </a>
+            </p>
           </div>
         </div>
       </div>
