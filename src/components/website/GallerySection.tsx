@@ -1,7 +1,7 @@
 ﻿'use client'
 
 import { useEffect, useState } from 'react'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import Image from 'next/image'
 
 const FALLBACK = [
@@ -26,6 +26,8 @@ interface FotoGaleria {
 export default function GallerySection() {
   const [fotos, setFotos] = useState<FotoGaleria[]>([])
   const [loaded, setLoaded] = useState(false)
+  const [tabActivo, setTabActivo] = useState('Todas')
+  const [lightbox, setLightbox] = useState<FotoGaleria | null>(null)
 
   useEffect(() => {
     fetch('/api/galeria')
@@ -35,7 +37,23 @@ export default function GallerySection() {
       .finally(() => setLoaded(true))
   }, [])
 
+  // Cerrar lightbox con Escape
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) { if (e.key === 'Escape') setLightbox(null) }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
+
   const usarFotos = fotos.length > 0
+
+  // Categorías únicas en orden de aparición
+  const categorias = usarFotos
+    ? ['Todas', ...Array.from(new Set(fotos.map(f => f.categoria)))]
+    : []
+
+  const fotosFiltradas = usarFotos
+    ? (tabActivo === 'Todas' ? fotos : fotos.filter(f => f.categoria === tabActivo))
+    : []
 
   return (
     <section id="galeria" className="py-14 sm:py-20 bg-beauty-bg">
@@ -52,32 +70,72 @@ export default function GallerySection() {
           <div className="gold-divider w-24 mx-auto mt-4" />
         </div>
 
-        {/* Grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
-          {usarFotos ? (
-            fotos.map((foto, i) => (
-              <motion.div
-                key={foto.id}
-                initial={{ opacity: 0, scale: 0.92 }}
-                whileInView={{ opacity: 1, scale: 1 }}
-                viewport={{ once: true, margin: '100px' }}
-                transition={{ delay: i * 0.05 }}
-                className="relative aspect-square rounded-2xl overflow-hidden shadow-card group cursor-pointer"
+        {/* Tabs de categoría */}
+        {usarFotos && categorias.length > 1 && (
+          <div className="flex flex-wrap justify-center gap-2 mb-8">
+            {categorias.map(cat => (
+              <button
+                key={cat}
+                onClick={() => setTabActivo(cat)}
+                className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
+                  tabActivo === cat
+                    ? 'bg-beauty-primary text-white shadow-beauty'
+                    : 'bg-white border border-beauty-primary/30 text-beauty-text hover:border-beauty-primary hover:bg-beauty-rosa-claro/30'
+                }`}
               >
-                <Image
-                  src={foto.url}
-                  alt={foto.descripcion || foto.categoria}
-                  fill
-                  className="object-cover transition-transform duration-500 group-hover:scale-110"
-                  sizes="(max-width: 640px) 50vw, 33vw"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-3">
-                  <span className="text-white text-xs font-semibold">{foto.descripcion || foto.categoria}</span>
-                </div>
-              </motion.div>
-            ))
-          ) : loaded ? (
-            FALLBACK.map((item, i) => (
+                {cat}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Grid */}
+        {!loaded ? (
+          // Skeleton
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="aspect-square rounded-2xl bg-beauty-rosa-claro/40 animate-pulse" />
+            ))}
+          </div>
+        ) : usarFotos ? (
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={tabActivo}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.25 }}
+              className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4"
+            >
+              {fotosFiltradas.map((foto, i) => (
+                <motion.button
+                  key={foto.id}
+                  initial={{ opacity: 0, scale: 0.94 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: i * 0.04 }}
+                  onClick={() => setLightbox(foto)}
+                  className="relative aspect-square rounded-2xl overflow-hidden shadow-card group cursor-pointer focus:outline-none focus:ring-2 focus:ring-beauty-primary"
+                >
+                  <Image
+                    src={foto.url}
+                    alt={foto.descripcion || foto.categoria}
+                    fill
+                    className="object-cover transition-transform duration-500 group-hover:scale-110"
+                    sizes="(max-width: 640px) 50vw, 33vw"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-3">
+                    <span className="text-white text-xs font-semibold leading-tight">
+                      {foto.descripcion || foto.categoria}
+                    </span>
+                  </div>
+                </motion.button>
+              ))}
+            </motion.div>
+          </AnimatePresence>
+        ) : (
+          // Fallback emojis
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
+            {FALLBACK.map((item, i) => (
               <motion.div
                 key={i}
                 initial={{ opacity: 0, scale: 0.92 }}
@@ -94,15 +152,51 @@ export default function GallerySection() {
                 </span>
                 <p className="text-beauty-text text-xs sm:text-sm font-medium">{item.label}</p>
               </motion.div>
-            ))
-          ) : (
-            // Skeleton mientras carga
-            Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="aspect-square rounded-2xl bg-beauty-rosa-claro/40 animate-pulse" />
-            ))
-          )}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
+
+      {/* Lightbox */}
+      <AnimatePresence>
+        {lightbox && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setLightbox(null)}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4 cursor-pointer"
+          >
+            <motion.div
+              initial={{ scale: 0.85 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0.85 }}
+              onClick={e => e.stopPropagation()}
+              className="relative max-w-2xl w-full max-h-[85vh] rounded-2xl overflow-hidden cursor-default"
+            >
+              <Image
+                src={lightbox.url}
+                alt={lightbox.descripcion || lightbox.categoria}
+                width={800}
+                height={800}
+                className="w-full h-auto max-h-[85vh] object-contain"
+              />
+              {lightbox.descripcion && (
+                <div className="absolute bottom-0 left-0 right-0 bg-black/50 px-4 py-3">
+                  <p className="text-white text-sm font-medium">{lightbox.descripcion}</p>
+                  <p className="text-white/60 text-xs">{lightbox.categoria}</p>
+                </div>
+              )}
+              <button
+                onClick={() => setLightbox(null)}
+                className="absolute top-3 right-3 w-9 h-9 bg-black/50 hover:bg-black/70 rounded-full flex items-center justify-center text-white transition-colors"
+              >
+                ✕
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </section>
   )
 }
