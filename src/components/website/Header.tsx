@@ -71,6 +71,10 @@ export default function Header() {
 
         {/* Desktop CTA */}
         <div className="hidden lg:flex items-center gap-3">
+          <Link href="/admin"
+            className="flex items-center gap-1.5 border border-beauty-secondary/50 text-beauty-secondary text-xs font-semibold px-4 py-2.5 rounded-full hover:bg-beauty-secondary/10 transition-all min-h-[44px]">
+            🔐 Admin
+          </Link>
           <a
             href={`https://wa.me/573022197673?text=Hola`}
             target="_blank"
