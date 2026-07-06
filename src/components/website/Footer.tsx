@@ -6,7 +6,7 @@ export default function Footer() {
           <p className="text-center sm:text-left">© 2026 Claudia Agudelo Beauty. Todos los derechos reservados.</p>
           <div className="flex items-center gap-3">
             <p>Hecho en Colombia 🇨🇴 por{' '}
-              <a href="https://www.victorh4k.com/" target="_blank" rel="noopener noreferrer"
+              <a href="https://victorh4k.com" target="_blank" rel="noopener noreferrer"
                 className="text-beauty-secondary font-semibold hover:underline transition-colors">
                 Victorh4k
               </a>
