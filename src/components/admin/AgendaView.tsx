@@ -1,6 +1,6 @@
 ﻿'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import type { Cita, Cliente, Especialista, Servicio } from '@/types/database'
 import { formatCurrency, formatTime, formatDate } from '@/lib/utils'
@@ -433,6 +433,21 @@ function NuevaCitaModal({ onClose, onSaved }: { onClose: () => void; onSaved: ()
   const [loadingSlots, setLoadingSlots] = useState(false)
   const [step, setStep] = useState(1)
 
+  const [servicioSearch, setServicioSearch] = useState('')
+  const [showServicioDropdown, setShowServicioDropdown] = useState(false)
+  const servicioRef = useRef<HTMLDivElement>(null)
+
+  // Cerrar dropdown al hacer clic fuera
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (servicioRef.current && !servicioRef.current.contains(e.target as Node)) {
+        setShowServicioDropdown(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [])
+
   const [form, setForm] = useState({
     cliente_id: '',
     cliente_nombre: '',
@@ -657,21 +672,57 @@ function NuevaCitaModal({ onClose, onSaved }: { onClose: () => void; onSaved: ()
               </div>
 
               {/* Servicio */}
-              <div>
+              <div ref={servicioRef}>
                 <label className="block text-xs font-semibold text-gray-600 mb-2">Servicio *</label>
-                <select
-                  value={form.servicio_id}
-                  onChange={e => setForm(f => ({ ...f, servicio_id: e.target.value }))}
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:border-beauty-primary focus:ring-2 focus:ring-beauty-primary/20"
-                >
-                  <option value="">Selecciona un servicio...</option>
-                  {serviciosDisponibles.map(s => (
-                    <option key={s.id} value={s.id}>
-                      {s.nombre} — {s.duracion_minutos} min
-                      {s.precio ? ` · $${Number(s.precio).toLocaleString('es-CO')}` : ''}
-                    </option>
-                  ))}
-                </select>
+                {/* Campo seleccionado */}
+                {form.servicio_id ? (
+                  <div className="flex items-center gap-2 border border-beauty-primary rounded-xl px-3 py-2.5 bg-beauty-primary/5">
+                    <Check size={14} className="text-beauty-primary shrink-0" />
+                    <span className="text-xs text-beauty-primary font-medium flex-1 truncate">
+                      {serviciosDisponibles.find(s => s.id === form.servicio_id)?.nombre}
+                    </span>
+                    <button onClick={() => { setForm(f => ({ ...f, servicio_id: '' })); setServicioSearch('') }}
+                      className="p-0.5 hover:bg-beauty-primary/10 rounded">
+                      <X size={12} className="text-beauty-primary" />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="relative">
+                    <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                    <input
+                      value={servicioSearch}
+                      onChange={e => { setServicioSearch(e.target.value); setShowServicioDropdown(true) }}
+                      onFocus={() => setShowServicioDropdown(true)}
+                      placeholder="Buscar servicio..."
+                      className="w-full border border-gray-200 rounded-xl pl-9 pr-3 py-2.5 text-xs focus:outline-none focus:border-beauty-primary focus:ring-2 focus:ring-beauty-primary/20"
+                    />
+                    {showServicioDropdown && (
+                      <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg z-20 max-h-52 overflow-y-auto">
+                        {serviciosDisponibles
+                          .filter(s => s.nombre.toLowerCase().includes(servicioSearch.toLowerCase()))
+                          .slice(0, 20)
+                          .map(s => (
+                            <button key={s.id} type="button"
+                              onMouseDown={() => {
+                                setForm(f => ({ ...f, servicio_id: s.id }))
+                                setServicioSearch('')
+                                setShowServicioDropdown(false)
+                              }}
+                              className="w-full text-left px-3 py-2.5 hover:bg-beauty-bg text-xs border-b border-gray-50 last:border-0 flex items-center justify-between gap-2">
+                              <span className="font-medium text-gray-700 truncate">{s.nombre}</span>
+                              <span className="text-gray-400 shrink-0">
+                                {s.duracion_minutos}min
+                                {s.precio ? ` · $${Number(s.precio).toLocaleString('es-CO')}` : ''}
+                              </span>
+                            </button>
+                          ))}
+                        {serviciosDisponibles.filter(s => s.nombre.toLowerCase().includes(servicioSearch.toLowerCase())).length === 0 && (
+                          <p className="text-center text-gray-400 text-xs py-4">Sin resultados</p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Especialista */}
