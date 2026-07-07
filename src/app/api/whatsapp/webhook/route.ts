@@ -384,8 +384,19 @@ async function handleReservar(
   if (svcTipo === 'fijo'  && svcPrec)  precio = formatCurrency(Number(svcPrec))
   if (svcTipo === 'desde' && svcDesde) precio = `Desde ${formatCurrency(Number(svcDesde))}`
 
-  // 2. Sin nombre → pedir nombre (y persistir todo lo que ya sabemos)
+  // 2. Sin nombre → verificar BD primero, luego pedir
   if (!nombre) {
+    const nombreBD = await buscarNombreCliente(telefono, supabase)
+    if (nombreBD) {
+      await avanzarConNombreConocido(telefono, nombreBD, {
+        telefono, paso: 'solicitar_nombre',
+        categoria_id: svcData?.cat ?? null,
+        servicio_nombre: svcData!.nombre,
+        duracion: svcDur, precio,
+        fecha: parsedFecha?.fecha?.toISOString() ?? null,
+      }, supabase)
+      return
+    }
     await setConv(supabase, {
       telefono,
       paso:            'solicitar_nombre',
@@ -529,6 +540,36 @@ async function dispatchPaso(telefono: string, text: string, conv: ConvRow, supab
   }
 }
 
+/**
+ * Busca si el teléfono ya tiene un cliente registrado en BD.
+ * Si lo encuentra devuelve el nombre; si no, devuelve null.
+ */
+async function buscarNombreCliente(telefono: string, supabase: Supabase): Promise<string | null> {
+  const { data } = await supabase
+    .from('clientes')
+    .select('nombre')
+    .eq('telefono', telefono)
+    .order('fecha_registro', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  return (data?.nombre as string) || null
+}
+
+/**
+ * Avanza al paso solicitar_fecha usando el nombre ya conocido.
+ * Salta completamente el paso solicitar_nombre.
+ */
+async function avanzarConNombreConocido(
+  telefono: string, nombre: string, conv: ConvRow, supabase: Supabase
+) {
+  await setConv(supabase, { ...conv, nombre, paso: 'solicitar_fecha' })
+  await reply(
+    telefono,
+    `👋 Hola de nuevo *${nombre}*! 😊\n\n📅 ¿Qué fecha prefieres para tu cita?\n\nEjemplos: *mañana*, *próximo sábado*, *18/07/2026*`,
+    supabase
+  )
+}
+
 async function handleCatSelection(t: string, text: string, conv: ConvRow, sb: Supabase) {
   const num = parseInt(text)
   if (isNaN(num) || num < 1 || num > CATEGORIAS.length) {
@@ -565,6 +606,14 @@ async function handleSvcSelection(t: string, text: string, conv: ConvRow, sb: Su
   const priceMsg = (tipo === 'valoracion' || reqVal)
     ? '\n\nℹ️ Precio según largo, cantidad y técnica.'
     : `\n\n💵 Precio: *${precio}*  ⏱️ Duración: *${dur} min*`
+
+  // ── Verificar si ya conocemos el nombre del cliente ──────────────────────
+  const nombreConocido = await buscarNombreCliente(t, sb)
+  if (nombreConocido) {
+    await avanzarConNombreConocido(t, nombreConocido, { ...conv, servicio_nombre: svc.nombre, duracion: dur, precio }, sb)
+    return
+  }
+
   await reply(t, `💅 *${svc.nombre}*${priceMsg}\n\n✍️ ¿Cuál es tu *nombre completo*?`, sb)
 }
 
