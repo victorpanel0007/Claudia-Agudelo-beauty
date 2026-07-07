@@ -2,35 +2,23 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Clock, Plus, Edit, Save, X, CheckCircle, XCircle, User, Send, RefreshCw, Wifi, WifiOff, CalendarOff, Trash2 } from 'lucide-react'
+import { Clock, Plus, Edit, Save, X, CheckCircle, XCircle, User, Send, RefreshCw, Wifi, WifiOff, CalendarOff, Trash2, Coffee } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 interface Especialista {
-  id: string
-  nombre: string
-  activo: boolean
-  especialidades: string[]
-  horario_inicio: string
-  horario_fin: string
-  dias_laborales: number[]
-  whatsapp?: string
-  notificaciones?: boolean
+  id: string; nombre: string; activo: boolean; especialidades: string[]
+  horario_inicio: string; horario_fin: string; dias_laborales: number[]
+  whatsapp?: string; notificaciones?: boolean
 }
-
 interface DiaBloqueado {
-  id: string
-  especialista_id: string
-  fecha: string
-  motivo?: string
+  id: string; especialista_id: string; fecha: string; motivo?: string
 }
-
+interface Descanso {
+  id: string; especialista_id: string; hora_inicio: string; hora_fin: string
+}
 interface FormState {
-  nombre: string
-  horario_inicio: string
-  horario_fin: string
-  activo: boolean
-  whatsapp: string
-  notificaciones: boolean
+  nombre: string; horario_inicio: string; horario_fin: string
+  activo: boolean; whatsapp: string; notificaciones: boolean
 }
 
 const DIAS = [
@@ -95,6 +83,12 @@ export default function EspecialistasView() {
   const [bloqFecha, setBloqFecha] = useState('')
   const [bloqMotivo, setBloqMotivo] = useState('')
   const [savingBloq, setSavingBloq] = useState(false)
+  // Descansos
+  const [descansos, setDescansos] = useState<Descanso[]>([])
+  const [descEditId, setDescEditId] = useState<string | null>(null) // id del descanso en edición
+  const [descForm, setDescForm] = useState({ hora_inicio: '12:00', hora_fin: '13:00' })
+  const [showDescForm, setShowDescForm] = useState(false)
+  const [savingDesc, setSavingDesc] = useState(false)
   const supabase = createClient()
 
   useEffect(() => {
@@ -171,6 +165,9 @@ export default function EspecialistasView() {
       whatsapp:        e.whatsapp || '',
       notificaciones:  e.notificaciones !== false,
     })
+    loadDescansos(e.id)
+    setShowDescForm(false)
+    setDescEditId(null)
     setShowForm(true)
   }
 
@@ -178,6 +175,9 @@ export default function EspecialistasView() {
     setEditingId(null)
     setDiasSelected([1, 2, 3, 4, 5, 6])
     setForm(DEFAULT_FORM)
+    setDescansos([])
+    setShowDescForm(false)
+    setDescEditId(null)
     setShowForm(true)
   }
 
@@ -185,6 +185,71 @@ export default function EspecialistasView() {
     setShowForm(false)
     setEditingId(null)
     setForm(DEFAULT_FORM)
+    setDescansos([])
+    setShowDescForm(false)
+    setDescEditId(null)
+  }
+
+  // ── Descansos ─────────────────────────────────────────────────────────────
+  async function loadDescansos(espId: string) {
+    const { data } = await supabase
+      .from('descansos_especialista')
+      .select('*')
+      .eq('especialista_id', espId)
+      .order('hora_inicio')
+    setDescansos((data as Descanso[]) || [])
+  }
+
+  function validateDescanso(inicio: string, fin: string, excludeId?: string): string | null {
+    const toMins = (t: string) => { const [h,m] = t.split(':').map(Number); return h*60+m }
+    const ini = toMins(inicio), end = toMins(fin)
+    const wIni = toMins(form.horario_inicio), wEnd = toMins(form.horario_fin)
+    if (end <= ini) return 'La hora de fin debe ser posterior a la hora de inicio'
+    if (ini < wIni || end > wEnd) return `El descanso debe estar dentro del horario laboral (${formatTime12(form.horario_inicio)} – ${formatTime12(form.horario_fin)})`
+    const overlap = descansos.find(d => {
+      if (d.id === excludeId) return false
+      const dIni = toMins(d.hora_inicio), dEnd = toMins(d.hora_fin)
+      return ini < dEnd && end > dIni
+    })
+    if (overlap) return `Se superpone con el descanso ${formatTime12(overlap.hora_inicio)} – ${formatTime12(overlap.hora_fin)}`
+    return null
+  }
+
+  async function saveDescanso() {
+    const err = validateDescanso(descForm.hora_inicio, descForm.hora_fin, descEditId ?? undefined)
+    if (err) { toast.error(err); return }
+    if (!editingId) { toast.error('Guarda primero la especialista'); return }
+    setSavingDesc(true)
+    if (descEditId) {
+      const { error } = await supabase.from('descansos_especialista')
+        .update({ hora_inicio: descForm.hora_inicio, hora_fin: descForm.hora_fin })
+        .eq('id', descEditId)
+      if (error) { toast.error('Error: ' + error.message); setSavingDesc(false); return }
+      toast.success('Descanso actualizado ✓')
+    } else {
+      const { error } = await supabase.from('descansos_especialista')
+        .insert({ especialista_id: editingId, hora_inicio: descForm.hora_inicio, hora_fin: descForm.hora_fin })
+      if (error) { toast.error('Error: ' + error.message); setSavingDesc(false); return }
+      toast.success('Descanso agregado ✓')
+    }
+    setSavingDesc(false)
+    setShowDescForm(false)
+    setDescEditId(null)
+    setDescForm({ hora_inicio: '12:00', hora_fin: '13:00' })
+    loadDescansos(editingId)
+  }
+
+  function editDescanso(d: Descanso) {
+    setDescEditId(d.id)
+    setDescForm({ hora_inicio: d.hora_inicio.slice(0,5), hora_fin: d.hora_fin.slice(0,5) })
+    setShowDescForm(true)
+  }
+
+  async function deleteDescanso(id: string) {
+    const { error } = await supabase.from('descansos_especialista').delete().eq('id', id)
+    if (error) { toast.error('Error: ' + error.message); return }
+    toast.success('Descanso eliminado ✓')
+    if (editingId) loadDescansos(editingId)
   }
 
   function toggleDia(num: number) {
@@ -633,6 +698,86 @@ export default function EspecialistasView() {
                   {form.activo ? 'Activa — visible para el bot y clientes' : 'Inactiva — no aparece en el bot'}
                 </label>
               </div>
+
+              {/* ── Descansos ─────────────────────────────────────────── */}
+              {editingId && (
+                <div className="border border-amber-200 rounded-2xl overflow-hidden">
+                  <div className="flex items-center justify-between px-4 py-3 bg-amber-50 border-b border-amber-100">
+                    <div className="flex items-center gap-2">
+                      <Coffee size={15} className="text-amber-600" />
+                      <span className="text-sm font-semibold text-amber-800">Descansos</span>
+                      <span className="text-xs text-amber-600 bg-amber-100 px-1.5 py-0.5 rounded-full">{descansos.length}</span>
+                    </div>
+                    {!showDescForm && (
+                      <button onClick={() => { setDescEditId(null); setDescForm({ hora_inicio: '12:00', hora_fin: '13:00' }); setShowDescForm(true) }}
+                        className="flex items-center gap-1 text-xs font-semibold text-amber-700 bg-amber-100 hover:bg-amber-200 px-2.5 py-1.5 rounded-lg transition-colors">
+                        <Plus size={13} /> Agregar
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Lista de descansos */}
+                  {descansos.length === 0 && !showDescForm && (
+                    <p className="text-xs text-gray-400 text-center py-4 px-4">Sin descansos configurados</p>
+                  )}
+                  {descansos.map(d => (
+                    <div key={d.id} className="flex items-center gap-3 px-4 py-3 border-b border-gray-50 last:border-0 hover:bg-gray-50 transition-colors">
+                      <div className="w-2 h-2 rounded-full bg-amber-400 shrink-0" />
+                      <span className="flex-1 text-sm font-medium text-gray-700">
+                        {formatTime12(d.hora_inicio.slice(0,5))} — {formatTime12(d.hora_fin.slice(0,5))}
+                      </span>
+                      <div className="flex gap-1 shrink-0">
+                        <button onClick={() => editDescanso(d)}
+                          className="p-1.5 hover:bg-amber-50 rounded-lg transition-colors" title="Editar">
+                          <Edit size={13} className="text-amber-600" />
+                        </button>
+                        <button onClick={() => deleteDescanso(d.id)}
+                          className="p-1.5 hover:bg-red-50 rounded-lg transition-colors" title="Eliminar">
+                          <Trash2 size={13} className="text-red-400" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+
+                  {/* Formulario agregar/editar descanso */}
+                  {showDescForm && (
+                    <div className="p-4 bg-amber-50/60 border-t border-amber-100 space-y-3">
+                      <p className="text-xs font-semibold text-amber-800">
+                        {descEditId ? 'Editar descanso' : 'Nuevo descanso'}
+                      </p>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="block text-xs text-gray-600 mb-1">Inicio</label>
+                          <select value={descForm.hora_inicio}
+                            onChange={e => setDescForm(f => ({ ...f, hora_inicio: e.target.value }))}
+                            className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-amber-400">
+                            {TIME_OPTIONS.map(t => <option key={t} value={t}>{formatTime12(t)}</option>)}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-600 mb-1">Fin</label>
+                          <select value={descForm.hora_fin}
+                            onChange={e => setDescForm(f => ({ ...f, hora_fin: e.target.value }))}
+                            className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-amber-400">
+                            {TIME_OPTIONS.map(t => <option key={t} value={t}>{formatTime12(t)}</option>)}
+                          </select>
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <button onClick={() => { setShowDescForm(false); setDescEditId(null) }}
+                          className="flex-1 py-2 rounded-xl border border-gray-200 text-xs font-medium text-gray-600 hover:bg-gray-50 transition-colors">
+                          Cancelar
+                        </button>
+                        <button onClick={saveDescanso} disabled={savingDesc}
+                          className="flex-1 py-2 rounded-xl bg-amber-500 text-white text-xs font-semibold hover:bg-amber-600 transition-colors disabled:opacity-50 flex items-center justify-center gap-1">
+                          {savingDesc ? <RefreshCw size={12} className="animate-spin" /> : <Save size={12} />}
+                          {descEditId ? 'Actualizar' : 'Guardar'}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Botones */}
               <div className="flex gap-3 pt-1">

@@ -57,6 +57,15 @@ export async function getAvailableSlots(
     .select('especialista_id')
     .eq('fecha', fechaStr)
 
+  // ── Obtener descansos de todas las especialistas del día ─────────────────
+  const espIds = (especialistas || []).map(e => e.id)
+  const { data: descansos } = espIds.length
+    ? await supabase
+        .from('descansos_especialista')
+        .select('especialista_id, hora_inicio, hora_fin')
+        .in('especialista_id', espIds)
+    : { data: [] }
+
   const especialistasBloqueados = new Set(
     (diasBloqueados || []).map(d => d.especialista_id)
   )
@@ -92,6 +101,17 @@ export async function getAvailableSlots(
         inicio: new Date(c.fecha_inicio),
         fin:    new Date(c.fecha_fin),
       }))
+
+    // ── Agregar descansos como intervalos ocupados ───────────────────────
+    const descansosMio = (descansos || []).filter(d => d.especialista_id === esp.id)
+    for (const d of descansosMio) {
+      const [dh, dm] = (d.hora_inicio as string).split(':').map(Number)
+      const [fh, fm] = (d.hora_fin    as string).split(':').map(Number)
+      occupied.push({
+        inicio: new Date(`${fechaStr}T${String(dh).padStart(2,'0')}:${String(dm).padStart(2,'0')}:00-05:00`),
+        fin:    new Date(`${fechaStr}T${String(fh).padStart(2,'0')}:${String(fm).padStart(2,'0')}:00-05:00`),
+      })
+    }
 
     // ── Generar slots ────────────────────────────────────────────────────
     //
