@@ -113,7 +113,9 @@ export async function PATCH(request: NextRequest) {
   }
   if (!data || data.length === 0) {
     console.error('[PATCH /servicios] UPDATE devolvió vacío para id:', id)
-    return NextResponse.json({ error: 'No se pudo actualizar (RLS bloqueó el UPDATE)' }, { status: 500 })
+    // Si el update no devuelve filas, probablemente RLS está bloqueando
+    // Verificar ejecutando en Supabase: ALTER TABLE servicios DISABLE ROW LEVEL SECURITY;
+    return NextResponse.json({ error: 'RLS bloqueó el UPDATE. Ve a Supabase → Table Editor → servicios → Disable RLS' }, { status: 500 })
   }
   return NextResponse.json(data[0])
 }
