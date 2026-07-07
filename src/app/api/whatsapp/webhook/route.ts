@@ -565,8 +565,8 @@ async function processMessage(telefono: string, text: string) {
     await setConv(supabase, { ...conv, slots_json: shown, paso: 'seleccion_horario' })
 
     const numberEmojis = [
-      '1️⃣','2️⃣','3️⃣','4️⃣','5️⃣','6️⃣','7️⃣','8️⃣','9️⃣','🔟',
-      '1️⃣1️⃣','1️⃣2️⃣','1️⃣3️⃣','1️⃣4️⃣','1️⃣5️⃣','1️⃣6️⃣','1️⃣7️⃣','1️⃣8️⃣','1️⃣9️⃣','2️⃣0️⃣',
+      '➊','➋','➌','➍','➎','➏','➐','➑','➒','➓',
+      '⓫','⓬','⓭','⓮','⓯','⓰','⓱','⓲','⓳','⓴',
     ]
     const slotsList = shown.map((s, i) => `${numberEmojis[i]} *${s.hora}* — ${s.especialista_nombre}`).join('\n')
     await reply(
@@ -791,12 +791,13 @@ async function handleFechaInput(
     .eq('activo', true)
     .order('nombre')
 
-  const lista    = (especialistas || []).map((e, i) => `${i + 1}. ${e.nombre}`).join('\n')
+  const NUM = ['➊','➋','➌','➍','➎','➏','➐','➑','➒','➓']
+  const lista    = (especialistas || []).map((e, i) => `${NUM[i] ?? `${i+1}.`} ${e.nombre}`).join('\n')
   const totalEsp = (especialistas || []).length
 
   await reply(
     telefono,
-    `📅 Fecha confirmada: *${parsed.interpreted}* ✅\n\n👩 ¿Con qué especialista deseas tu cita?\n\n${lista}\n${totalEsp + 1}. Cualquiera disponible\n\n✍️ Escribe el número de tu preferencia:`,
+    `📅 Fecha confirmada: *${parsed.interpreted}* ✅\n\n👩 ¿Con qué especialista deseas tu cita?\n\n${lista}\n${NUM[totalEsp] ?? `${totalEsp+1}.`} Cualquiera disponible\n\n✍️ Escribe el número de tu preferencia:`,
     supabase
   )
 }
@@ -851,8 +852,8 @@ async function handleEspecialistaSelection(
   })
 
   const numberEmojis = [
-    '1️⃣','2️⃣','3️⃣','4️⃣','5️⃣','6️⃣','7️⃣','8️⃣','9️⃣','🔟',
-    '1️⃣1️⃣','1️⃣2️⃣','1️⃣3️⃣','1️⃣4️⃣','1️⃣5️⃣','1️⃣6️⃣','1️⃣7️⃣','1️⃣8️⃣','1️⃣9️⃣','2️⃣0️⃣',
+    '➊','➋','➌','➍','➎','➏','➐','➑','➒','➓',
+    '⓫','⓬','⓭','⓮','⓯','⓰','⓱','⓲','⓳','⓴',
   ]
   const slotsList = shown
     .map((s, i) => `${numberEmojis[i]} *${s.hora}* — ${s.especialista_nombre}`)
