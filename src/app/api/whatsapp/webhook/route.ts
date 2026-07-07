@@ -71,6 +71,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ ok: true })
     }
 
+    // Ignorar mensajes de grupos (remoteJid termina en @g.us)
+    const remoteJid: string = body.data?.key?.remoteJid ?? ''
+    if (remoteJid.endsWith('@g.us')) {
+      console.info('[Webhook] Mensaje de grupo ignorado')
+      return NextResponse.json({ ok: true })
+    }
+
     const text = (
       message?.conversation ||
       message?.extendedTextMessage?.text ||
