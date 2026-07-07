@@ -5,7 +5,6 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import toast, { Toaster } from 'react-hot-toast'
-import { CATEGORIAS, SERVICIOS_DATA } from '@/lib/services-data'
 import { formatCurrency } from '@/lib/utils'
 import { Calendar, Clock, User, Phone, ChevronRight, Check } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
@@ -27,6 +26,8 @@ type FormData = z.infer<typeof schema>
 export default function BookingSection() {
   const [step, setStep] = useState(1)
   const [especialistas, setEspecialistas] = useState<Especialista[]>([])
+  const [categorias, setCategorias] = useState<{id:string;nombre:string;icono:string}[]>([])
+  const [serviciosBD, setServiciosBD] = useState<{id:string;nombre:string;duracion_minutos:number;precio?:number|null;precio_desde?:number|null;tipo_precio:string;categoria_id:string}[]>([])
   const [availableSlots, setAvailableSlots] = useState<
     { hora: string; especialista_nombre: string; fecha_inicio: string; fecha_fin: string; especialista_id: string }[]
   >([])
@@ -35,11 +36,17 @@ export default function BookingSection() {
   const [success, setSuccess] = useState(false)
   const [formData, setFormData] = useState<FormData | null>(null)
 
-  // Cargar especialistas desde Supabase dinámicamente
   useEffect(() => {
     const supabase = createClient()
-    supabase.from('especialistas').select('id, nombre').eq('activo', true).order('nombre')
-      .then(({ data }) => { if (data) setEspecialistas(data) })
+    Promise.all([
+      supabase.from('especialistas').select('id, nombre').eq('activo', true).order('nombre'),
+      fetch('/api/categorias').then(r => r.json()),
+      fetch('/api/servicios?activo=true').then(r => r.json()),
+    ]).then(([espRes, cats, svcs]) => {
+      if (espRes.data) setEspecialistas(espRes.data)
+      if (Array.isArray(cats)) setCategorias(cats)
+      if (Array.isArray(svcs)) setServiciosBD(svcs)
+    })
   }, [])
 
   const { register, handleSubmit, watch, formState: { errors } } = useForm<FormData>({
@@ -50,7 +57,8 @@ export default function BookingSection() {
   const categoriaId = watch('categoria_id')
   const servicioIdx = watch('servicio_idx')
 
-  const serviciosDeCat = SERVICIOS_DATA.filter(s => s.cat === categoriaId)
+  // Servicios de la categoría seleccionada — desde Supabase
+  const serviciosDeCat = serviciosBD.filter(s => s.categoria_id === categoriaId)
   const servicioSeleccionado = serviciosDeCat[parseInt(servicioIdx) - 1]
 
   async function checkAvailability(data: FormData) {
@@ -61,7 +69,7 @@ export default function BookingSection() {
 
       const params = new URLSearchParams({
         fecha: new Date(data.fecha + 'T12:00:00-05:00').toISOString(),
-        duracion: servicio.duracion.toString(),
+        duracion: servicio.duracion_minutos.toString(),
         ...(data.especialista_id ? { especialista_id: data.especialista_id } : {}),
       })
       const res = await fetch(`/api/disponibilidad?${params}`)
@@ -190,7 +198,7 @@ export default function BookingSection() {
               <label className="block text-sm font-medium text-beauty-text mb-1.5">Categoría</label>
               <select {...register('categoria_id')} className="input-beauty">
                 <option value="">Selecciona una categoría</option>
-                {CATEGORIAS.map(cat => (
+                {categorias.map(cat => (
                   <option key={cat.id} value={cat.id}>{cat.icono} {cat.nombre}</option>
                 ))}
               </select>
@@ -203,10 +211,10 @@ export default function BookingSection() {
                 <select {...register('servicio_idx')} className="input-beauty">
                   <option value="">Selecciona un servicio</option>
                   {serviciosDeCat.map((s, i) => (
-                    <option key={i} value={(i + 1).toString()}>
+                    <option key={s.id} value={(i + 1).toString()}>
                       {s.nombre}
-                      {s.tipo === 'fijo' && s.precio ? ` — ${formatCurrency(s.precio)}` : ''}
-                      {s.tipo === 'desde' && s.precio_desde ? ` desde ${formatCurrency(s.precio_desde)}` : ''}
+                      {s.tipo_precio === 'fijo' && s.precio ? ` — ${formatCurrency(s.precio)}` : ''}
+                      {s.tipo_precio === 'desde' && s.precio_desde ? ` desde ${formatCurrency(s.precio_desde)}` : ''}
                     </option>
                   ))}
                 </select>

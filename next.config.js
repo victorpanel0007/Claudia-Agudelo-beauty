@@ -32,10 +32,29 @@ const nextConfig = {
       {
         source: '/(.*)',
         headers: [
-          { key: 'X-Content-Type-Options',  value: 'nosniff' },
-          { key: 'X-Frame-Options',          value: 'DENY' },
-          { key: 'X-XSS-Protection',         value: '1; mode=block' },
-          { key: 'Referrer-Policy',           value: 'strict-origin-when-cross-origin' },
+          { key: 'X-Content-Type-Options',    value: 'nosniff' },
+          { key: 'X-Frame-Options',            value: 'DENY' },
+          { key: 'X-XSS-Protection',           value: '1; mode=block' },
+          { key: 'Referrer-Policy',             value: 'strict-origin-when-cross-origin' },
+          // HSTS — fuerza HTTPS por 1 año, incluye subdominios
+          { key: 'Strict-Transport-Security',   value: 'max-age=31536000; includeSubDomains; preload' },
+          // Limitar acceso a APIs del navegador
+          { key: 'Permissions-Policy',          value: 'camera=(), microphone=(), geolocation=(), payment=()' },
+          // CSP — previene XSS e inyección de scripts externos
+          {
+            key: 'Content-Security-Policy',
+            value: [
+              "default-src 'self'",
+              "script-src 'self' 'unsafe-inline' 'unsafe-eval'", // unsafe-eval requerido por Next.js en dev
+              "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+              "font-src 'self' https://fonts.gstatic.com data:",
+              "img-src 'self' data: blob: https://*.supabase.co https://www.claudiaagudelobeauty.sbs",
+              "connect-src 'self' https://*.supabase.co wss://*.supabase.co",
+              "frame-ancestors 'none'",
+              "base-uri 'self'",
+              "form-action 'self'",
+            ].join('; '),
+          },
         ],
       },
     ]
