@@ -166,12 +166,13 @@ function CitaCard({ cita, onClick }: { cita: Cita; onClick: () => void }) {
 }
 
 // ── DetailPanel ──────────────────────────────────────────────────────────────
-function DetailPanel({ cita, onClose, onCompletar, onCancelar, onEliminar }: {
+function DetailPanel({ cita, onClose, onCompletar, onCancelar, onEliminar, onIniciar }: {
   cita: Cita
   onClose: () => void
   onCompletar: (cita: Cita) => void
   onCancelar: (id: string) => void
   onEliminar: (id: string) => void
+  onIniciar: (id: string) => void
 }) {
   const st = STATUS_CONFIG[cita.estado] ?? STATUS_CONFIG.pendiente
 
@@ -273,15 +274,24 @@ function DetailPanel({ cita, onClose, onCompletar, onCancelar, onEliminar }: {
 
       {/* Acciones */}
       {(cita.estado === 'confirmada' || cita.estado === 'pendiente' || cita.estado === 'en_proceso') && (
-        <div className="p-4 mt-auto flex gap-2">
-          <button onClick={() => onCancelar(cita.id)}
-            className="flex-1 text-xs font-semibold py-2.5 rounded-xl border-2 border-red-200 text-red-500 hover:bg-red-50 transition-colors">
-            Cancelar
-          </button>
-          <button onClick={() => onCompletar(cita)}
-            className="flex-1 text-xs font-semibold py-2.5 rounded-xl bg-beauty-primary text-white hover:bg-beauty-primary-dark transition-colors">
-            Completar
-          </button>
+        <div className="p-4 mt-auto space-y-2">
+          {/* Iniciar — solo si no está en proceso aún */}
+          {(cita.estado === 'confirmada' || cita.estado === 'pendiente') && (
+            <button onClick={() => onIniciar(cita.id)}
+              className="w-full text-xs font-semibold py-2.5 rounded-xl bg-blue-500 text-white hover:bg-blue-600 transition-colors">
+              ▶ Iniciar cita
+            </button>
+          )}
+          <div className="flex gap-2">
+            <button onClick={() => onCancelar(cita.id)}
+              className="flex-1 text-xs font-semibold py-2.5 rounded-xl border-2 border-red-200 text-red-500 hover:bg-red-50 transition-colors">
+              Cancelar
+            </button>
+            <button onClick={() => onCompletar(cita)}
+              className="flex-1 text-xs font-semibold py-2.5 rounded-xl bg-beauty-primary text-white hover:bg-beauty-primary-dark transition-colors">
+              Completar
+            </button>
+          </div>
         </div>
       )}
       {/* Eliminar permanentemente */}
@@ -900,6 +910,17 @@ export default function AgendaView() {
     }
   }
 
+  async function iniciarCita(id: string) {
+    const { error } = await supabase.from('citas').update({ estado: 'en_proceso' }).eq('id', id)
+    if (error) {
+      toast.error('Error al iniciar')
+    } else {
+      toast.success('✅ Cita iniciada')
+      setSelectedCita(null)
+      loadCitas()
+    }
+  }
+
   async function eliminarCita(id: string) {
     if (!confirm('¿Eliminar esta cita permanentemente?')) return
     const { error } = await supabase.from('citas').delete().eq('id', id)
@@ -1308,6 +1329,7 @@ export default function AgendaView() {
               onCompletar={solicitarCompletar}
               onCancelar={cancelarCita}
               onEliminar={eliminarCita}
+              onIniciar={iniciarCita}
             />
           </div>
         )}
@@ -1327,6 +1349,7 @@ export default function AgendaView() {
               onCompletar={solicitarCompletar}
               onCancelar={cancelarCita}
               onEliminar={eliminarCita}
+              onIniciar={iniciarCita}
             />
           </div>
         </div>
