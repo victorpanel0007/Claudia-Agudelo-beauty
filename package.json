@@ -27,6 +27,7 @@
     "zod": "^3.25.51"
   },
   "devDependencies": {
+    "@types/form-data": "^2.2.1",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",

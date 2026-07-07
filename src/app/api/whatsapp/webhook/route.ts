@@ -6,6 +6,7 @@ import { CATEGORIAS, SERVICIOS_DATA } from '@/lib/services-data'
 import { getAvailableSlots, createAppointment, type AvailableSlot } from '@/lib/scheduling'
 import { parseFlexibleDate } from '@/lib/date-parser'
 import { formatDate, formatCurrency } from '@/lib/utils'
+import { transcribeAudio } from '@/lib/openai-service'
 
 // ── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -156,6 +157,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ ok: true })
     }
 
+    // ── Detectar tipo de mensaje ───────────────────────────────────────────────
+    const isAudio =
+      !!message?.audioMessage ||
+      !!message?.pttMessage   // ptt = Push To Talk (nota de voz)
+
+    if (isAudio) {
+      await handleAudioMessage(from, body.data)
+      return NextResponse.json({ ok: true })
+    }
+
+    // Mensaje de texto normal
     const text = (
       message?.conversation ||
       message?.extendedTextMessage?.text ||
@@ -170,6 +182,49 @@ export async function POST(request: NextRequest) {
     console.error('[Webhook] Error:', error)
     return NextResponse.json({ error: 'Internal error' }, { status: 500 })
   }
+}
+
+// ── Handler de mensajes de audio ──────────────────────────────────────────────
+
+async function handleAudioMessage(telefono: string, webhookData: Record<string, unknown>) {
+  const supabase = await createAdminClient()
+
+  // Informar al usuario que estamos procesando
+  await reply(
+    telefono,
+    '🎤 Estoy escuchando tu mensaje...\nUn momento por favor 😊',
+    supabase
+  )
+
+  const result = await transcribeAudio(webhookData)
+
+  // Log de auditoría (metadata únicamente, nunca el contenido del audio)
+  try {
+    await supabase.from('mensajes_whatsapp').insert({
+      telefono,
+      mensaje:  `[Audio transcrito: ${result.ok ? 'ok' : result.errorCode}]`,
+      tipo:     'entrante',
+      fecha:    new Date().toISOString(),
+    })
+  } catch { /* no bloquear */ }
+
+  if (!result.ok) {
+    // Mensajes de error según el tipo de fallo
+    let errorMsg: string
+    if (result.errorCode === 'too_large') {
+      errorMsg = `El audio es demasiado largo 😊\nPor favor envíalo nuevamente en una nota de voz más corta.`
+    } else {
+      errorMsg = `Lo siento 😊\nNo pude entender completamente el audio.\n¿Podrías enviarlo nuevamente o escribir el mensaje?`
+    }
+    await reply(telefono, errorMsg, supabase)
+    return
+  }
+
+  // El texto transcrito reemplaza completamente al audio — mismo flujo que texto
+  const transcribedText = result.text!
+  console.info(`[Audio] ${telefono} → "${transcribedText.slice(0, 80)}"`)
+
+  await processMessage(telefono, transcribedText)
 }
 
 // ── Procesador principal ──────────────────────────────────────────────────────
