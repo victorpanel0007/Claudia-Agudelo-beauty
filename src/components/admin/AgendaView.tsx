@@ -30,6 +30,28 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; 
   reagendada: { label: 'Reagendada',  color: 'text-orange-700', bg: 'bg-orange-50 border-orange-200', dot: 'bg-orange-400' },
 }
 
+/**
+ * Paleta de colores por especialista.
+ * Se asigna automáticamente y es siempre consistente por nombre.
+ * Cada entrada: [bgClass, textClass, dotClass, emoji, hex (para border inline)]
+ */
+const ESP_PALETTE: Array<{ bg: string; text: string; dot: string; emoji: string; badge: string }> = [
+  { bg: 'bg-pink-100',    text: 'text-pink-700',   dot: 'bg-pink-500',   emoji: '🌸', badge: 'bg-pink-100 text-pink-700 border-pink-200' },
+  { bg: 'bg-purple-100',  text: 'text-purple-700', dot: 'bg-purple-500', emoji: '💜', badge: 'bg-purple-100 text-purple-700 border-purple-200' },
+  { bg: 'bg-sky-100',     text: 'text-sky-700',    dot: 'bg-sky-500',    emoji: '🩵', badge: 'bg-sky-100 text-sky-700 border-sky-200' },
+  { bg: 'bg-amber-100',   text: 'text-amber-700',  dot: 'bg-amber-500',  emoji: '🌼', badge: 'bg-amber-100 text-amber-700 border-amber-200' },
+  { bg: 'bg-emerald-100', text: 'text-emerald-700',dot: 'bg-emerald-500',emoji: '🌿', badge: 'bg-emerald-100 text-emerald-700 border-emerald-200' },
+  { bg: 'bg-rose-100',    text: 'text-rose-700',   dot: 'bg-rose-500',   emoji: '🌹', badge: 'bg-rose-100 text-rose-700 border-rose-200' },
+]
+
+/** Devuelve siempre el mismo color para el mismo nombre de especialista */
+function getEspColor(nombre?: string | null) {
+  if (!nombre) return ESP_PALETTE[0]
+  let hash = 0
+  for (let i = 0; i < nombre.length; i++) hash = nombre.charCodeAt(i) + ((hash << 5) - hash)
+  return ESP_PALETTE[Math.abs(hash) % ESP_PALETTE.length]
+}
+
 // ── Helpers ─────────────────────────────────────────────────────────────────
 function getInitials(name: string): string {
   return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
@@ -99,14 +121,14 @@ function StatCard({ icon, label, value, sub, iconBg }: {
   iconBg: string
 }) {
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 p-4 flex items-center gap-4 shadow-sm">
-      <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${iconBg}`}>
+    <div className="bg-white rounded-xl border border-gray-100 p-3 flex items-center gap-3 shadow-sm">
+      <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${iconBg}`}>
         {icon}
       </div>
-      <div>
-        <p className="text-xs text-gray-400 font-medium">{label}</p>
-        <p className="text-xl font-bold text-gray-800">{value}</p>
-        <p className="text-xs text-gray-400">{sub}</p>
+      <div className="min-w-0">
+        <p className="text-[10px] text-gray-400 font-medium leading-tight truncate">{label}</p>
+        <p className="text-base font-bold text-gray-800 leading-tight">{value}</p>
+        <p className="text-[10px] text-gray-400 leading-tight truncate">{sub}</p>
       </div>
     </div>
   )
@@ -114,15 +136,8 @@ function StatCard({ icon, label, value, sub, iconBg }: {
 
 // ── CitaCard ─────────────────────────────────────────────────────────────────
 function CitaCard({ cita, onClick }: { cita: Cita; onClick: () => void }) {
-  const st = STATUS_CONFIG[cita.estado] ?? STATUS_CONFIG.pendiente
-  const avatarColors = [
-    'bg-pink-100 text-pink-700',
-    'bg-purple-100 text-purple-700',
-    'bg-blue-100 text-blue-700',
-    'bg-amber-100 text-amber-700',
-    'bg-green-100 text-green-700',
-  ]
-  const avatarColor = avatarColors[(cita.cliente?.nombre?.charCodeAt(0) ?? 0) % avatarColors.length]
+  const st  = STATUS_CONFIG[cita.estado] ?? STATUS_CONFIG.pendiente
+  const esp = getEspColor(cita.especialista?.nombre)
 
   return (
     <button
@@ -135,14 +150,14 @@ function CitaCard({ cita, onClick }: { cita: Cita; onClick: () => void }) {
       }}
     >
       <div className="flex items-center gap-1.5 mb-0.5">
-        <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold shrink-0 ${avatarColor}`}>
-          {getInitials(cita.cliente?.nombre ?? 'C')}
-        </div>
+        {/* Badge de especialista */}
+        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full border shrink-0 ${esp.badge}`}>
+          {esp.emoji} {cita.especialista?.nombre?.split(' ')[0] ?? '—'}
+        </span>
         <p className={`font-semibold text-[11px] truncate ${st.color}`}>{cita.cliente?.nombre}</p>
         <div className={`w-2 h-2 rounded-full shrink-0 ml-auto ${st.dot}`} />
       </div>
       <p className="text-[10px] text-gray-500 truncate">{cita.servicio?.nombre}</p>
-      <p className="text-[10px] text-gray-400">{cita.especialista?.nombre}</p>
       <p className="text-[10px] text-gray-400">
         {formatTime(cita.fecha_inicio)} – {formatTime(cita.fecha_fin)}
       </p>
@@ -794,6 +809,8 @@ export default function AgendaView() {
   const [showNuevaCita, setShowNuevaCita] = useState(false)
   // Mobile: show list instead of timeline grid
   const [mobileListMode, setMobileListMode] = useState(true)
+  // Filtro por especialista (null = todas)
+  const [filtroEsp, setFiltroEsp] = useState<string>('todas')
 
   const loadCitas = useCallback(async () => {
     const { data, error } = await supabase
@@ -894,46 +911,89 @@ export default function AgendaView() {
 
   // ── Stats ───────────────────────────────────────────────────────────────
   const today = new Date()
-  const citasHoy       = citas.filter(c => isSameDayColombia(c.fecha_inicio, today))
-  const citasDiaActual = citas.filter(c => isSameDayColombia(c.fecha_inicio, currentDate))
-  const pendientes = citas.filter(c => c.estado === 'pendiente')
-  const confirmadas = citas.filter(c => c.estado === 'confirmada')
-  const ingresosDia = citasHoy
+
+  // Lista de especialistas únicas para el selector
+  const especialistasUnicas = Array.from(
+    new Set(citas.map(c => c.especialista?.nombre).filter((n): n is string => !!n))
+  ).sort()
+
+  // Citas filtradas por especialista seleccionada
+  const citasFiltradas = filtroEsp === 'todas'
+    ? citas
+    : citas.filter(c => c.especialista?.nombre === filtroEsp)
+
+  const citasHoy       = citasFiltradas.filter(c => isSameDayColombia(c.fecha_inicio, today))
+  const citasDiaActual = citasFiltradas.filter(c => isSameDayColombia(c.fecha_inicio, currentDate))
+  const pendientes     = citasFiltradas.filter(c => c.estado === 'pendiente')
+  const confirmadas    = citasFiltradas.filter(c => c.estado === 'confirmada')
+  const ingresosDia    = citasHoy
     .filter(c => c.estado === 'completada')
     .reduce((s, c) => s + (c.valor_final ?? 0), 0)
-  const ocupacion = Math.min(Math.round((citasHoy.length / 10) * 100), 100)
+
+  // Sub-label del filtro activo
+  const filtroLabel = filtroEsp === 'todas' ? 'general' : filtroEsp.split(' ')[0]
 
   return (
     <div className="flex flex-col h-full animate-fade-in">
-      {/* Title bar */}
-      <div className="flex items-center justify-between mb-3">
+      {/* ── Title bar ──────────────────────────────────────────────── */}
+      <div className="flex items-center justify-between mb-2">
         <div>
           <h2 className="text-lg sm:text-xl font-bold text-gray-800">Agenda</h2>
-          <p className="text-xs sm:text-sm text-gray-400">Gestiona tus citas</p>
+          <p className="text-xs text-gray-400">Gestiona tus citas</p>
         </div>
         <div className="flex items-center gap-2">
-          {/* Limpiar: solo icono en móvil */}
           <button onClick={eliminarTodasLasCitas}
-            className="flex items-center gap-1.5 text-xs text-red-500 border border-red-200 px-2.5 py-2 rounded-xl hover:bg-red-50 transition-colors">
+            className="flex items-center gap-1.5 text-xs text-red-500 border border-red-200 px-2.5 py-1.5 rounded-xl hover:bg-red-50 transition-colors">
             <span className="hidden sm:inline">🗑️ Limpiar</span>
             <span className="sm:hidden">🗑️</span>
           </button>
           <button onClick={() => setShowNuevaCita(true)}
-            className="flex items-center gap-1.5 sm:gap-2 bg-beauty-primary text-white text-xs sm:text-sm font-semibold px-3 sm:px-4 py-2.5 rounded-xl hover:bg-beauty-primary-dark transition-colors shadow-sm">
-            <Plus size={16} />
+            className="flex items-center gap-1.5 sm:gap-2 bg-beauty-primary text-white text-xs sm:text-sm font-semibold px-3 sm:px-4 py-2 rounded-xl hover:bg-beauty-primary-dark transition-colors shadow-sm">
+            <Plus size={15} />
             <span className="hidden sm:inline">Nueva Cita</span>
             <span className="sm:hidden">Nueva</span>
           </button>
         </div>
       </div>
 
-      {/* Stat cards — 2 cols on mobile, 5 on xl */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-2 sm:gap-3 mb-3">
-        <StatCard icon={<span className="text-lg">📅</span>} label="Citas Hoy" value={citasHoy.length} sub="actualizado" iconBg="bg-pink-50" />
-        <StatCard icon={<span className="text-lg">⏳</span>} label="Pendientes" value={pendientes.length} sub="por confirmar" iconBg="bg-amber-50" />
-        <StatCard icon={<span className="text-lg">✅</span>} label="Confirmadas" value={confirmadas.length} sub="esta semana" iconBg="bg-green-50" />
-        <StatCard icon={<span className="text-lg">💵</span>} label="Ingresos" value={formatCurrency(ingresosDia)} sub="del día" iconBg="bg-blue-50" />
-        <StatCard icon={<span className="text-lg">👩</span>} label="Profesionales" value="2/2" sub="disponibles" iconBg="bg-purple-50" />
+      {/* ── Stat cards ─────────────────────────────────────────────── */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-1.5 sm:gap-2 mb-2">
+        <StatCard icon={<span>📅</span>} label="Citas Hoy"    value={citasHoy.length}           sub={filtroLabel}  iconBg="bg-pink-50" />
+        <StatCard icon={<span>⏳</span>} label="Pendientes"   value={pendientes.length}          sub="por confirmar" iconBg="bg-amber-50" />
+        <StatCard icon={<span>✅</span>} label="Confirmadas"  value={confirmadas.length}         sub="activas"       iconBg="bg-green-50" />
+        <StatCard icon={<span>💵</span>} label="Ingresos"     value={formatCurrency(ingresosDia)} sub="del día"      iconBg="bg-blue-50" />
+        <StatCard icon={<span>👩</span>} label="Especialistas" value={especialistasUnicas.length || '—'} sub="activas" iconBg="bg-purple-50" />
+      </div>
+
+      {/* ── Selector de especialista ────────────────────────────────── */}
+      <div className="flex items-center gap-2 mb-2 overflow-x-auto pb-0.5 scrollbar-none">
+        <button
+          onClick={() => setFiltroEsp('todas')}
+          className={`shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full border transition-colors ${
+            filtroEsp === 'todas'
+              ? 'bg-gray-800 text-white border-gray-800'
+              : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+          }`}
+        >
+          👥 Todas
+        </button>
+        {especialistasUnicas.map(nombre => {
+          const c = getEspColor(nombre)
+          const activo = filtroEsp === nombre
+          return (
+            <button
+              key={nombre}
+              onClick={() => setFiltroEsp(nombre)}
+              className={`shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full border transition-colors ${
+                activo
+                  ? `${c.bg} ${c.text} border-current`
+                  : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+              }`}
+            >
+              {c.emoji} {nombre.split(' ')[0]}
+            </button>
+          )
+        })}
       </div>
 
       {/* ── MOBILE LIST VIEW ───────────────────────────────────────── */}
@@ -980,17 +1040,25 @@ export default function AgendaView() {
           ) : (
             <div className="divide-y divide-gray-50">
               {citasDiaActual.map(cita => {
-                const st = STATUS_CONFIG[cita.estado] ?? STATUS_CONFIG.pendiente
+                const st  = STATUS_CONFIG[cita.estado] ?? STATUS_CONFIG.pendiente
+                const esp = getEspColor(cita.especialista?.nombre)
                 return (
                   <button key={cita.id} onClick={() => setSelectedCita(cita)}
                     className="w-full p-3 flex items-center gap-3 hover:bg-gray-50 text-left min-h-[60px] active:bg-gray-100 transition-colors">
+                    {/* Franja de color de especialista */}
+                    <div className={`w-1 self-stretch rounded-full shrink-0 ${esp.dot}`} />
                     <div className="bg-beauty-primary/10 rounded-xl px-2.5 py-2 text-center shrink-0 min-w-[52px]">
                       <p className="text-beauty-primary font-bold text-xs">{formatTime(cita.fecha_inicio)}</p>
                       <p className="text-beauty-text-muted text-[10px]">{formatTime(cita.fecha_fin)}</p>
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-gray-800 text-sm truncate">{cita.cliente?.nombre}</p>
+                      <div className="flex items-center gap-1.5 mb-0.5">
+                        <p className="font-semibold text-gray-800 text-sm truncate">{cita.cliente?.nombre}</p>
+                      </div>
                       <p className="text-gray-500 text-xs truncate">{cita.servicio?.nombre}</p>
+                      <span className={`inline-flex items-center gap-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-full border mt-0.5 ${esp.badge}`}>
+                        {esp.emoji} {cita.especialista?.nombre?.split(' ')[0] ?? '—'}
+                      </span>
                     </div>
                     <span className={`text-[10px] font-semibold px-2 py-1 rounded-full border shrink-0 ${st.bg} ${st.color}`}>
                       {st.label}
@@ -1071,7 +1139,7 @@ export default function AgendaView() {
                   <div key={`empty-${i}`} className="h-20 rounded-xl bg-gray-50/50" />
                 ))}
                 {monthDays.map(day => {
-                  const citasDia = citas.filter(c => isSameDayColombia(c.fecha_inicio, day))
+                  const citasDia = citasFiltradas.filter(c => isSameDayColombia(c.fecha_inicio, day))
                   const isHoy = isToday(day)
                   return (
                     <div
@@ -1125,7 +1193,7 @@ export default function AgendaView() {
 
               {/* Day columns */}
               {visibleDays.map(day => {
-                const citasDia = citas.filter(c => isSameDayColombia(c.fecha_inicio, day))
+                const citasDia = citasFiltradas.filter(c => isSameDayColombia(c.fecha_inicio, day))
                 const dayIsToday = isToday(day)
                 return (
                   <div
@@ -1167,11 +1235,13 @@ export default function AgendaView() {
               ))}
             </div>
             <div className="ml-auto flex items-center gap-2 shrink-0">
-              <span className="text-[11px] text-gray-500">Ocupación del día: {ocupacion}%</span>
+              <span className="text-[11px] text-gray-500">
+                Ocupación: {Math.min(Math.round((citasHoy.length / 10) * 100), 100)}%
+              </span>
               <div className="w-24 h-2 bg-gray-100 rounded-full overflow-hidden">
                 <div
                   className="h-full bg-beauty-primary rounded-full transition-all"
-                  style={{ width: `${ocupacion}%` }}
+                  style={{ width: `${Math.min(Math.round((citasHoy.length / 10) * 100), 100)}%` }}
                 />
               </div>
             </div>
