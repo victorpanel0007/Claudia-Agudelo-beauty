@@ -50,12 +50,12 @@ export async function POST(request: NextRequest) {
     precio_desde: tipo_precio === 'desde'  && precio_desde  ? Number(precio_desde)  : null,
   }
 
-  const { data, error } = await supabase.from('servicios').insert(payload).select().single()
+  const { data, error } = await supabase.from('servicios').insert(payload).select()
   if (error) {
     console.error('[API /servicios POST]', error)
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
-  return NextResponse.json(data, { status: 201 })
+  return NextResponse.json(data?.[0] ?? data, { status: 201 })
 }
 
 // PATCH — solo admin
@@ -77,15 +77,23 @@ export async function PATCH(request: NextRequest) {
   if (rest.requiere_valoracion !== undefined) payload.requiere_valoracion = Boolean(rest.requiere_valoracion)
   if (rest.descripcion !== undefined)         payload.descripcion         = rest.descripcion?.trim() || null
   if (rest.activo !== undefined)              payload.activo              = Boolean(rest.activo)
-  payload.precio       = rest.tipo_precio === 'fijo'  && rest.precio      ? Number(rest.precio)      : null
+  payload.precio       = rest.tipo_precio === 'fijo'  && rest.precio      ? Number(rest.precio)       : null
   payload.precio_desde = rest.tipo_precio === 'desde' && rest.precio_desde ? Number(rest.precio_desde) : null
 
-  const { data, error } = await supabase.from('servicios').update(payload).eq('id', id).select().single()
+  const { data, error } = await supabase
+    .from('servicios')
+    .update(payload)
+    .eq('id', id)
+    .select()
+
   if (error) {
     console.error('[API /servicios PATCH]', error)
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
-  return NextResponse.json(data)
+  if (!data || data.length === 0) {
+    return NextResponse.json({ error: 'Servicio no encontrado' }, { status: 404 })
+  }
+  return NextResponse.json(data[0])
 }
 
 // DELETE — solo admin
