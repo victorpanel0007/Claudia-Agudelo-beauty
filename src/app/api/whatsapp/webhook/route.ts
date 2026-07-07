@@ -680,12 +680,20 @@ async function handleHorario(t: string, text: string, conv: ConvRow, sb: Supabas
   }
   if (!clienteId) { await reply(t, '❌ Error al procesar. Escribe *hola* para reintentar.', sb); return }
 
-  const { data: svc } = await sb.from('servicios').select('id').ilike('nombre', conv.servicio_nombre ?? '').maybeSingle()
-  if (!svc) { await reply(t, '❌ Servicio no encontrado. Escribe *hola*.', sb); await delConv(t, sb); return }
+  const { data: svc } = await sb
+    .from('servicios')
+    .select('id')
+    .ilike('nombre', `%${(conv.servicio_nombre ?? '').trim()}%`)
+    .limit(1)
+    .maybeSingle()
+
+  // Si no encuentra el servicio, crear la cita de todas formas sin servicio_id
+  // para no perder la reserva — se puede corregir manualmente en el panel
+  const servicioId = svc?.id ?? null
 
   const cita = await createAppointment({
     cliente_id: clienteId, especialista_id: slot.especialista_id,
-    servicio_id: svc.id, fecha_inicio: slot.fecha_inicio, fecha_fin: slot.fecha_fin,
+    servicio_id: servicioId, fecha_inicio: slot.fecha_inicio, fecha_fin: slot.fecha_fin,
   })
   if (!cita) {
     await reply(t, '❌ Ese horario ya fue reservado. Escribe *hola* para elegir otro.', sb)
