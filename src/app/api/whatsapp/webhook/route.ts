@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/server'
-import { sendWhatsAppMessage, sendWhatsAppList, sendAppointmentConfirmation } from '@/lib/evolution-api'
+import { sendWhatsAppMessage, sendAppointmentConfirmation } from '@/lib/evolution-api'
 import { notificarEspecialista } from '@/lib/notificaciones'
 import { CATEGORIAS, SERVICIOS_DATA } from '@/lib/services-data'
 import { getAvailableSlots, createAppointment, type AvailableSlot } from '@/lib/scheduling'
@@ -10,219 +10,94 @@ import { formatDate, formatCurrency } from '@/lib/utils'
 // ── Tipos ────────────────────────────────────────────────────────────────────
 
 interface ConvRow {
-  telefono:        string
-  paso:            string
-  categoria_id?:   string | null
+  telefono:         string
+  paso:             string
+  categoria_id?:    string | null
   servicio_nombre?: string | null
-  duracion?:       number | null
-  precio?:         string | null
-  nombre?:         string | null
-  fecha?:          string | null
+  duracion?:        number | null
+  precio?:          string | null
+  nombre?:          string | null
+  fecha?:           string | null
   especialista_id?: string | null
-  slots_json?:     AvailableSlot[] | null
+  slots_json?:      AvailableSlot[] | null
 }
 
 type Supabase = Awaited<ReturnType<typeof createAdminClient>>
 
-// ── Listas interactivas ───────────────────────────────────────────────────────
-
-/** Límite de filas por sección en WhatsApp Send List */
-const WA_LIST_MAX_ROWS = 10
+// ── Numeración en negrita ─────────────────────────────────────────────────────
 
 /**
- * Envía el menú principal con categorías como lista interactiva.
- * Fallback automático a texto si la API falla (implementado en sendWhatsAppList).
+ * Devuelve el número formateado en negrita y con punto para usar en menús.
+ * WhatsApp renderiza *1.* como negrita → se ve grande y profesional.
  */
-async function replyMainMenu(telefono: string, supabase: Supabase) {
-  // WhatsApp limita a 10 filas por sección; si hay más de 10 categorías
-  // las dividimos en secciones de 10.
-  const chunks: typeof CATEGORIAS[] = []
-  for (let i = 0; i < CATEGORIAS.length; i += WA_LIST_MAX_ROWS) {
-    chunks.push(CATEGORIAS.slice(i, i + WA_LIST_MAX_ROWS))
-  }
-
-  const sections = chunks.map((chunk, idx) => ({
-    title: chunks.length > 1 ? `Categorías (${idx + 1})` : 'Nuestros servicios',
-    rows: chunk.map(cat => ({
-      rowId:       `categoria_${cat.id}`,
-      title:       cat.nombre.slice(0, 24),
-      description: cat.icono,
-    })),
-  }))
-
-  await replyList(telefono, {
-    title:       '🌸 Claudia Agudelo Beauty',
-    description: '¡Hola! 😊 Será un gusto atenderte.\nSelecciona una categoría.',
-    buttonText:  '✨ Ver categorías',
-    sections,
-    footer:      'Escribe "hola" en cualquier momento para reiniciar.',
-  }, supabase)
+function n(i: number): string {
+  return `*${i}.*`
 }
 
-/**
- * Envía los servicios de una categoría como lista interactiva.
- */
-async function replyCategoryServices(
-  telefono: string, categoriaId: string, supabase: Supabase
-) {
-  const cat      = CATEGORIAS.find(c => c.id === categoriaId)
+// ── Constructores de menús ────────────────────────────────────────────────────
+
+function buildMainMenu(): string {
+  const items = CATEGORIAS.map((cat, i) => `${n(i + 1)} ${cat.icono} ${cat.nombre}`).join('\n')
+  return `🌸 *CLAUDIA AGUDELO BEAUTY*
+
+¡Hola! 😊 Será un gusto atenderte.
+
+Selecciona una categoría:
+
+${items}
+
+_Escribe el número de tu opción._`
+}
+
+function buildCategoryMenu(categoriaId: string): string {
+  const cat      = CATEGORIAS.find(c => c.id === categoriaId)!
   const servicios = SERVICIOS_DATA.filter(s => s.cat === categoriaId)
 
-  if (!cat || !servicios.length) {
-    await reply(telefono, '❌ No se encontraron servicios para esa categoría.', supabase)
-    return
-  }
-
-  // Armar filas (máx 10 por sección de WhatsApp)
-  const rows = servicios.map((s, i) => {
-    let desc = `⏱ ${s.duracion} min`
+  const items = servicios.map((s, i) => {
+    let precio = ''
     if (s.tipo === 'fijo' && s.precio) {
-      desc += ` — $${s.precio.toLocaleString('es-CO')}`
+      precio = `  ·  $${s.precio.toLocaleString('es-CO')}`
     } else if (s.tipo === 'desde' && s.precio_desde) {
-      desc += ` — desde $${s.precio_desde.toLocaleString('es-CO')}`
-    } else {
-      desc += ' — precio en valoración'
+      precio = `  ·  desde $${s.precio_desde.toLocaleString('es-CO')}`
     }
-    return {
-      rowId:       `servicio_${categoriaId}_${i}`,
-      title:       s.nombre.slice(0, 24),
-      description: desc.slice(0, 72),
-    }
-  })
+    return `${n(i + 1)} ${s.nombre}${precio}`
+  }).join('\n')
 
-  // Dividir en secciones si supera el límite
-  const sections = []
-  for (let i = 0; i < rows.length; i += WA_LIST_MAX_ROWS) {
-    sections.push({
-      title: rows.length > WA_LIST_MAX_ROWS
-        ? `Servicios (${Math.floor(i / WA_LIST_MAX_ROWS) + 1})`
-        : cat.nombre,
-      rows:  rows.slice(i, i + WA_LIST_MAX_ROWS),
-    })
-  }
+  return `${cat.icono} *${cat.nombre.toUpperCase()}*
 
-  await replyList(telefono, {
-    title:       `${cat.icono} ${cat.nombre}`,
-    description: 'Selecciona el servicio que deseas reservar.',
-    buttonText:  '📋 Ver servicios',
-    sections,
-    footer:      'Escribe "hola" para volver al inicio.',
-  }, supabase)
+${items}
+
+_Escribe el número del servicio deseado._`
 }
 
-/**
- * Envía la lista de especialistas disponibles.
- */
-async function replyEspecialistasList(
-  telefono: string,
+function buildEspecialistaMenu(
   especialistas: Array<{ id: string; nombre: string }>,
-  parsedDate: { interpreted: string },
-  supabase: Supabase
-) {
-  const rows = especialistas.map(e => ({
-    rowId:  `especialista_${e.id}`,
-    title:  e.nombre.slice(0, 24),
-    description: 'Especialista disponible',
-  }))
+  fechaInterpretada: string
+): string {
+  const items = especialistas.map((e, i) => `${n(i + 1)} ${e.nombre}`).join('\n')
+  const totalEsp = especialistas.length
 
-  // Opción "cualquiera"
-  rows.push({
-    rowId:       'especialista_cualquiera',
-    title:       'Cualquiera disponible',
-    description: 'El primer horario libre',
-  })
+  return `📅 Fecha confirmada: *${fechaInterpretada}* ✅
 
-  await replyList(telefono, {
-    title:       '👩 Especialistas disponibles',
-    description: `Para *${parsedDate.interpreted}*.\nSelecciona quién realizará tu servicio.`,
-    buttonText:  '👩 Ver especialistas',
-    sections:    [{ title: 'Especialistas', rows }],
-    footer:      'Escribe "hola" para volver al inicio.',
-  }, supabase)
+👩 *¿Con qué especialista prefieres tu cita?*
+
+${items}
+${n(totalEsp + 1)} Cualquiera disponible
+
+_Escribe el número de tu opción._`
 }
 
-/**
- * Envía la lista de horarios disponibles.
- */
-async function replyHorariosList(
-  telefono: string,
-  slots: AvailableSlot[],
-  fechaDisplay: string,
-  supabase: Supabase
-) {
-  const MAX_SHOW = 10 // WhatsApp limita 10 filas por sección
+function buildHorariosMenu(slots: AvailableSlot[], fechaDisplay: string): string {
+  const items = slots.map((s, i) =>
+    `${n(i + 1)} *${s.hora}*  ·  ${s.especialista_nombre}`
+  ).join('\n')
 
-  // Agrupar por especialista si hay varios
-  const byEsp = new Map<string, AvailableSlot[]>()
-  for (const slot of slots.slice(0, MAX_SHOW)) {
-    const key = slot.especialista_nombre
-    if (!byEsp.has(key)) byEsp.set(key, [])
-    byEsp.get(key)!.push(slot)
-  }
+  return `🕒 *HORARIOS DISPONIBLES*
+📅 ${fechaDisplay}
 
-  const sections = Array.from(byEsp.entries()).map(([nombre, espSlots]) => ({
-    title: nombre.slice(0, 24),
-    rows:  espSlots.map((s, i) => ({
-      rowId:       `horario_${i}_${encodeRowId(s.fecha_inicio)}`,
-      title:       s.hora,
-      description: `Con ${s.especialista_nombre}`.slice(0, 72),
-    })),
-  }))
+${items}
 
-  const extraMsg = slots.length > MAX_SHOW
-    ? `\nMostrando ${MAX_SHOW} de ${slots.length} horarios.`
-    : ''
-
-  await replyList(telefono, {
-    title:       '🕒 Horarios disponibles',
-    description: `Para *${fechaDisplay}*.\nSelecciona la hora que prefieras.${extraMsg}`,
-    buttonText:  '📅 Ver horarios',
-    sections,
-    footer:      'Si ninguno te funciona, escribe otra fecha.',
-  }, supabase)
-}
-
-/** Codifica una fecha ISO en un rowId seguro (sin caracteres especiales) */
-function encodeRowId(iso: string): string {
-  return iso.replace(/[^0-9T]/g, '').slice(0, 15)
-}
-
-// ── Helper reply con lista ────────────────────────────────────────────────────
-
-async function replyList(
-  telefono: string,
-  opts: {
-    title: string
-    description: string
-    buttonText: string
-    sections: Array<{ title: string; rows: Array<{ rowId: string; title: string; description?: string }> }>
-    footer?: string
-  },
-  supabase: Supabase
-) {
-  const result = await sendWhatsAppList({
-    to:          telefono,
-    title:       opts.title,
-    description: opts.description,
-    buttonText:  opts.buttonText,
-    sections:    opts.sections,
-    footer:      opts.footer,
-  })
-
-  // Loggear mensaje saliente (texto de fallback o descripción)
-  const logMsg = `[Lista] ${opts.title}: ${opts.description}`
-  try {
-    await supabase.from('mensajes_whatsapp').insert({
-      telefono,
-      mensaje: logMsg.slice(0, 500),
-      tipo:    'saliente',
-      fecha:   new Date().toISOString(),
-    })
-  } catch { /* no bloquear */ }
-
-  if (!result.ok) {
-    console.error('[replyList] Error enviando lista:', result.errorMessage)
-  }
+_Escribe el número del horario que prefieres._`
 }
 
 // ── Helpers de estado en Supabase ─────────────────────────────────────────────
@@ -266,9 +141,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ ok: true })
     }
 
-    const message    = body.data?.message
-    const from       = body.data?.key?.remoteJid?.replace('@s.whatsapp.net', '')
-    const isFromMe   = body.data?.key?.fromMe
+    const message  = body.data?.message
+    const from     = body.data?.key?.remoteJid?.replace('@s.whatsapp.net', '')
+    const isFromMe = body.data?.key?.fromMe
 
     if (!from || isFromMe || !message) {
       return NextResponse.json({ ok: true })
@@ -281,12 +156,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ ok: true })
     }
 
-    // Texto normal o selección de lista interactiva (listResponseMessage)
     const text = (
       message?.conversation ||
       message?.extendedTextMessage?.text ||
-      // Respuesta de lista interactiva — viene como rowId
-      message?.listResponseMessage?.singleSelectReply?.selectedRowId ||
       ''
     ).trim()
 
@@ -303,8 +175,8 @@ export async function POST(request: NextRequest) {
 // ── Procesador principal ──────────────────────────────────────────────────────
 
 async function processMessage(telefono: string, text: string) {
-  const supabase   = await createAdminClient()
-  const lowerText  = text.toLowerCase().trim()
+  const supabase  = await createAdminClient()
+  const lowerText = text.toLowerCase().trim()
 
   // Log mensaje entrante
   await supabase.from('mensajes_whatsapp').insert({
@@ -325,7 +197,7 @@ async function processMessage(telefono: string, text: string) {
   ]
   if (resetWords.some(w => lowerText === w || lowerText.startsWith(w + ' '))) {
     await delConv(telefono, supabase)
-    await replyMainMenu(telefono, supabase)
+    await reply(telefono, buildMainMenu(), supabase)
     await setConv(supabase, { telefono, paso: 'seleccion_categoria' })
     return
   }
@@ -334,7 +206,7 @@ async function processMessage(telefono: string, text: string) {
 
   // Sin conversación activa → mostrar menú principal
   if (!conv) {
-    await replyMainMenu(telefono, supabase)
+    await reply(telefono, buildMainMenu(), supabase)
     await setConv(supabase, { telefono, paso: 'seleccion_categoria' })
     return
   }
@@ -354,7 +226,7 @@ async function processMessage(telefono: string, text: string) {
       await handleHorarioSelection(telefono, text, conv, supabase); break
     default:
       await delConv(telefono, supabase)
-      await replyMainMenu(telefono, supabase)
+      await reply(telefono, buildMainMenu(), supabase)
       await setConv(supabase, { telefono, paso: 'seleccion_categoria' })
   }
 }
@@ -364,48 +236,35 @@ async function processMessage(telefono: string, text: string) {
 async function handleCategorySelection(
   telefono: string, text: string, conv: ConvRow, supabase: Supabase
 ) {
-  // Acepta rowId de lista ("categoria_3") o número escrito ("3")
-  let cat = CATEGORIAS.find(c => text === `categoria_${c.id}`)
-
-  if (!cat) {
-    const num = parseInt(text)
-    if (!isNaN(num) && num >= 1 && num <= CATEGORIAS.length) {
-      cat = CATEGORIAS[num - 1]
-    }
-  }
-
-  if (!cat) {
-    await reply(telefono, `❌ Opción no válida. Por favor selecciona una categoría de la lista o escribe un número del 1 al ${CATEGORIAS.length}.`, supabase)
+  const num = parseInt(text)
+  if (isNaN(num) || num < 1 || num > CATEGORIAS.length) {
+    await reply(
+      telefono,
+      `❌ Opción no válida. Escribe un número del *1* al *${CATEGORIAS.length}*.`,
+      supabase
+    )
     return
   }
-
+  const cat = CATEGORIAS[num - 1]
   await setConv(supabase, { ...conv, categoria_id: cat.id, paso: 'seleccion_servicio' })
-  await replyCategoryServices(telefono, cat.id, supabase)
+  await reply(telefono, buildCategoryMenu(cat.id), supabase)
 }
 
 async function handleServiceSelection(
   telefono: string, text: string, conv: ConvRow, supabase: Supabase
 ) {
   const servicios = SERVICIOS_DATA.filter(s => s.cat === conv.categoria_id)
+  const num       = parseInt(text)
 
-  // Acepta rowId de lista ("servicio_3_2") o número escrito ("3")
-  let servicioIdx = -1
-  const rowIdMatch = text.match(/^servicio_\d+_(\d+)$/)
-  if (rowIdMatch) {
-    servicioIdx = parseInt(rowIdMatch[1])
-  } else {
-    const num = parseInt(text)
-    if (!isNaN(num) && num >= 1 && num <= servicios.length) {
-      servicioIdx = num - 1
-    }
-  }
-
-  if (servicioIdx < 0 || servicioIdx >= servicios.length) {
-    await reply(telefono, `❌ Opción no válida. Por favor selecciona un servicio de la lista o escribe un número del 1 al ${servicios.length}.`, supabase)
+  if (isNaN(num) || num < 1 || num > servicios.length) {
+    await reply(
+      telefono,
+      `❌ Opción no válida. Escribe un número del *1* al *${servicios.length}*.`,
+      supabase
+    )
     return
   }
-
-  const servicio = servicios[servicioIdx]
+  const servicio = servicios[num - 1]
 
   let precio: string
   if (servicio.tipo === 'fijo' && servicio.precio) {
@@ -489,7 +348,11 @@ async function handleFechaInput(
     .eq('activo', true)
     .order('nombre')
 
-  await replyEspecialistasList(telefono, especialistas || [], parsed, supabase)
+  await reply(
+    telefono,
+    buildEspecialistaMenu(especialistas || [], parsed.interpreted),
+    supabase
+  )
 }
 
 async function handleEspecialistaSelection(
@@ -503,25 +366,18 @@ async function handleEspecialistaSelection(
 
   const lista    = especialistas || []
   const totalEsp = lista.length
+  const num      = parseInt(text)
 
-  // Acepta rowId ("especialista_<uuid>" o "especialista_cualquiera") o número escrito
-  let especialistaId: string | undefined
-
-  if (text === 'especialista_cualquiera') {
-    especialistaId = undefined
-  } else if (text.startsWith('especialista_')) {
-    const idPart = text.replace('especialista_', '')
-    const found  = lista.find(e => e.id === idPart)
-    if (found) especialistaId = found.id
-  } else {
-    const num = parseInt(text)
-    if (!isNaN(num) && num >= 1 && num <= totalEsp + 1) {
-      especialistaId = num <= totalEsp ? lista[num - 1].id : undefined
-    } else {
-      await reply(telefono, `❌ Por favor selecciona una especialista de la lista o escribe un número del 1 al ${totalEsp + 1}.`, supabase)
-      return
-    }
+  if (isNaN(num) || num < 1 || num > totalEsp + 1) {
+    await reply(
+      telefono,
+      `❌ Por favor escribe un número del *1* al *${totalEsp + 1}*.`,
+      supabase
+    )
+    return
   }
+
+  const especialistaId = num <= totalEsp ? lista[num - 1].id : undefined
 
   await reply(telefono, `🔍 Buscando horarios disponibles...`, supabase)
 
@@ -530,9 +386,7 @@ async function handleEspecialistaSelection(
   const slots    = await getAvailableSlots(fecha, duracion, especialistaId)
 
   if (!slots.length) {
-    const espNombre = especialistaId
-      ? (lista.find(e => e.id === especialistaId)?.nombre ?? 'esa especialista')
-      : 'ninguna especialista'
+    const espNombre = num <= totalEsp ? lista[num - 1].nombre : 'ninguna especialista'
     await reply(
       telefono,
       `😔 No hay disponibilidad para *${formatDate(fecha)}* con *${espNombre}*.\n\nPor favor elige otra fecha:\n• *mañana*\n• *próximo lunes*\n• *20/07/2026*`,
@@ -542,9 +396,8 @@ async function handleEspecialistaSelection(
     return
   }
 
-  // WhatsApp limita 10 filas por sección → mostramos máx 10
-  const MAX_SHOW = 10
-  const shown = slots.slice(0, MAX_SHOW)
+  const MAX_SHOW = 20
+  const shown    = slots.slice(0, MAX_SHOW)
 
   await setConv(supabase, {
     ...conv,
@@ -553,32 +406,33 @@ async function handleEspecialistaSelection(
     paso:            'seleccion_horario',
   })
 
-  await replyHorariosList(telefono, shown, formatDate(fecha), supabase)
+  const extraMsg = slots.length > MAX_SHOW
+    ? `\n_Mostrando ${MAX_SHOW} de ${slots.length} horarios. Si ninguno te funciona, escribe otra fecha._`
+    : ''
+
+  await reply(
+    telefono,
+    buildHorariosMenu(shown, formatDate(fecha)) + extraMsg,
+    supabase
+  )
 }
 
 async function handleHorarioSelection(
   telefono: string, text: string, conv: ConvRow, supabase: Supabase
 ) {
   const slots = (conv.slots_json as AvailableSlot[] | null) ?? []
+  const num   = parseInt(text)
 
-  // Acepta rowId ("horario_<idx>_<encoded_iso>") o número escrito
-  let selectedSlot: AvailableSlot | undefined
-
-  const rowIdMatch = text.match(/^horario_(\d+)_/)
-  if (rowIdMatch) {
-    const idx = parseInt(rowIdMatch[1])
-    selectedSlot = slots[idx]
-  } else {
-    const num = parseInt(text)
-    if (!isNaN(num) && num >= 1 && num <= slots.length) {
-      selectedSlot = slots[num - 1]
-    }
-  }
-
-  if (!selectedSlot) {
-    await reply(telefono, `❌ Por favor selecciona un horario de la lista o escribe un número del 1 al ${slots.length}.`, supabase)
+  if (isNaN(num) || num < 1 || num > slots.length) {
+    await reply(
+      telefono,
+      `❌ Por favor escribe un número del *1* al *${slots.length}*.`,
+      supabase
+    )
     return
   }
+
+  const selectedSlot = slots[num - 1]
 
   // Buscar o crear cliente
   let clienteId: string | undefined
@@ -669,7 +523,7 @@ async function handleHorarioSelection(
   })
 }
 
-// ── Helper: enviar y loggear mensaje saliente ────────────────────────────────
+// ── Helper: enviar y loggear mensaje saliente ─────────────────────────────────
 
 async function reply(telefono: string, message: string, supabase: Supabase) {
   sendWhatsAppMessage(telefono, message).catch(e =>
