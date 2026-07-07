@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/server'
 import { sendWhatsAppMessage, sendAppointmentConfirmation } from '@/lib/evolution-api'
+import { notificarEspecialista } from '@/lib/notificaciones'
 import { SERVICIOS_DATA } from '@/lib/services-data'
 import { getAvailableSlots, createAppointment, type AvailableSlot } from '@/lib/scheduling'
 import { parseFlexibleDate } from '@/lib/date-parser'
@@ -761,6 +762,18 @@ async function handleHorarioSelection(
     hora:         selectedSlot.hora,
     precio:       conv.precio || 'A definir en la cita',
   })
+
+  // Notificar a la especialista
+  const { data: citaCompleta } = await supabase
+    .from('citas')
+    .select('*, cliente:clientes(nombre, telefono), servicio:servicios(nombre, duracion_minutos), especialista:especialistas(id, nombre, whatsapp, notificaciones)')
+    .eq('id', cita.id)
+    .single()
+
+  if (citaCompleta) {
+    notificarEspecialista({ ...citaCompleta, canal: 'whatsapp' }, supabase)
+      .catch(e => console.error('[Webhook] Error notificando especialista:', e))
+  }
 
   await supabase.from('mensajes_whatsapp').insert({
     cliente_id: clienteId,

@@ -112,10 +112,7 @@ export default function RecordatoriosConfig() {
   async function runManual() {
     setTesting(true)
     try {
-      const res = await fetch('/api/cron/reminders', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${process.env.NEXT_PUBLIC_CRON_TEST || 'test'}` },
-      })
+      const res = await fetch('/api/admin/test-reminders', { method: 'POST' })
       const data = await res.json()
       if (data.skipped) {
         toast('Recordatorios desactivados — actívalos primero', { icon: '⚠️' })
