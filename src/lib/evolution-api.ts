@@ -165,6 +165,16 @@ export async function sendWhatsAppList(options: SendListOptions): Promise<SendRe
     return { ok: false, errorMessage: `Número inválido: "${options.to}"` }
   }
 
+  // Asegurar que cada fila tenga description (el DTO la requiere no-opcional)
+  const sections = options.sections.map(sec => ({
+    title: sec.title,
+    rows:  sec.rows.map(row => ({
+      rowId:       row.rowId,
+      title:       row.title,
+      description: row.description ?? '',
+    })),
+  }))
+
   try {
     const { data, status } = await axios.post(
       `${BASE_URL}/message/sendList/${INSTANCE}`,
@@ -174,7 +184,7 @@ export async function sendWhatsAppList(options: SendListOptions): Promise<SendRe
         description: options.description,
         buttonText:  options.buttonText,
         footerText:  options.footer ?? '',
-        sections:    options.sections,
+        sections,
       },
       { headers: buildHeaders(), timeout: 10000 }
     )
@@ -185,6 +195,7 @@ export async function sendWhatsAppList(options: SendListOptions): Promise<SendRe
       to: phone,
       statusCode: result.statusCode,
       errorMessage: result.errorMessage,
+      rawResponse: JSON.stringify(result.rawResponse),
     })
 
     // ── Fallback automático a texto plano ──────────────────────────────────
