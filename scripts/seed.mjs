@@ -54,7 +54,6 @@ async function main() {
     { cat: '1', nombre: 'Limpieza de manos o pies', precio: 17000, tipo: 'fijo', duracion: 30 },
     { cat: '1', nombre: 'Uñas Soft Gel o Press On', precio: 90000, tipo: 'fijo', duracion: 120 },
     { cat: '1', nombre: 'Pedicure Spa', precio: 25000, tipo: 'fijo', duracion: 60 },
-    { cat: '1', nombre: 'Pedicure Spa', precio: 25000, tipo: 'fijo', duracion: 60 },
     // Maquillaje
     { cat: '2', nombre: 'Maquillaje Social', tipo: 'valoracion', duracion: 90 },
     { cat: '2', nombre: 'Maquillaje de novia', tipo: 'valoracion', duracion: 120 },
