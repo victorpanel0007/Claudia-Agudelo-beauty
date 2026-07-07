@@ -191,6 +191,92 @@ function matchServicio(text: string): MatchResult {
   return { exact: null, multiple: [] }
 }
 
+// ── Detección de intenciones ──────────────────────────────────────────────────
+
+type Intencion =
+  | 'saludo'
+  | 'cancelar'
+  | 'cambiar_servicio'
+  | 'cambiar_fecha'
+  | 'cambiar_hora'
+  | 'agradecimiento'
+  | 'despedida'
+  | null
+
+function detectarIntencion(text: string): Intencion {
+  const t = text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+
+  const patrones: { intencion: Intencion; palabras: string[] }[] = [
+    {
+      intencion: 'cancelar',
+      palabras: [
+        'cancelar', 'cancela', 'ya no', 'olvidalo', 'olvídalo', 'olvida',
+        'mejor despues', 'mejor después', 'no quiero', 'dejalo', 'déjalo',
+        'no gracias', 'salir', 'terminar', 'no importa',
+      ],
+    },
+    {
+      intencion: 'cambiar_servicio',
+      palabras: [
+        'cambiar servicio', 'cambio de servicio', 'otro servicio', 'otro tratamiento',
+        'cambié de opinión', 'cambie de opinion', 'quiero otro', 'prefiero otro',
+        'ese no', 'no ese', 'mejor otro', 'quiero cambiar', 'cambiar de servicio',
+        'quiero escoger otro', 'escoger otro', 'cambiar el servicio',
+      ],
+    },
+    {
+      intencion: 'cambiar_fecha',
+      palabras: [
+        'cambiar fecha', 'cambiar el dia', 'cambiar el día', 'otro dia', 'otro día',
+        'otra fecha', 'quiero otra fecha', 'cambio de fecha', 'ese dia no',
+        'ese día no', 'no puedo ese dia', 'no puedo ese día', 'mejor otro dia',
+        'mejor otro día', 'quiero cambiar la fecha', 'cambiar dia', 'cambiar día',
+      ],
+    },
+    {
+      intencion: 'cambiar_hora',
+      palabras: [
+        'cambiar hora', 'otra hora', 'otro horario', 'mas tarde', 'más tarde',
+        'mas temprano', 'más temprano', 'ese horario no', 'no me sirve',
+        'quiero otra hora', 'cambio de hora', 'diferente hora', 'cambiar el horario',
+        'tienes otra hora', '¿tienes otra hora',
+      ],
+    },
+    {
+      intencion: 'saludo',
+      palabras: [
+        'hola', 'buenas', 'buenos dias', 'buenos días', 'buenas tardes',
+        'buenas noches', 'hi', 'hello', 'buen dia', 'buen día', 'como estas',
+        'cómo estás', 'que tal', 'qué tal', 'ey', 'hey',
+      ],
+    },
+    {
+      intencion: 'agradecimiento',
+      palabras: [
+        'gracias', 'muchas gracias', 'muy amable', 'excelente', 'perfecto',
+        'genial', 'chevere', 'chévere', 'bien', 'listo', 'ok gracias',
+        'de nada', 'con gusto',
+      ],
+    },
+    {
+      intencion: 'despedida',
+      palabras: [
+        'adios', 'adiós', 'hasta luego', 'nos vemos', 'hasta pronto',
+        'feliz dia', 'feliz día', 'bye', 'chao', 'hasta mañana', 'cuídate',
+        'cuidate', 'hasta la proxima', 'hasta la próxima',
+      ],
+    },
+  ]
+
+  for (const { intencion, palabras } of patrones) {
+    if (palabras.some(p => t.includes(p) || t === p)) {
+      return intencion
+    }
+  }
+
+  return null
+}
+
 // ── Procesador principal ──────────────────────────────────────────────────────
 
 async function processMessage(telefono: string, text: string) {
@@ -204,22 +290,129 @@ async function processMessage(telefono: string, text: string) {
     fecha:   new Date().toISOString(),
   })
 
-  const resetWords = ['hola', 'inicio', 'menu', 'menú', 'hi', 'hello', '0', 'cancelar', 'reiniciar', 'empezar']
-  if (resetWords.includes(lowerText)) {
-    await delConv(telefono, supabase)
-    await reply(telefono, buildWelcomeMessage(), supabase)
-    await setConv(supabase, { telefono, paso: 'esperando_servicio' })
-    return
-  }
-
   const conv = await getConv(telefono, supabase)
 
+  // ── Detectar intención antes de seguir el flujo ──────────────────────────
+  const intencion = detectarIntencion(text)
+
+  // Saludos — si hay conv activa continuar, si no bienvenida
+  if (intencion === 'saludo') {
+    if (!conv) {
+      await reply(telefono, buildWelcomeMessage(), supabase)
+      await setConv(supabase, { telefono, paso: 'esperando_servicio' })
+    } else {
+      const saludos = [
+        '¡Hola! 😊 Aquí estoy para ayudarte.',
+        '¡Buenas! 😊 Con gusto te atiendo.',
+        '¡Hola! 👋 ¿En qué te puedo ayudar?',
+      ]
+      await reply(telefono, saludos[Math.floor(Math.random() * saludos.length)], supabase)
+    }
+    return
+  }
+
+  // Cancelar — limpiar y despedir
+  if (intencion === 'cancelar') {
+    await delConv(telefono, supabase)
+    await reply(
+      telefono,
+      `Entendido. 😊 He cancelado el proceso de reserva.\nCuando desees agendar una cita, estaré aquí para ayudarte. 💖`,
+      supabase
+    )
+    return
+  }
+
+  // Agradecimientos
+  if (intencion === 'agradecimiento') {
+    await reply(
+      telefono,
+      `¡Con mucho gusto! 😊 Será un placer atenderte. 💖`,
+      supabase
+    )
+    return
+  }
+
+  // Despedidas
+  if (intencion === 'despedida') {
+    await reply(
+      telefono,
+      `¡Hasta luego! 😊 Fue un placer atenderte. ¡Que tengas un excelente día! 💖`,
+      supabase
+    )
+    return
+  }
+
+  // Cambiar servicio (con conversación activa)
+  if (intencion === 'cambiar_servicio' && conv) {
+    await setConv(supabase, { ...conv, servicio_nombre: null, duracion: null, precio: null, paso: 'esperando_servicio' })
+    await reply(
+      telefono,
+      `Claro, con mucho gusto. 😊\n¿Qué servicio deseas reservar ahora?`,
+      supabase
+    )
+    return
+  }
+
+  // Cambiar fecha (con conversación activa que ya tiene servicio)
+  if (intencion === 'cambiar_fecha' && conv && conv.servicio_nombre) {
+    await setConv(supabase, { ...conv, fecha: null, especialista_id: null, slots_json: null, paso: 'solicitar_fecha' })
+    await reply(
+      telefono,
+      `Perfecto. 😊\n¿Para qué fecha deseas agendar tu cita?`,
+      supabase
+    )
+    return
+  }
+
+  // Cambiar hora (con conversación activa que ya tiene fecha)
+  if (intencion === 'cambiar_hora' && conv && conv.fecha) {
+    const fecha    = new Date(conv.fecha)
+    const duracion = conv.duracion ?? 60
+    const slots    = await getAvailableSlots(fecha, duracion, conv.especialista_id ?? undefined)
+
+    if (!slots.length) {
+      await setConv(supabase, { ...conv, slots_json: null, paso: 'solicitar_fecha' })
+      await reply(
+        telefono,
+        `😔 No hay más horarios disponibles para ese día.\n¿Deseas elegir otra fecha?\n• *mañana*\n• *próximo lunes*`,
+        supabase
+      )
+      return
+    }
+
+    const MAX_SHOW = 20
+    const shown    = slots.slice(0, MAX_SHOW)
+    await setConv(supabase, { ...conv, slots_json: shown, paso: 'seleccion_horario' })
+
+    const numberEmojis = [
+      '1️⃣','2️⃣','3️⃣','4️⃣','5️⃣','6️⃣','7️⃣','8️⃣','9️⃣','🔟',
+      '1️⃣1️⃣','1️⃣2️⃣','1️⃣3️⃣','1️⃣4️⃣','1️⃣5️⃣','1️⃣6️⃣','1️⃣7️⃣','1️⃣8️⃣','1️⃣9️⃣','2️⃣0️⃣',
+    ]
+    const slotsList = shown.map((s, i) => `${numberEmojis[i]} *${s.hora}* — ${s.especialista_nombre}`).join('\n')
+    await reply(
+      telefono,
+      `Claro. 😊 Estos son los horarios disponibles:\n\n${slotsList}\n\n✍️ Escribe el número del horario que prefieres:`,
+      supabase
+    )
+    return
+  }
+
+  // ── Sin conversación activa → bienvenida ────────────────────────────────
   if (!conv) {
+    // Si no es intención especial, intentar detectar servicio directamente
+    const { exact, multiple } = matchServicio(text)
+    if (exact || multiple.length > 0) {
+      const nuevaConv: ConvRow = { telefono, paso: 'esperando_servicio' }
+      await setConv(supabase, nuevaConv)
+      await handleServicioLibre(telefono, text, nuevaConv, supabase)
+      return
+    }
     await reply(telefono, buildWelcomeMessage(), supabase)
     await setConv(supabase, { telefono, paso: 'esperando_servicio' })
     return
   }
 
+  // ── Flujo normal ─────────────────────────────────────────────────────────
   switch (conv.paso) {
     case 'esperando_servicio':
       await handleServicioLibre(telefono, text, conv, supabase); break
@@ -228,6 +421,7 @@ async function processMessage(telefono: string, text: string) {
     case 'solicitar_nombre':
       await handleNombreInput(telefono, text, conv, supabase); break
     case 'solicitar_fecha':
+      // Si escribe algo que parece una fecha, procesarlo; si no, avisar
       await handleFechaInput(telefono, text, conv, supabase); break
     case 'seleccion_especialista':
       await handleEspecialistaSelection(telefono, text, conv, supabase); break
