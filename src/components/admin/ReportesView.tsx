@@ -1,6 +1,7 @@
 ﻿'use client'
 
 import { useEffect, useState, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import { createClient } from '@/lib/supabase/client'
 import {
   DollarSign, TrendingUp, TrendingDown, Wallet,
@@ -252,7 +253,7 @@ function MovimientoModal({ tipo, onClose, onSaved }: {
   }
 
   const isGasto = tipo === 'gasto'
-  return (
+  const modal = (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md animate-slide-up">
         <div className={`p-5 border-b border-gray-100 flex items-center justify-between rounded-t-2xl ${isGasto ? 'bg-rose-50' : 'bg-emerald-50'}`}>
@@ -310,6 +311,7 @@ function MovimientoModal({ tipo, onClose, onSaved }: {
       </div>
     </div>
   )
+  return typeof document !== 'undefined' ? createPortal(modal, document.body) : null
 }
 
 // ── Main ───────────────────────────────────────────────────────────────────
