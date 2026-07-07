@@ -88,6 +88,7 @@ export default function BookingSection() {
     if (!selectedSlot) { toast.error('Selecciona un horario'); return }
     setLoading(true)
     try {
+      const servicio = serviciosDeCat[parseInt(data.servicio_idx) - 1]
       const res = await fetch('/api/citas', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -97,7 +98,9 @@ export default function BookingSection() {
           especialista_id: selectedSlot.especialista_id,
           fecha_inicio:    selectedSlot.fecha_inicio,
           fecha_fin:       selectedSlot.fecha_fin,
-          servicio_nombre: servicioSeleccionado?.nombre || null,
+          // Enviar tanto el ID como el nombre para máxima compatibilidad
+          servicio_id:     servicio?.id?.startsWith('local-') ? null : (servicio?.id ?? null),
+          servicio_nombre: servicio?.nombre ?? null,
           observaciones:   data.observaciones || null,
           canal:           'web',
         }),
