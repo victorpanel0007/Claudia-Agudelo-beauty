@@ -80,6 +80,27 @@ export async function PATCH(request: NextRequest) {
   payload.precio       = rest.tipo_precio === 'fijo'  && rest.precio      ? Number(rest.precio)       : null
   payload.precio_desde = rest.tipo_precio === 'desde' && rest.precio_desde ? Number(rest.precio_desde) : null
 
+  console.log('[PATCH /servicios] id:', id, '| payload:', JSON.stringify(payload))
+
+  // Verificar que el servicio existe antes de actualizar
+  const { data: existing } = await supabase.from('servicios').select('id, categoria_id').eq('id', id).maybeSingle()
+  if (!existing) {
+    console.error('[PATCH /servicios] ID no existe en BD:', id)
+    // Intentar buscar por nombre como fallback
+    if (rest.nombre) {
+      const { data: byName } = await supabase
+        .from('servicios').select('id').ilike('nombre', rest.nombre.trim()).maybeSingle()
+      if (byName) {
+        console.log('[PATCH /servicios] Usando id por nombre:', byName.id)
+        const { data: d2, error: e2 } = await supabase
+          .from('servicios').update(payload).eq('id', byName.id).select()
+        if (e2) return NextResponse.json({ error: e2.message }, { status: 500 })
+        return NextResponse.json(d2?.[0] ?? {})
+      }
+    }
+    return NextResponse.json({ error: `Servicio no encontrado (id: ${id})` }, { status: 404 })
+  }
+
   const { data, error } = await supabase
     .from('servicios')
     .update(payload)
@@ -87,11 +108,12 @@ export async function PATCH(request: NextRequest) {
     .select()
 
   if (error) {
-    console.error('[API /servicios PATCH]', error)
+    console.error('[API /servicios PATCH] error:', error)
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
   if (!data || data.length === 0) {
-    return NextResponse.json({ error: 'Servicio no encontrado' }, { status: 404 })
+    console.error('[PATCH /servicios] UPDATE devolvió vacío para id:', id)
+    return NextResponse.json({ error: 'No se pudo actualizar (RLS bloqueó el UPDATE)' }, { status: 500 })
   }
   return NextResponse.json(data[0])
 }
