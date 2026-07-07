@@ -1,7 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/server'
 import { notificarEspecialista } from '@/lib/notificaciones'
-import { getUserRole, filtrarCita } from '@/lib/rbac'
+import { getUserRole, filtrarCita, forbidden } from '@/lib/rbac'
+
+// ── Campos permitidos en POST/PATCH (anti mass-assignment) ────────────────────
+const ALLOWED_CITA_FIELDS = new Set([
+  'cliente_id', 'especialista_id', 'servicio_id',
+  'fecha_inicio', 'fecha_fin', 'estado',
+  'valor_final', 'observaciones', 'canal',
+  'nombre_cliente', 'telefono', 'servicio_nombre',
+])
+
+function sanitizeCitaBody(body: Record<string, unknown>): Record<string, unknown> {
+  return Object.fromEntries(
+    Object.entries(body).filter(([k]) => ALLOWED_CITA_FIELDS.has(k))
+  )
+}
 
 export async function GET(request: NextRequest) {
   const supabase = await createAdminClient()
@@ -39,16 +53,21 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  // Requiere sesión autenticada (admin o especialista)
+  const rol = await getUserRole()
+  if (!rol) return forbidden('Debes iniciar sesión para crear citas')
+
   const supabase = await createAdminClient()
-  const body = await request.json()
+  const rawBody = await request.json()
+  const body = sanitizeCitaBody(rawBody)
 
   try {
-    let clienteId: string = body.cliente_id
+    let clienteId: string = (body.cliente_id as string) ?? ''
 
     // Buscar o crear cliente
     if (!clienteId && body.nombre_cliente) {
-      const telefono = (body.telefono || '').trim()
-      const nombre   = (body.nombre_cliente || '').trim()
+      const telefono = String(body.telefono ?? '').trim()
+      const nombre   = String(body.nombre_cliente).trim()
 
       const { data: existing } = await supabase
         .from('clientes').select('id').eq('telefono', telefono).maybeSingle()
@@ -68,10 +87,10 @@ export async function POST(request: NextRequest) {
     }
 
     // Buscar servicio por nombre si no hay ID
-    let servicioId = body.servicio_id || null
+    let servicioId: string | null = (body.servicio_id as string) || null
     if (!servicioId && body.servicio_nombre) {
       const { data: srv } = await supabase
-        .from('servicios').select('id').ilike('nombre', body.servicio_nombre).maybeSingle()
+        .from('servicios').select('id').ilike('nombre', String(body.servicio_nombre)).maybeSingle()
       if (srv) servicioId = srv.id
     }
 

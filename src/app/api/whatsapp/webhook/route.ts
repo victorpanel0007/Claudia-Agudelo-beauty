@@ -6,7 +6,7 @@ import { CATEGORIAS, SERVICIOS_DATA } from '@/lib/services-data'
 import { getAvailableSlots, createAppointment, type AvailableSlot } from '@/lib/scheduling'
 import { parseFlexibleDate } from '@/lib/date-parser'
 import { formatDate, formatCurrency } from '@/lib/utils'
-import { transcribeAudio } from '@/lib/openai-service'
+import { transcribeAudio, interpretMessage } from '@/lib/openai-service'
 
 // ── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -189,42 +189,210 @@ export async function POST(request: NextRequest) {
 async function handleAudioMessage(telefono: string, webhookData: Record<string, unknown>) {
   const supabase = await createAdminClient()
 
-  // Informar al usuario que estamos procesando
-  await reply(
-    telefono,
-    '🎤 Estoy escuchando tu mensaje...\nUn momento por favor 😊',
-    supabase
-  )
+  await reply(telefono, '🎤 Estoy escuchando tu mensaje...\nUn momento por favor 😊', supabase)
 
-  const result = await transcribeAudio(webhookData)
+  // Paso 1: Transcribir
+  const transcripcion = await transcribeAudio(webhookData)
 
-  // Log de auditoría (metadata únicamente, nunca el contenido del audio)
   try {
     await supabase.from('mensajes_whatsapp').insert({
       telefono,
-      mensaje:  `[Audio transcrito: ${result.ok ? 'ok' : result.errorCode}]`,
-      tipo:     'entrante',
-      fecha:    new Date().toISOString(),
+      mensaje: `[Audio: ${transcripcion.ok ? 'transcrito' : transcripcion.errorCode}]`,
+      tipo:    'entrante',
+      fecha:   new Date().toISOString(),
     })
   } catch { /* no bloquear */ }
 
-  if (!result.ok) {
-    // Mensajes de error según el tipo de fallo
-    let errorMsg: string
-    if (result.errorCode === 'too_large') {
-      errorMsg = `El audio es demasiado largo 😊\nPor favor envíalo nuevamente en una nota de voz más corta.`
-    } else {
-      errorMsg = `Lo siento 😊\nNo pude entender completamente el audio.\n¿Podrías enviarlo nuevamente o escribir el mensaje?`
-    }
+  if (!transcripcion.ok) {
+    const errorMsg = transcripcion.errorCode === 'too_large'
+      ? 'El audio es demasiado largo 😊\nPor favor envíalo en una nota de voz más corta.'
+      : 'Lo siento 😊\nNo pude entender el audio.\n¿Podrías enviarlo nuevamente o escribir el mensaje?'
     await reply(telefono, errorMsg, supabase)
     return
   }
 
-  // El texto transcrito reemplaza completamente al audio — mismo flujo que texto
-  const transcribedText = result.text!
-  console.info(`[Audio] ${telefono} → "${transcribedText.slice(0, 80)}"`)
+  const textoTranscrito = transcripcion.text!
+  console.info(`[Audio] ${telefono} → "${textoTranscrito.slice(0, 80)}"`)
 
-  await processMessage(telefono, transcribedText)
+  // Paso 2: Interpretar con IA teniendo en cuenta el contexto actual
+  const conv = await getConv(telefono, supabase)
+
+  const interpretacion = await interpretMessage(textoTranscrito, {
+    paso:             conv?.paso            ?? 'sin_conversacion',
+    servicio_nombre:  conv?.servicio_nombre ?? null,
+    categoria_id:     conv?.categoria_id    ?? null,
+    fecha:            conv?.fecha           ?? null,
+    nombre:           conv?.nombre          ?? null,
+  })
+
+  console.info(`[Audio] Intención: ${interpretacion.intencion} | Procesado: "${interpretacion.textoProcesado.slice(0, 80)}"`)
+
+  // Paso 3: Rutear según la intención extraída
+  await routeByIntencion(telefono, interpretacion, conv, supabase)
+}
+
+// ── Ruteo por intención (para audios interpretados) ──────────────────────────
+
+async function routeByIntencion(
+  telefono: string,
+  interpretacion: Awaited<ReturnType<typeof interpretMessage>>,
+  conv: ConvRow | null,
+  supabase: Supabase
+) {
+  const { intencion, textoProcesado, datos } = interpretacion
+
+  switch (intencion) {
+
+    // ── Saludos y apertura de conversación ──────────────────────────────────
+    case 'saludo':
+    case 'mostrar_categorias': {
+      await delConv(telefono, supabase)
+      await reply(telefono, buildMainMenu(), supabase)
+      await setConv(supabase, { telefono, paso: 'seleccion_categoria' })
+      break
+    }
+
+    // ── Mostrar servicios de una categoría ──────────────────────────────────
+    case 'mostrar_servicios': {
+      if (datos.categoria_id) {
+        await setConv(supabase, { telefono, paso: 'seleccion_servicio', categoria_id: datos.categoria_id })
+        await reply(telefono, buildCategoryMenu(datos.categoria_id), supabase)
+      } else {
+        // Categoría no identificada → mostrar menú principal
+        await delConv(telefono, supabase)
+        await reply(telefono, buildMainMenu(), supabase)
+        await setConv(supabase, { telefono, paso: 'seleccion_categoria' })
+      }
+      break
+    }
+
+    // ── Consultar precio ────────────────────────────────────────────────────
+    case 'consultar_precio': {
+      const precio = buildPrecioResponse(datos.servicio, datos.categoria_id)
+      await reply(telefono, precio, supabase)
+      // Si hay conversación activa, mantener el paso actual
+      if (!conv) await setConv(supabase, { telefono, paso: 'seleccion_categoria' })
+      break
+    }
+
+    // ── Crear cita con datos ya extraídos ───────────────────────────────────
+    case 'crear_cita': {
+      // Si la IA extrajo la categoría, saltar directamente a servicios
+      if (datos.categoria_id && !conv?.servicio_nombre) {
+        await setConv(supabase, { telefono, paso: 'seleccion_servicio', categoria_id: datos.categoria_id })
+        await reply(telefono, buildCategoryMenu(datos.categoria_id), supabase)
+        break
+      }
+      // Si extrajo servicio y fecha, avanzar al nombre
+      if (datos.servicio && datos.fecha && conv?.nombre) {
+        // Tenemos servicio + fecha + nombre: buscar especialistas
+        const parsed = parseFlexibleDate(datos.fecha)
+        if (parsed.fecha) {
+          const updatedConv = {
+            ...conv,
+            servicio_nombre: datos.servicio,
+            duracion:        SERVICIOS_DATA.find(s => s.nombre === datos.servicio)?.duracion ?? 60,
+            precio:          buildPrecioTexto(datos.servicio),
+            fecha:           parsed.fecha.toISOString(),
+            paso:            'seleccion_especialista',
+          }
+          await setConv(supabase, updatedConv as ConvRow)
+          const { data: especialistas } = await supabase
+            .from('especialistas').select('id, nombre').eq('activo', true).order('nombre')
+          await reply(telefono, buildEspecialistaMenu(especialistas || [], parsed.interpreted), supabase)
+          break
+        }
+      }
+      // Fallback: tratar como texto normal → el flujo lo maneja paso a paso
+      await processMessage(telefono, textoProcesado)
+      break
+    }
+
+    // ── Consultar disponibilidad / horarios ─────────────────────────────────
+    case 'consultar_disponibilidad':
+    case 'consultar_horarios': {
+      if (datos.fecha) {
+        // Si hay un servicio en contexto, ir directo a especialistas
+        if (conv?.servicio_nombre) {
+          const parsed = parseFlexibleDate(datos.fecha)
+          if (parsed.fecha) {
+            await setConv(supabase, { ...conv!, fecha: parsed.fecha.toISOString(), paso: 'seleccion_especialista' } as ConvRow)
+            const { data: especialistas } = await supabase
+              .from('especialistas').select('id, nombre').eq('activo', true).order('nombre')
+            await reply(telefono, buildEspecialistaMenu(especialistas || [], parsed.interpreted), supabase)
+            break
+          }
+        }
+        // Sin servicio en contexto: pedir servicio primero
+        await reply(
+          telefono,
+          `📅 Para ver disponibilidad el *${datos.fecha}*, primero dime qué servicio necesitas:\n\n${buildMainMenu()}`,
+          supabase
+        )
+        await setConv(supabase, { telefono, paso: 'seleccion_categoria' })
+      } else {
+        await reply(
+          telefono,
+          '📅 ¿Para qué fecha quieres consultar disponibilidad?\n\nEjemplos: *mañana*, *el sábado*, *20 de julio*',
+          supabase
+        )
+        if (conv) await setConv(supabase, { ...conv, paso: 'solicitar_fecha' })
+        else await setConv(supabase, { telefono, paso: 'solicitar_fecha' })
+      }
+      break
+    }
+
+    // ── Cambiar o cancelar cita ─────────────────────────────────────────────
+    case 'cambiar_cita': {
+      await delConv(telefono, supabase)
+      await reply(
+        telefono,
+        `🔄 Para cambiar tu cita, escríbenos al WhatsApp de atención o escribe *hola* para hacer una nueva reserva.`,
+        supabase
+      )
+      break
+    }
+    case 'cancelar_cita': {
+      await delConv(telefono, supabase)
+      await reply(
+        telefono,
+        `❌ Para cancelar tu cita, escríbenos al WhatsApp de atención directamente.\n\nSi quieres hacer una nueva reserva escribe *hola*.`,
+        supabase
+      )
+      break
+    }
+
+    // ── Pedir asesor humano ──────────────────────────────────────────────────
+    case 'hablar_con_asesor': {
+      await reply(
+        telefono,
+        `👩 Con gusto te comunico con una de nuestras asesoras.\nEn un momento te atenderán 😊`,
+        supabase
+      )
+      break
+    }
+
+    // ── Despedida / agradecimiento ───────────────────────────────────────────
+    case 'agradecimiento':
+    case 'despedida': {
+      await reply(
+        telefono,
+        `¡Con mucho gusto! 💖\nFue un placer atenderte.\nRecuerda que en *Claudia Agudelo Beauty* siempre tenemos un espacio para ti. ✨`,
+        supabase
+      )
+      await delConv(telefono, supabase)
+      break
+    }
+
+    // ── Respuesta simple o desconocida → flujo normal ────────────────────────
+    case 'respuesta_simple':
+    case 'desconocido':
+    default: {
+      // El texto procesado (limpio y corregido) entra al flujo estándar
+      await processMessage(telefono, textoProcesado)
+      break
+    }
+  }
 }
 
 // ── Procesador principal ──────────────────────────────────────────────────────
@@ -576,6 +744,42 @@ async function handleHorarioSelection(
     tipo:       'sistema',
     fecha:      new Date().toISOString(),
   })
+}
+
+// ── Helpers de precio (usados en ruteo de intenciones) ───────────────────────
+
+function buildPrecioTexto(nombreServicio?: string): string {
+  if (!nombreServicio) return 'Requiere valoración'
+  const s = SERVICIOS_DATA.find(x => x.nombre.toLowerCase() === nombreServicio.toLowerCase())
+  if (!s) return 'Requiere valoración'
+  if (s.tipo === 'fijo' && s.precio) return formatCurrency(s.precio)
+  if (s.tipo === 'desde' && s.precio_desde) return `Desde ${formatCurrency(s.precio_desde)}`
+  return 'Requiere valoración'
+}
+
+function buildPrecioResponse(nombreServicio?: string, categoriaId?: string): string {
+  if (nombreServicio) {
+    const s = SERVICIOS_DATA.find(x => x.nombre.toLowerCase() === nombreServicio.toLowerCase())
+    if (s) {
+      let precio = ''
+      if (s.tipo === 'fijo' && s.precio) precio = `*${formatCurrency(s.precio)}*`
+      else if (s.tipo === 'desde' && s.precio_desde) precio = `desde *${formatCurrency(s.precio_desde)}*`
+      else precio = 'requiere valoración presencial'
+      return `💅 *${s.nombre}*\n💵 Precio: ${precio}\n⏱️ Duración: ${s.duracion} minutos`
+    }
+  }
+  if (categoriaId) {
+    const servicios = SERVICIOS_DATA.filter(s => s.cat === categoriaId)
+    const cat = CATEGORIAS.find(c => c.id === categoriaId)
+    const lista = servicios.map(s => {
+      let p = ''
+      if (s.tipo === 'fijo' && s.precio) p = ` — $${s.precio.toLocaleString('es-CO')}`
+      else if (s.tipo === 'desde' && s.precio_desde) p = ` — desde $${s.precio_desde.toLocaleString('es-CO')}`
+      return `• ${s.nombre}${p}`
+    }).join('\n')
+    return `${cat?.icono ?? '💅'} *Precios — ${cat?.nombre ?? 'Servicios'}*\n\n${lista}`
+  }
+  return '💵 Para información de precios, dime el servicio que te interesa 😊'
 }
 
 // ── Helper: enviar y loggear mensaje saliente ─────────────────────────────────
