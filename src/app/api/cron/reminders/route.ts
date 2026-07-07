@@ -52,7 +52,7 @@ async function runReminders() {
 
   // ── Recordatorio 24h ─────────────────────────────────────────────────────
   if (config.recordatorio_24h) {
-    // Citas que ocurren entre 20h y 28h desde ahora (ventana amplia alrededor de las 24h)
+    // Citas entre 20h y 28h desde ahora = mañana en ese rango horario
     const desde24h = new Date(now.getTime() + 20 * 60 * 60 * 1000)
     const hasta24h = new Date(now.getTime() + 28 * 60 * 60 * 1000)
 
@@ -83,11 +83,10 @@ async function runReminders() {
   }
 
   // ── Recordatorio 2h ───────────────────────────────────────────────────────
-  // Con cron diario a las 9 AM Colombia: cubre citas entre 10 AM y 12 PM del mismo día.
-  // Para cubrir más franja horaria, usamos ventana de 1h–5h para capturar la mañana/tarde.
+  // Busca citas entre ahora+30min y ahora+4h — cubre las del mismo día
   if (config.recordatorio_2h) {
-    const desde2h = new Date(now.getTime() + 1 * 60 * 60 * 1000)
-    const hasta2h = new Date(now.getTime() + 5 * 60 * 60 * 1000)
+    const desde2h = new Date(now.getTime() + 30 * 60 * 1000)        // +30 min
+    const hasta2h = new Date(now.getTime() + 4 * 60 * 60 * 1000)    // +4 h
 
     const { data: citas2h } = await supabase
       .from('citas')
