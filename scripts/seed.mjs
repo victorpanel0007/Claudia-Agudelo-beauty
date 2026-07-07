@@ -45,6 +45,8 @@ async function main() {
     { cat: '1', nombre: 'Manos semipermanente', precio: 46000, tipo: 'fijo', duracion: 90 },
     { cat: '1', nombre: 'Pies semipermanente', precio: 42000, tipo: 'fijo', duracion: 90 },
     { cat: '1', nombre: 'Manos y pies semipermanente', precio: 82000, tipo: 'fijo', duracion: 150 },
+    { cat: '1', nombre: 'Manos semipermanente y pies tradicionales', precio: 70000, tipo: 'fijo', duracion: 120 },
+    { cat: '1', nombre: 'Manos tradicionales y pies semipermanente', precio: 66000, tipo: 'fijo', duracion: 120 },
     { cat: '1', nombre: 'Base Rubber', precio: 56000, tipo: 'fijo', duracion: 90 },
     { cat: '1', nombre: 'Uñas acrílicas', precio_desde: 100000, tipo: 'desde', duracion: 120 },
     { cat: '1', nombre: 'Retoque acrílico', precio: 75000, tipo: 'fijo', duracion: 90 },
