@@ -42,7 +42,7 @@ export async function PATCH(
     }
   }
 
-  const { data, error } = await supabase
+  const { data: rows, error } = await supabase
     .from('citas')
     .update(updateData)
     .eq('id', id)
@@ -52,9 +52,11 @@ export async function PATCH(
       especialista:especialistas(id, nombre, whatsapp, notificaciones),
       servicio:servicios(id, nombre, duracion_minutos)
     `)
-    .single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (!rows || rows.length === 0) return NextResponse.json({ error: 'Cita no encontrada o RLS bloqueó la actualización' }, { status: 404 })
+
+  const data = rows[0]
 
   // Si la cita pasa a confirmada, notificar especialista
   if (body.estado === 'confirmada' && data.especialista_id) {

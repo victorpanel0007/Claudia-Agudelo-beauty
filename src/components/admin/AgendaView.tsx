@@ -57,6 +57,12 @@ function getInitials(name: string): string {
   return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
 }
 
+/** Muestra el teléfono sin el prefijo 57 para Colombia */
+function displayTel(tel: string): string {
+  const d = tel.replace(/\D/g, '')
+  return d.startsWith('57') && d.length === 12 ? d.slice(2) : tel
+}
+
 function citaTop(fecha: string): number {
   const d = new Date(fecha)
   const colombiaStr = d.toLocaleString('en-US', {
@@ -202,7 +208,7 @@ function DetailPanel({ cita, onClose, onCompletar, onCancelar, onEliminar, onIni
         <div className="flex gap-2">
           {cita.cliente?.telefono && (
             <a
-              href={`https://wa.me/57${cita.cliente.telefono}`}
+              href={`https://wa.me/${cita.cliente.telefono.replace(/\D/g, '').startsWith('57') ? '' : '57'}${cita.cliente.telefono.replace(/\D/g, '')}`}
               target="_blank"
               rel="noopener noreferrer"
               className="w-8 h-8 rounded-lg bg-green-50 border border-green-200 flex items-center justify-center hover:bg-green-100 transition-colors"
@@ -214,6 +220,7 @@ function DetailPanel({ cita, onClose, onCompletar, onCancelar, onEliminar, onIni
             <a
               href={`tel:${cita.cliente.telefono}`}
               className="w-8 h-8 rounded-lg bg-blue-50 border border-blue-200 flex items-center justify-center hover:bg-blue-100 transition-colors"
+              title={displayTel(cita.cliente.telefono)}
             >
               <Phone size={14} className="text-blue-600" />
             </a>
@@ -899,25 +906,64 @@ export default function AgendaView() {
     return () => { supabase.removeChannel(ch) }
   }, [loadCitas, supabase])
 
+  async function completarCita(id: string, valor: number, metodoPago: string) {
+    try {
+      const res = await fetch(`/api/citas/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ estado: 'completada', valor_final: valor, metodo_pago: metodoPago }),
+      })
+      const json = await res.json()
+      if (!res.ok) {
+        toast.error(`Error al completar: ${json.error ?? res.status}`)
+      } else {
+        toast.success(`Cita completada ✓ — ${formatCurrency(valor)}`)
+        setSelectedCita(null)
+        setCitaACompletar(null)
+        loadCitas()
+      }
+    } catch {
+      toast.error('Error de conexión al completar la cita')
+    }
+  }
+
   async function cancelarCita(id: string) {
-    const { error } = await supabase.from('citas').update({ estado: 'cancelada' }).eq('id', id)
-    if (error) {
-      toast.error('Error al cancelar')
-    } else {
-      toast.success('Cita cancelada')
-      setSelectedCita(null)
-      loadCitas()
+    try {
+      const res = await fetch(`/api/citas/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ estado: 'cancelada' }),
+      })
+      if (!res.ok) {
+        const json = await res.json()
+        toast.error(`Error al cancelar: ${json.error ?? res.status}`)
+      } else {
+        toast.success('Cita cancelada')
+        setSelectedCita(null)
+        loadCitas()
+      }
+    } catch {
+      toast.error('Error de conexión al cancelar')
     }
   }
 
   async function iniciarCita(id: string) {
-    const { error } = await supabase.from('citas').update({ estado: 'en_proceso' }).eq('id', id)
-    if (error) {
-      toast.error('Error al iniciar')
-    } else {
-      toast.success('✅ Cita iniciada')
-      setSelectedCita(null)
-      loadCitas()
+    try {
+      const res = await fetch(`/api/citas/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ estado: 'en_proceso' }),
+      })
+      if (!res.ok) {
+        const json = await res.json()
+        toast.error(`Error al iniciar: ${json.error ?? res.status}`)
+      } else {
+        toast.success('✅ Cita iniciada')
+        setSelectedCita(null)
+        loadCitas()
+      }
+    } catch {
+      toast.error('Error de conexión al iniciar')
     }
   }
 
@@ -940,22 +986,6 @@ export default function AgendaView() {
     setCitaACompletar(cita)
   }
 
-  async function completarCita(id: string, valor: number, metodoPago: string) {
-    const { error } = await supabase
-      .from('citas')
-      .update({ estado: 'completada', valor_final: valor, metodo_pago: metodoPago })
-      .eq('id', id)
-    if (error) {
-      toast.error('Error al completar')
-    } else {
-      toast.success(`Cita completada ✓ — ${formatCurrency(valor)}`)
-      setSelectedCita(null)
-      setCitaACompletar(null)
-      loadCitas()
-    }
-  }
-
-  // ── Date navigation helpers ─────────────────────────────────────────────
   const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 })
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i))
   const dayView = [currentDate]
