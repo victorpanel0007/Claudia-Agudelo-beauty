@@ -8,14 +8,40 @@ import { parseFlexibleDate } from '@/lib/date-parser'
 import { formatDate, formatCurrency } from '@/lib/utils'
 import { transcribeAudio, extractIntent, type ExtractedData } from '@/lib/openai-service'
 
-// ── Caché de servicios desde Supabase (TTL 5 min) ────────────────────────────
-// Permite que los precios actualizados en el panel se reflejen en el bot
-// sin consultar la BD en cada mensaje.
+// ── Caché de servicios y categorías desde Supabase (TTL 5 min) ───────────────
 
-type SvcDB = { nombre: string; tipo_precio: string; precio?: number | null; precio_desde?: number | null; duracion_minutos: number; cat?: string; categoria_id?: string; requiere_valoracion?: boolean }
+type SvcDB = {
+  id?: string
+  nombre: string; tipo_precio: string
+  precio?: number | null; precio_desde?: number | null
+  duracion_minutos: number; categoria_id?: string
+  categoria_nombre?: string  // nombre de la categoría en Supabase
+  requiere_valoracion?: boolean
+}
+
+type CatDB = { id: string; nombre: string; icono: string; orden: number }
 
 let _svcsCache: SvcDB[] | null = null
+let _catsCache: CatDB[] | null = null
 let _svcsExpiry = 0
+let _catsExpiry = 0
+
+async function getCategorias(): Promise<CatDB[]> {
+  if (_catsCache && Date.now() < _catsExpiry) return _catsCache
+  try {
+    const supabase = await createAdminClient()
+    const { data } = await supabase.from('categorias').select('*').order('orden')
+    if (data?.length) {
+      _catsCache = data as CatDB[]
+      _catsExpiry = Date.now() + 10 * 60 * 1000 // 10 min
+      return _catsCache
+    }
+  } catch { /* fallback */ }
+  // Fallback al archivo local
+  _catsCache = CATEGORIAS.map(c => ({ id: c.id, nombre: c.nombre, icono: c.icono, orden: c.orden }))
+  _catsExpiry = Date.now() + 60 * 1000
+  return _catsCache
+}
 
 async function getServicios(): Promise<SvcDB[]> {
   if (_svcsCache && Date.now() < _svcsExpiry) return _svcsCache
@@ -23,36 +49,29 @@ async function getServicios(): Promise<SvcDB[]> {
     const supabase = await createAdminClient()
     const { data } = await supabase
       .from('servicios')
-      .select('nombre, tipo_precio, precio, precio_desde, duracion_minutos, categoria_id, requiere_valoracion')
+      .select('id, nombre, tipo_precio, precio, precio_desde, duracion_minutos, categoria_id, requiere_valoracion, categoria:categorias(nombre)')
       .eq('activo', true)
       .order('nombre')
-    if (data && data.length > 0) {
-      // Mapear categoria_id (UUID) al id corto de CATEGORIAS para compatibilidad
-      const mapped = data.map(s => {
-        const catLocal = CATEGORIAS.find(c => {
-          // Buscar por UUID almacenado en BD vs id local ('1','2'...)
-          // El seed inserta usando el UUID real, pero SERVICIOS_DATA usa '1','9' etc.
-          // La relación se hace por nombre de categoría
-          return false // No hay forma directa — usamos categoria_id del join
-        })
-        return { ...s, cat: s.categoria_id }
-      })
-      _svcsCache = mapped
+    if (data?.length) {
+      _svcsCache = data.map(s => ({
+        ...s,
+        categoria_nombre: (s.categoria as { nombre?: string } | null)?.nombre ?? '',
+      }))
       _svcsExpiry = Date.now() + 5 * 60 * 1000
-      return mapped
+      return _svcsCache
     }
   } catch { /* fallback */ }
-  // Fallback al archivo estático si Supabase falla
+  // Fallback al archivo estático
   _svcsCache = SERVICIOS_DATA.map(s => ({
-    nombre: s.nombre,
-    tipo_precio: s.tipo,
+    nombre: s.nombre, tipo_precio: s.tipo,
     precio: 'precio' in s ? s.precio : null,
     precio_desde: 'precio_desde' in s ? s.precio_desde : null,
     duracion_minutos: s.duracion,
     requiere_valoracion: 'requiere_valoracion' in s ? s.requiere_valoracion : false,
-    cat: s.cat,
+    categoria_id: s.cat,
+    categoria_nombre: CATEGORIAS.find(c => c.id === s.cat)?.nombre ?? '',
   }))
-  _svcsExpiry = Date.now() + 60 * 1000 // 1 min si es fallback
+  _svcsExpiry = Date.now() + 60 * 1000
   return _svcsCache
 }
 
@@ -77,28 +96,41 @@ type Supabase = Awaited<ReturnType<typeof createAdminClient>>
 
 function nb(i: number) { return `*${i}.*` }
 
-function buildMainMenu(): string {
-  return `🌸 *CLAUDIA AGUDELO BEAUTY*\n\n¡Hola! 😊 Será un gusto atenderte.\n\nSelecciona una categoría:\n\n${
-    CATEGORIAS.map((c, i) => `${nb(i+1)} ${c.icono} ${c.nombre}`).join('\n')
-  }\n\n_Escribe el número de tu opción._`
+async function buildMainMenu(): Promise<string> {
+  const cats = await getCategorias()
+  const items = cats.map((c, i) => `${nb(i+1)} ${c.icono} ${c.nombre}`).join('\n')
+  return `🌸 *CLAUDIA AGUDELO BEAUTY*\n\n¡Hola! 😊 Será un gusto atenderte.\n\nSelecciona una categoría:\n\n${items}\n\n_Escribe el número de tu opción._`
 }
 
 async function buildCategoryMenu(catId: string): Promise<string> {
-  const cat = CATEGORIAS.find(c => c.id === catId)!
-  const svcsLocal = SERVICIOS_DATA.filter(s => s.cat === catId)
-  // Cargar precios desde Supabase (con caché)
-  const svcsBD = await getServicios()
-  const items = svcsLocal.map((s, i) => {
-    // Buscar precio actualizado en BD por nombre
-    const fromBD = svcsBD.find(b => b.nombre.toLowerCase() === s.nombre.toLowerCase())
-    const tipo  = fromBD?.tipo_precio ?? s.tipo
-    const prec  = fromBD?.precio      ?? ('precio' in s ? s.precio : undefined)
-    const desde = fromBD?.precio_desde ?? ('precio_desde' in s ? s.precio_desde : undefined)
+  // catId puede ser UUID de Supabase o id local ('1','9'...)
+  const cats   = await getCategorias()
+  const svcs   = await getServicios()
+
+  // Buscar categoría — primero por UUID, luego por id local
+  let cat = cats.find(c => c.id === catId)
+  // Si no encuentra por UUID, buscar en CATEGORIAS local y obtener nombre
+  if (!cat) {
+    const catLocal = CATEGORIAS.find(c => c.id === catId)
+    if (catLocal) cat = cats.find(c => c.nombre.toLowerCase() === catLocal.nombre.toLowerCase())
+  }
+  if (!cat) return '❌ Categoría no encontrada.'
+
+  // Servicios de esta categoría — buscar por categoria_id (UUID) o por nombre de categoría
+  const serviciosCat = svcs.filter(s =>
+    s.categoria_id === cat!.id ||
+    s.categoria_nombre?.toLowerCase() === cat!.nombre.toLowerCase()
+  ).sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'))
+
+  if (!serviciosCat.length) return `${cat.icono} *${cat.nombre.toUpperCase()}*\n\nNo hay servicios disponibles en esta categoría.`
+
+  const items = serviciosCat.map((s, i) => {
     let p = ''
-    if (tipo === 'fijo'  && prec)  p = `  ·  $${Number(prec).toLocaleString('es-CO')}`
-    if (tipo === 'desde' && desde) p = `  ·  desde $${Number(desde).toLocaleString('es-CO')}`
+    if (s.tipo_precio === 'fijo'  && s.precio)       p = `  ·  $${Number(s.precio).toLocaleString('es-CO')}`
+    if (s.tipo_precio === 'desde' && s.precio_desde) p = `  ·  desde $${Number(s.precio_desde).toLocaleString('es-CO')}`
     return `${nb(i+1)} ${s.nombre}${p}`
   }).join('\n')
+
   return `${cat.icono} *${cat.nombre.toUpperCase()}*\n\n${items}\n\n_Escribe el número del servicio deseado._`
 }
 
@@ -208,7 +240,7 @@ async function processMessage(telefono: string, texto: string) {
     'inicio','menu','menú','hi','hello','0','reiniciar']
   if (resetWords.includes(lower)) {
     await delConv(telefono, supabase)
-    await reply(telefono, buildMainMenu(), supabase)
+    await reply(telefono, await buildMainMenu(), supabase)
     await setConv(supabase, { telefono, paso: 'seleccion_categoria' })
     return
   }
@@ -248,13 +280,13 @@ async function routeIntent(
 
     case 'saludo':
       await delConv(telefono, supabase)
-      await reply(telefono, buildMainMenu(), supabase)
+      await reply(telefono, await buildMainMenu(), supabase)
       await setConv(supabase, { telefono, paso: 'seleccion_categoria' })
       return
 
     case 'ver_categorias':
       await delConv(telefono, supabase)
-      await reply(telefono, buildMainMenu(), supabase)
+      await reply(telefono, await buildMainMenu(), supabase)
       await setConv(supabase, { telefono, paso: 'seleccion_categoria' })
       return
 
@@ -264,7 +296,7 @@ async function routeIntent(
         await reply(telefono, await buildCategoryMenu(ext.categoria_id), supabase)
       } else {
         await delConv(telefono, supabase)
-        await reply(telefono, buildMainMenu(), supabase)
+        await reply(telefono, await buildMainMenu(), supabase)
         await setConv(supabase, { telefono, paso: 'seleccion_categoria' })
       }
       return
@@ -305,7 +337,7 @@ async function routeIntent(
       if (conv) {
         await dispatchPaso(telefono, ext.textoProcesado, conv, supabase)
       } else {
-        await reply(telefono, buildMainMenu(), supabase)
+        await reply(telefono, await buildMainMenu(), supabase)
         await setConv(supabase, { telefono, paso: 'seleccion_categoria' })
       }
       return
@@ -314,7 +346,7 @@ async function routeIntent(
       if (conv) {
         await dispatchPaso(telefono, ext.textoProcesado, conv, supabase)
       } else {
-        await reply(telefono, buildMainMenu(), supabase)
+        await reply(telefono, await buildMainMenu(), supabase)
         await setConv(supabase, { telefono, paso: 'seleccion_categoria' })
       }
   }
@@ -349,21 +381,18 @@ async function handleReservar(
   const horaTexto = ext.hora ?? null
 
   // ── Encontrar el servicio en el catálogo + precio actualizado desde BD ──────
+  const svcsBD = await getServicios()
   let svcData = servicio_nombre
-    ? SERVICIOS_DATA.find(s => s.nombre.toLowerCase() === servicio_nombre.toLowerCase())
+    ? svcsBD.find(s => s.nombre.toLowerCase() === servicio_nombre.toLowerCase())
     : null
   if (!svcData && servicio_nombre)
-    svcData = SERVICIOS_DATA.find(s => s.nombre.toLowerCase().includes(servicio_nombre.toLowerCase()))
+    svcData = svcsBD.find(s => s.nombre.toLowerCase().includes(servicio_nombre.toLowerCase()))
 
-  // Precio desde Supabase (sobrescribe el local si existe)
-  const svcsBD = await getServicios()
-  const fromBD = svcData ? svcsBD.find(b => b.nombre.toLowerCase() === svcData!.nombre.toLowerCase()) : null
-
-  const svcTipo   = fromBD?.tipo_precio    ?? (svcData ? svcData.tipo : 'valoracion')
-  const svcPrec   = fromBD?.precio         ?? ('precio' in (svcData ?? {}) ? (svcData as {precio?:number}).precio : null)
-  const svcDesde  = fromBD?.precio_desde   ?? ('precio_desde' in (svcData ?? {}) ? (svcData as {precio_desde?:number}).precio_desde : null)
-  const svcDur    = fromBD?.duracion_minutos ?? (svcData?.duracion ?? 60)
-  const svcReqVal = fromBD?.requiere_valoracion ?? ('requiere_valoracion' in (svcData ?? {}) ? (svcData as {requiere_valoracion?:boolean}).requiere_valoracion : false)
+  const svcTipo   = svcData?.tipo_precio    ?? 'valoracion'
+  const svcPrec   = svcData?.precio         ?? null
+  const svcDesde  = svcData?.precio_desde   ?? null
+  const svcDur    = svcData?.duracion_minutos ?? 60
+  const svcReqVal = svcData?.requiere_valoracion ?? false
 
   // ── Decidir qué preguntar ─────────────────────────────────────────────────
 
@@ -374,7 +403,7 @@ async function handleReservar(
       await reply(telefono, await buildCategoryMenu(categoria_id), supabase)
     } else {
       await setConv(supabase, { telefono, paso: 'seleccion_categoria' })
-      await reply(telefono, buildMainMenu(), supabase)
+      await reply(telefono, await buildMainMenu(), supabase)
     }
     return
   }
@@ -390,7 +419,7 @@ async function handleReservar(
     if (nombreBD) {
       await avanzarConNombreConocido(telefono, nombreBD, {
         telefono, paso: 'solicitar_nombre',
-        categoria_id: svcData?.cat ?? null,
+        categoria_id: svcData?.categoria_id ?? null,
         servicio_nombre: svcData!.nombre,
         duracion: svcDur, precio,
         fecha: parsedFecha?.fecha?.toISOString() ?? null,
@@ -400,7 +429,7 @@ async function handleReservar(
     await setConv(supabase, {
       telefono,
       paso:            'solicitar_nombre',
-      categoria_id:    svcData?.cat ?? null,
+      categoria_id:    svcData?.categoria_id ?? null,
       servicio_nombre: svcData!.nombre,
       duracion:        svcDur,
       precio,
@@ -418,7 +447,7 @@ async function handleReservar(
     await setConv(supabase, {
       telefono,
       paso:            'solicitar_fecha',
-      categoria_id:    svcData?.cat ?? null,
+      categoria_id:    svcData?.categoria_id ?? null,
       servicio_nombre: svcData!.nombre,
       duracion:        svcDur,
       precio,
@@ -437,7 +466,7 @@ async function handleReservar(
   const baseConv: ConvRow = {
     telefono,
     paso:            'seleccion_especialista',
-    categoria_id:    svcData?.cat ?? null,
+    categoria_id:    svcData?.categoria_id ?? null,
     servicio_nombre: svcData!.nombre,
     duracion:        svcDur,
     precio,
@@ -535,7 +564,7 @@ async function dispatchPaso(telefono: string, text: string, conv: ConvRow, supab
     case 'seleccion_horario':    await handleHorario(telefono, text, conv, supabase); break
     default:
       await delConv(telefono, supabase)
-      await reply(telefono, buildMainMenu(), supabase)
+      await reply(telefono, await buildMainMenu(), supabase)
       await setConv(supabase, { telefono, paso: 'seleccion_categoria' })
   }
 }
@@ -571,49 +600,53 @@ async function avanzarConNombreConocido(
 }
 
 async function handleCatSelection(t: string, text: string, conv: ConvRow, sb: Supabase) {
+  const cats = await getCategorias()
   const num = parseInt(text)
-  if (isNaN(num) || num < 1 || num > CATEGORIAS.length) {
-    await reply(t, `❌ Escribe un número del *1* al *${CATEGORIAS.length}*.`, sb); return
+  if (isNaN(num) || num < 1 || num > cats.length) {
+    await reply(t, `❌ Escribe un número del *1* al *${cats.length}*.`, sb); return
   }
-  const cat = CATEGORIAS[num - 1]
+  const cat = cats[num - 1]
   await setConv(sb, { ...conv, categoria_id: cat.id, paso: 'seleccion_servicio' })
   await reply(t, await buildCategoryMenu(cat.id), sb)
 }
 
 async function handleSvcSelection(t: string, text: string, conv: ConvRow, sb: Supabase) {
-  const svcs = SERVICIOS_DATA.filter(s => s.cat === conv.categoria_id)
-  const num  = parseInt(text)
+  // Obtener servicios de la categoría desde Supabase
+  const allSvcs = await getServicios()
+  const cats    = await getCategorias()
+
+  // Buscar la categoría por ID (puede ser UUID o id local)
+  const catBD   = cats.find(c => c.id === conv.categoria_id)
+  const catLocal = CATEGORIAS.find(c => c.id === conv.categoria_id)
+  const catNombre = catBD?.nombre ?? catLocal?.nombre ?? ''
+
+  const svcs = allSvcs.filter(s =>
+    s.categoria_id === conv.categoria_id ||
+    s.categoria_nombre?.toLowerCase() === catNombre.toLowerCase()
+  ).sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'))
+
+  const num = parseInt(text)
   if (isNaN(num) || num < 1 || num > svcs.length) {
     await reply(t, `❌ Escribe un número del *1* al *${svcs.length}*.`, sb); return
   }
   const svc = svcs[num - 1]
 
-  // Precio actualizado desde Supabase
-  const svcsBD = await getServicios()
-  const fromBD = svcsBD.find(b => b.nombre.toLowerCase() === svc.nombre.toLowerCase())
-  const tipo   = fromBD?.tipo_precio ?? svc.tipo
-  const prec   = fromBD?.precio       ?? ('precio' in svc ? svc.precio : null)
-  const desde  = fromBD?.precio_desde ?? ('precio_desde' in svc ? svc.precio_desde : null)
-  const dur    = fromBD?.duracion_minutos ?? svc.duracion
-  const reqVal = fromBD?.requiere_valoracion ?? ('requiere_valoracion' in svc ? svc.requiere_valoracion : false)
-
   let precio = 'Requiere valoración'
-  if (tipo === 'fijo'  && prec)  precio = formatCurrency(Number(prec))
-  if (tipo === 'desde' && desde) precio = `Desde ${formatCurrency(Number(desde))}`
+  if (svc.tipo_precio === 'fijo'  && svc.precio)       precio = formatCurrency(Number(svc.precio))
+  if (svc.tipo_precio === 'desde' && svc.precio_desde) precio = `Desde ${formatCurrency(Number(svc.precio_desde))}`
 
-  await setConv(sb, { ...conv, servicio_nombre: svc.nombre, duracion: dur, precio, paso: 'solicitar_nombre' })
+  await setConv(sb, { ...conv, servicio_nombre: svc.nombre, duracion: svc.duracion_minutos, precio, paso: 'solicitar_nombre' })
 
-  const priceMsg = (tipo === 'valoracion' || reqVal)
+  const priceMsg = (svc.tipo_precio === 'valoracion' || svc.requiere_valoracion)
     ? '\n\nℹ️ Precio según largo, cantidad y técnica.'
-    : `\n\n💵 Precio: *${precio}*  ⏱️ Duración: *${dur} min*`
+    : `\n\n💵 Precio: *${precio}*  ⏱️ Duración: *${svc.duracion_minutos} min*`
 
-  // ── Verificar si ya conocemos el nombre del cliente ──────────────────────
+  // Verificar si ya conocemos el nombre del cliente
   const nombreConocido = await buscarNombreCliente(t, sb)
   if (nombreConocido) {
-    await avanzarConNombreConocido(t, nombreConocido, { ...conv, servicio_nombre: svc.nombre, duracion: dur, precio }, sb)
+    await avanzarConNombreConocido(t, nombreConocido, { ...conv, servicio_nombre: svc.nombre, duracion: svc.duracion_minutos, precio }, sb)
     return
   }
-
   await reply(t, `💅 *${svc.nombre}*${priceMsg}\n\n✍️ ¿Cuál es tu *nombre completo*?`, sb)
 }
 
@@ -772,3 +805,5 @@ async function reply(telefono: string, message: string, supabase: Supabase) {
     })
   } catch { /* no bloquear */ }
 }
+
+
