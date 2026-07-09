@@ -1300,6 +1300,11 @@ export default function AgendaView() {
     return () => { supabase.removeChannel(ch) }
   }, [loadCitas, supabase])
 
+  // Recargar extras cuando cambia la fecha del calendario
+  useEffect(() => {
+    loadServiciosExtras()
+  }, [loadServiciosExtras])
+
   async function completarCita(id: string, valor: number, metodoPago: string) {
     try {
       const res = await fetch(`/api/citas/${id}`, {
