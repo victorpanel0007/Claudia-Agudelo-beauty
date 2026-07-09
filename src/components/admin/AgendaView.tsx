@@ -171,6 +171,63 @@ function CitaCard({ cita, onClick }: { cita: Cita; onClick: () => void }) {
   )
 }
 
+// ── ServicioBuscador — input con lupa y dropdown ─────────────────────────────
+function ServicioBuscador({
+  servicios, onSelect,
+}: {
+  servicios: Array<{id:string;nombre:string}>
+  onSelect: (id: string) => void
+}) {
+  const [query, setQuery] = useState('')
+  const [open, setOpen]   = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [])
+
+  const filtered = servicios
+    .filter(s => s.nombre.toLowerCase().includes(query.toLowerCase()))
+    .slice(0, 15)
+
+  return (
+    <div ref={ref} className="relative">
+      <div className="flex items-center gap-2 border border-gray-200 rounded-xl px-3 py-2 focus-within:border-[#EFA1B5] focus-within:ring-2 focus-within:ring-[#EFA1B5]/20 transition-all">
+        <Search size={13} className="text-gray-400 shrink-0" />
+        <input
+          value={query}
+          onChange={e => { setQuery(e.target.value); setOpen(true) }}
+          onFocus={() => setOpen(true)}
+          placeholder="Buscar servicio..."
+          className="flex-1 text-xs outline-none bg-transparent text-gray-700 placeholder-gray-400"
+        />
+        {query && (
+          <button onClick={() => { setQuery(''); setOpen(false) }} className="p-0.5 hover:bg-gray-100 rounded">
+            <X size={11} className="text-gray-400" />
+          </button>
+        )}
+      </div>
+      {open && (
+        <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg z-30 max-h-48 overflow-y-auto">
+          {filtered.length === 0 ? (
+            <p className="text-center text-gray-400 text-xs py-4">Sin resultados</p>
+          ) : filtered.map(s => (
+            <button key={s.id} type="button"
+              onMouseDown={() => { onSelect(s.id); setQuery(''); setOpen(false) }}
+              className="w-full text-left px-3 py-2.5 hover:bg-[#FFF8EE] text-xs text-gray-700 border-b border-gray-50 last:border-0 truncate">
+              {s.nombre}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── DetailPanel ──────────────────────────────────────────────────────────────
 function DetailPanel({ cita, onClose, onCompletar, onCancelar, onEliminar, onIniciar, onRevertir }: {
   cita: Cita
@@ -282,11 +339,23 @@ function DetailPanel({ cita, onClose, onCompletar, onCancelar, onEliminar, onIni
               <span className="text-sm">✂️</span>
               <span className="text-[10px] font-semibold text-gray-500">Cambiar servicio</span>
             </div>
-            <select value={servicioIdEdit} onChange={e => setServicioIdEdit(e.target.value)}
-              className="w-full border border-gray-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-[#EFA1B5]">
-              <option value="">— Selecciona —</option>
-              {servicios.map(s => <option key={s.id} value={s.id}>{s.nombre}</option>)}
-            </select>
+            {/* Buscador con lupa */}
+            {servicioIdEdit ? (
+              <div className="flex items-center gap-2 border border-[#EFA1B5] rounded-xl px-3 py-2 bg-[#EFA1B5]/5">
+                <Search size={13} className="text-[#EFA1B5] shrink-0" />
+                <span className="text-xs text-[#8B1E3F] font-medium flex-1 truncate">
+                  {servicios.find(s => s.id === servicioIdEdit)?.nombre}
+                </span>
+                <button onClick={() => setServicioIdEdit('')} className="p-0.5 hover:bg-[#EFA1B5]/20 rounded">
+                  <X size={12} className="text-[#8B1E3F]" />
+                </button>
+              </div>
+            ) : (
+              <ServicioBuscador
+                servicios={servicios}
+                onSelect={(id) => setServicioIdEdit(id)}
+              />
+            )}
             <div className="flex gap-2">
               <button onClick={() => setEditandoServicio(false)}
                 className="flex-1 py-1.5 rounded-xl border border-gray-200 text-xs text-gray-500 hover:bg-gray-50 transition-colors">
