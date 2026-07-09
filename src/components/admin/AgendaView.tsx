@@ -484,16 +484,21 @@ function CompletarModal({ cita, onClose, onConfirm }: {
     setLoading(false)
   }
 
-  return typeof document !== "undefined" ? createPortal(<div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm animate-slide-up p-6">
-        <div className="flex items-center justify-between mb-4">
+  return typeof document !== "undefined" ? createPortal(
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/50 backdrop-blur-sm">
+      <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl w-full sm:max-w-sm flex flex-col max-h-[92vh] animate-slide-up">
+        {/* Handle bar móvil */}
+        <div className="flex justify-center pt-3 pb-1 sm:hidden shrink-0">
+          <div className="w-10 h-1 rounded-full bg-gray-200" />
+        </div>
+        <div className="flex items-center justify-between px-5 pt-4 pb-4 border-b border-gray-100 shrink-0">
           <h3 className="font-bold text-beauty-text">Completar Cita</h3>
           <button onClick={onClose} className="p-1 hover:bg-gray-100 rounded-lg">
             <X size={16} />
           </button>
         </div>
 
-        {/* Resumen de la cita */}
+        <div className="p-5 space-y-4 overflow-y-auto flex-1">
         <div className="bg-beauty-bg rounded-xl p-3 mb-4 space-y-1">
           <p className="text-sm font-semibold text-beauty-text">{cita.cliente?.nombre}</p>
           <p className="text-xs text-beauty-text-muted">{cita.servicio?.nombre ?? 'Servicio'}</p>
@@ -558,7 +563,7 @@ function CompletarModal({ cita, onClose, onConfirm }: {
           </div>
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex gap-2 p-5 border-t border-gray-100 shrink-0">
           <button
             onClick={onClose}
             className="flex-1 text-sm font-semibold py-2.5 rounded-xl border-2 border-beauty-primary/30 text-beauty-text-muted hover:bg-beauty-bg transition-colors"
@@ -731,10 +736,15 @@ function NuevaCitaModal({ onClose, onSaved }: { onClose: () => void; onSaved: ()
     }
   }
 
-  return typeof document !== "undefined" ? createPortal(<div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg animate-slide-up overflow-hidden">
+  return typeof document !== "undefined" ? createPortal(
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/50 backdrop-blur-sm">
+      <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl w-full sm:max-w-lg flex flex-col max-h-[92vh] animate-slide-up">
+        {/* Handle bar móvil */}
+        <div className="flex justify-center pt-3 pb-1 sm:hidden shrink-0">
+          <div className="w-10 h-1 rounded-full bg-gray-200" />
+        </div>
         {/* Header */}
-        <div className="flex items-center justify-between p-5 border-b border-gray-100">
+        <div className="flex items-center justify-between px-5 pt-4 pb-4 border-b border-gray-100 shrink-0">
           <div>
             <h3 className="font-bold text-gray-800">Nueva Cita</h3>
             <p className="text-xs text-gray-400">Paso {step} de 2</p>
@@ -750,7 +760,7 @@ function NuevaCitaModal({ onClose, onSaved }: { onClose: () => void; onSaved: ()
           <div className={`h-1 flex-1 transition-all ${step >= 2 ? 'bg-beauty-primary' : 'bg-gray-100'}`} />
         </div>
 
-        <div className="p-5 overflow-y-auto max-h-[70vh] space-y-4">
+        <div className="p-5 overflow-y-auto flex-1 space-y-4">
           {step === 1 && (
             <>
               {/* Cliente */}
@@ -1107,9 +1117,14 @@ function ServicioExtraModal({ onClose, onSaved, fecha }: {
 
   const inp = 'w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-beauty-primary focus:ring-2 focus:ring-beauty-primary/20'
 
-  return typeof document !== "undefined" ? createPortal(<div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-slide-up">
-        <div className="flex items-center justify-between p-5 border-b border-gray-100 bg-amber-50">
+  return typeof document !== "undefined" ? createPortal(
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/50 backdrop-blur-sm">
+      <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl w-full sm:max-w-md flex flex-col max-h-[92vh] animate-slide-up">
+        {/* Handle bar móvil */}
+        <div className="flex justify-center pt-3 pb-1 sm:hidden shrink-0">
+          <div className="w-10 h-1 rounded-full bg-gray-200" />
+        </div>
+        <div className="flex items-center justify-between px-5 pt-4 pb-4 border-b border-gray-100 bg-amber-50 shrink-0">
           <div>
             <h3 className="font-bold text-gray-800 flex items-center gap-2">⭐ Servicio Extra</h3>
             <p className="text-xs text-gray-400 mt-0.5">Se registra como completado sin bloquear agenda</p>
@@ -1117,7 +1132,7 @@ function ServicioExtraModal({ onClose, onSaved, fecha }: {
           <button onClick={onClose} className="p-2 hover:bg-amber-100 rounded-xl"><X size={18} /></button>
         </div>
 
-        <div className="p-5 space-y-4 overflow-y-auto max-h-[70vh]">
+        <div className="p-5 space-y-4 overflow-y-auto flex-1">
           {/* Servicio con buscador */}
           <div>
             <label className="block text-xs font-semibold text-gray-600 mb-1.5">Servicio *</label>

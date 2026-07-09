@@ -938,7 +938,7 @@ export default function ComisionesView() {
 
       {/* ── PAGO MODAL ──────────────────────────────────────────────────────── */}
       {showPagoModal && typeof document !== 'undefined' && createPortal(
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
           <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-beauty-lg w-full sm:max-w-lg max-h-[92vh] flex flex-col animate-slide-up">
             {/* Handle bar móvil */}
             <div className="flex justify-center pt-3 pb-1 sm:hidden shrink-0">

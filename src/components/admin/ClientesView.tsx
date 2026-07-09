@@ -163,14 +163,14 @@ export default function ClientesView() {
 
       {/* Modal detalle */}
       {selected && typeof document !== 'undefined' && createPortal(
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/50">
-          <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl w-full sm:max-w-md animate-slide-up">
-            <div className="flex justify-center pt-3 pb-1 sm:hidden">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/50 backdrop-blur-sm">
+          <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl w-full sm:max-w-md flex flex-col max-h-[92vh] animate-slide-up">
+            <div className="flex justify-center pt-3 pb-1 sm:hidden shrink-0">
               <div className="w-10 h-1 rounded-full bg-gray-200" />
             </div>
 
             {/* Header */}
-            <div className="p-5 border-b border-gray-100">
+            <div className="p-5 border-b border-gray-100 shrink-0">
               {editing ? (
                 <div className="space-y-3">
                   <p className="text-xs font-semibold text-gray-500 mb-2">Editar cliente</p>
@@ -217,7 +217,7 @@ export default function ClientesView() {
             </div>
 
             {!editing && (
-              <>
+              <div className="overflow-y-auto flex-1">
                 <div className="p-4 sm:p-5 grid grid-cols-2 gap-3">
                   {[
                     { icon: <Calendar size={14}/>, label: 'Registro',      val: formatDate(selected.fecha_registro) },
@@ -250,7 +250,7 @@ export default function ClientesView() {
                     <Trash2 size={13} /> Eliminar cliente permanentemente
                   </button>
                 </div>
-              </>
+              </div>
             )}
           </div>
         </div>

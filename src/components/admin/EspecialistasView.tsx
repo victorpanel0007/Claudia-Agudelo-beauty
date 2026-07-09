@@ -574,11 +574,16 @@ export default function EspecialistasView() {
 
       {/* Modal formulario */}
       {showForm && typeof document !== 'undefined' && createPortal(
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/50">
-          <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl w-full sm:max-w-md max-h-[90vh] overflow-y-auto animate-slide-up">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/50 backdrop-blur-sm">
+          <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl w-full sm:max-w-md flex flex-col max-h-[92vh] animate-slide-up">
+
+            {/* Handle bar móvil */}
+            <div className="flex justify-center pt-3 pb-1 sm:hidden shrink-0">
+              <div className="w-10 h-1 rounded-full bg-gray-200" />
+            </div>
 
             {/* Header modal */}
-            <div className="p-5 border-b border-gray-100 flex items-center justify-between sticky top-0 bg-white z-10">
+            <div className="p-5 border-b border-gray-100 flex items-center justify-between sticky top-0 bg-white z-10 shrink-0">
               <h3 className="font-bold text-beauty-text">
                 {editingId ? `Editar especialista` : 'Nueva Especialista'}
               </h3>
@@ -587,7 +592,7 @@ export default function EspecialistasView() {
               </button>
             </div>
 
-            <div className="p-5 space-y-5">
+            <div className="p-5 space-y-5 overflow-y-auto flex-1">
               {/* Nombre */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Nombre *</label>
