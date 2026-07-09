@@ -144,7 +144,40 @@ function buildHorariosMenu(slots: AvailableSlot[], fDisplay: string): string {
   return `🕒 *HORARIOS DISPONIBLES*\n📅 ${fDisplay}\n\n${items}\n\n_Escribe el número del horario que prefieres._`
 }
 
-// ── Estado en Supabase ────────────────────────────────────────────────────────
+// ── Helpers de pausa del bot ──────────────────────────────────────────────────
+
+const DEFAULT_PAUSA_MINUTOS = 20
+
+/**
+ * Verifica si el bot está pausado para un teléfono.
+ * Limpia automáticamente las pausas expiradas.
+ */
+async function isBotPausado(telefono: string, supabase: Supabase): Promise<boolean> {
+  const { data } = await supabase
+    .from('bot_pausas')
+    .select('pausado_hasta')
+    .eq('telefono', telefono)
+    .maybeSingle()
+
+  if (!data) return false
+  if (new Date(data.pausado_hasta) > new Date()) return true
+
+  // Pausa expirada — limpiar
+  await supabase.from('bot_pausas').delete().eq('telefono', telefono)
+  return false
+}
+
+/**
+ * Activa o renueva la pausa del bot para un teléfono.
+ * Cada llamada reinicia el temporizador a DEFAULT_PAUSA_MINUTOS.
+ */
+async function pausarBot(telefono: string, supabase: Supabase): Promise<void> {
+  const pausado_hasta = new Date(Date.now() + DEFAULT_PAUSA_MINUTOS * 60 * 1000).toISOString()
+  await supabase.from('bot_pausas').upsert(
+    { telefono, pausado_hasta, pausado_por: 'admin_whatsapp' },
+    { onConflict: 'telefono' }
+  )
+}
 
 async function getConv(telefono: string, supabase: Supabase): Promise<ConvRow | null> {
   await supabase.from('conversaciones_bot').delete()
@@ -172,10 +205,33 @@ export async function POST(request: NextRequest) {
     const message  = body.data?.message
     const from     = body.data?.key?.remoteJid?.replace('@s.whatsapp.net', '')
     const isFromMe = body.data?.key?.fromMe
-    if (!from || isFromMe || !message) return NextResponse.json({ ok: true })
+    if (!from || !message) return NextResponse.json({ ok: true })
 
     const remoteJid: string = body.data?.key?.remoteJid ?? ''
     if (remoteJid.endsWith('@g.us')) return NextResponse.json({ ok: true })
+
+    const supabase = await createAdminClient()
+
+    // ── Mensaje del ADMIN (fromMe) → pausar bot para ese chat ────────────────
+    if (isFromMe) {
+      await pausarBot(from, supabase)
+      console.info(`[Pausa] Bot pausado ${DEFAULT_PAUSA_MINUTOS}min para ${from}`)
+      return NextResponse.json({ ok: true })
+    }
+
+    // ── Mensaje del CLIENTE → verificar si el bot está pausado ───────────────
+    if (await isBotPausado(from, supabase)) {
+      const text = (message?.conversation || message?.extendedTextMessage?.text || '').trim()
+      if (text) {
+        try {
+          await supabase.from('mensajes_whatsapp').insert({
+            telefono: from, mensaje: text, tipo: 'entrante', fecha: new Date().toISOString(),
+          })
+        } catch { /* no bloquear */ }
+      }
+      console.info(`[Pausa] Msg de ${from} ignorado — bot pausado (atención humana)`)
+      return NextResponse.json({ ok: true })
+    }
 
     const isAudio = !!message?.audioMessage || !!message?.pttMessage
     if (isAudio) {

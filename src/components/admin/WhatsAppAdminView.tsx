@@ -5,25 +5,22 @@ import { createClient } from '@/lib/supabase/client'
 import {
   MessageSquare, Phone, Send, RefreshCw, CheckCircle,
   Circle, Clock, Users, Zap, Settings, ChevronRight,
+  PauseCircle, PlayCircle, Bot,
 } from 'lucide-react'
 import { formatDate, formatTime } from '@/lib/utils'
 import toast from 'react-hot-toast'
 
 interface Mensaje {
-  id: string
-  telefono: string
-  mensaje: string
-  fecha: string
-  tipo: 'entrante' | 'saliente' | 'sistema'
+  id: string; telefono: string; mensaje: string
+  fecha: string; tipo: 'entrante' | 'saliente' | 'sistema'
   cliente?: { nombre: string }
 }
-
 interface ConvGroup {
-  telefono: string
-  nombre: string
-  mensajes: Mensaje[]
-  ultimo: string
-  noLeidos: number
+  telefono: string; nombre: string; mensajes: Mensaje[]
+  ultimo: string; noLeidos: number
+}
+interface PausaInfo {
+  pausado: boolean; pausado_hasta?: string; minutos_restantes?: number
 }
 
 const FLUJO_STEPS = [
@@ -47,6 +44,9 @@ export default function WhatsAppAdminView() {
   const [sending, setSending] = useState(false)
   const [webhookUrl, setWebhookUrl] = useState('')
   const [instanceStatus, setInstanceStatus] = useState<'checking' | 'connected' | 'disconnected'>('checking')
+  const [pausas, setPausas] = useState<Record<string, PausaInfo>>({})
+  const [pausaMinutos, setPausaMinutos] = useState(20)
+  const [togglingPausa, setTogglingPausa] = useState(false)
 
   const supabase = createClient()
 
@@ -89,11 +89,9 @@ export default function WhatsAppAdminView() {
   useEffect(() => {
     loadMensajes()
     setWebhookUrl(`${window.location.origin}/api/whatsapp/webhook`)
-
-    // Check Evolution API status
     checkInstanceStatus()
+    loadPausas()
 
-    // Realtime
     const channel = supabase
       .channel('whatsapp-msgs')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'mensajes_whatsapp' }, () => {
@@ -101,7 +99,13 @@ export default function WhatsAppAdminView() {
       })
       .subscribe()
 
-    return () => { supabase.removeChannel(channel) }
+    // Refrescar estado de pausas cada 30s
+    const pausaInterval = setInterval(loadPausas, 30000)
+
+    return () => {
+      supabase.removeChannel(channel)
+      clearInterval(pausaInterval)
+    }
   }, [loadMensajes, supabase])
 
   async function checkInstanceStatus() {
@@ -111,6 +115,53 @@ export default function WhatsAppAdminView() {
       setInstanceStatus(data.connected ? 'connected' : 'disconnected')
     } catch {
       setInstanceStatus('disconnected')
+    }
+  }
+
+  async function loadPausas() {
+    try {
+      const res = await fetch('/api/whatsapp/pausa')
+      const data = await res.json()
+      if (Array.isArray(data)) {
+        const map: Record<string, PausaInfo> = {}
+        const ahora = new Date()
+        data.forEach((p: { telefono: string; pausado_hasta: string }) => {
+          const pausado_hasta = new Date(p.pausado_hasta)
+          if (pausado_hasta > ahora) {
+            map[p.telefono] = {
+              pausado: true,
+              pausado_hasta: p.pausado_hasta,
+              minutos_restantes: Math.ceil((pausado_hasta.getTime() - ahora.getTime()) / 60000),
+            }
+          }
+        })
+        setPausas(map)
+      }
+    } catch { /* silent */ }
+  }
+
+  async function togglePausa(telefono: string) {
+    setTogglingPausa(true)
+    const esPausado = pausas[telefono]?.pausado
+    try {
+      const res = await fetch('/api/whatsapp/pausa', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          telefono,
+          accion: esPausado ? 'reanudar' : 'pausar',
+          minutos: pausaMinutos,
+        }),
+      })
+      const data = await res.json()
+      if (data.ok) {
+        toast.success(esPausado ? '🟢 Bot reactivado' : `🟠 Bot pausado ${pausaMinutos} min`)
+        loadPausas()
+      }
+    } catch {
+      toast.error('Error al cambiar estado del bot')
+    } finally {
+      setTogglingPausa(false)
     }
   }
 
@@ -239,7 +290,7 @@ export default function WhatsAppAdminView() {
                   <p className="text-gray-300 text-xs mt-1">Los mensajes aparecerán aquí en tiempo real</p>
                 </div>
               ) : conversaciones.map(conv => (
-                <button
+                  <button
                   key={conv.telefono}
                   onClick={() => setSelectedConv(conv)}
                   className={`w-full p-3 text-left hover:bg-gray-50 transition-colors ${
@@ -247,10 +298,16 @@ export default function WhatsAppAdminView() {
                   }`}
                 >
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center shrink-0">
-                      <span className="text-green-700 font-bold text-sm">
-                        {conv.nombre.charAt(0).toUpperCase()}
-                      </span>
+                    <div className="relative">
+                      <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center shrink-0">
+                        <span className="text-green-700 font-bold text-sm">
+                          {conv.nombre.charAt(0).toUpperCase()}
+                        </span>
+                      </div>
+                      {/* Indicador de pausa */}
+                      {pausas[conv.telefono]?.pausado && (
+                        <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-orange-400 rounded-full border-2 border-white" title="Atención humana" />
+                      )}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between">
@@ -260,6 +317,11 @@ export default function WhatsAppAdminView() {
                       <p className="text-gray-400 text-xs truncate">
                         {conv.mensajes[0]?.mensaje?.slice(0, 40)}...
                       </p>
+                      {pausas[conv.telefono]?.pausado && (
+                        <p className="text-orange-500 text-[10px] font-medium">
+                          🟠 Atención humana · {pausas[conv.telefono].minutos_restantes}min restantes
+                        </p>
+                      )}
                     </div>
                     {conv.noLeidos > 0 && (
                       <span className="bg-green-500 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center shrink-0">
@@ -285,8 +347,36 @@ export default function WhatsAppAdminView() {
                     <p className="font-semibold text-beauty-text text-sm">{selectedConv.nombre}</p>
                     <p className="text-gray-400 text-xs">{selectedConv.telefono}</p>
                   </div>
+                  {/* Indicador de estado del bot */}
+                  {pausas[selectedConv.telefono]?.pausado ? (
+                    <span className="flex items-center gap-1.5 bg-orange-100 text-orange-700 text-xs font-semibold px-2.5 py-1.5 rounded-full">
+                      <span className="w-2 h-2 bg-orange-400 rounded-full" />
+                      Humano · {pausas[selectedConv.telefono].minutos_restantes}min
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-1.5 bg-green-100 text-green-700 text-xs font-semibold px-2.5 py-1.5 rounded-full">
+                      <Bot size={11} />
+                      Bot activo
+                    </span>
+                  )}
+                  {/* Botón pausar/reanudar */}
+                  <button
+                    onClick={() => togglePausa(selectedConv.telefono)}
+                    disabled={togglingPausa}
+                    title={pausas[selectedConv.telefono]?.pausado ? 'Reanudar bot' : 'Pausar bot'}
+                    className={`p-2 rounded-xl transition-colors ${
+                      pausas[selectedConv.telefono]?.pausado
+                        ? 'bg-green-100 hover:bg-green-200 text-green-700'
+                        : 'bg-orange-100 hover:bg-orange-200 text-orange-600'
+                    }`}
+                  >
+                    {pausas[selectedConv.telefono]?.pausado
+                      ? <PlayCircle size={16} />
+                      : <PauseCircle size={16} />
+                    }
+                  </button>
                   <a
-                    href={`https://wa.me/57${selectedConv.telefono}`}
+                    href={`https://wa.me/${selectedConv.telefono.replace(/\D/g,'').startsWith('57') ? '' : '57'}${selectedConv.telefono.replace(/\D/g,'')}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="bg-green-500 text-white text-xs px-3 py-1.5 rounded-full hover:bg-green-600 transition-colors flex items-center gap-1"
@@ -490,8 +580,27 @@ export default function WhatsAppAdminView() {
               </div>
 
               <div className="bg-beauty-rosa-claro border border-beauty-primary rounded-xl p-4">
-                <p className="text-sm font-semibold text-beauty-text mb-2">Estado del bot</p>
-                <div className="flex items-center gap-2">
+                <p className="text-sm font-semibold text-beauty-text mb-3">Pausa automática del bot</p>
+                <div className="flex items-center gap-3 mb-3">
+                  <label className="text-xs text-gray-600 font-medium">Tiempo de pausa:</label>
+                  <div className="flex items-center gap-2">
+                    {[5, 10, 15, 20, 30, 60].map(m => (
+                      <button key={m} onClick={() => setPausaMinutos(m)}
+                        className={`text-xs px-2.5 py-1 rounded-full font-semibold transition-colors ${
+                          pausaMinutos === m ? 'bg-beauty-primary text-white' : 'bg-white text-gray-600 hover:bg-beauty-primary/20'
+                        }`}>
+                        {m}min
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <p className="text-xs text-gray-500">
+                  Cuando el admin responda desde WhatsApp o el panel, el bot se pausa automáticamente por {pausaMinutos} minutos.
+                </p>
+              </div>
+
+              <div className="bg-beauty-rosa-claro border border-beauty-primary rounded-xl p-4">
+                <p className="text-sm font-semibold text-beauty-text mb-2">Estado del bot</p>                <div className="flex items-center gap-2">
                   {instanceStatus === 'connected' ? (
                     <>
                       <span className="w-3 h-3 bg-green-500 rounded-full animate-pulse" />
