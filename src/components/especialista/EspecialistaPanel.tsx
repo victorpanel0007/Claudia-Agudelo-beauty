@@ -78,6 +78,7 @@ export default function EspecialistaPanel({ userEmail, userName, especialistaId 
 }) {
   const [tab, setTab] = useState<Tab>('agenda')
   const [citas, setCitas] = useState<Cita[]>([])
+  const [extrasHoy, setExtrasHoy] = useState<Cita[]>([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [espId, setEspId] = useState<string | null>(especialistaId ?? null)
@@ -105,14 +106,29 @@ export default function EspecialistaPanel({ userEmail, userName, especialistaId 
     if (!silent) setLoading(true); else setRefreshing(true)
     const hoyStr = todayStr()
     const hoy = new Date(`${hoyStr}T00:00:00-05:00`)
-    const { data } = await supabase
-      .from('citas')
-      .select('*, cliente:clientes(nombre), servicio:servicios(nombre,duracion_minutos,precio,precio_desde,tipo_precio), especialista:especialistas(nombre)')
-      .eq('especialista_id', espId)
-      .in('estado', ['confirmada', 'pendiente', 'en_proceso'])
-      .gte('fecha_inicio', hoy.toISOString())
-      .order('fecha_inicio', { ascending: true })
+    const manana = new Date(`${hoyStr}T23:59:59-05:00`)
+
+    const [{ data }, { data: extras }] = await Promise.all([
+      supabase
+        .from('citas')
+        .select('*, cliente:clientes(nombre), servicio:servicios(nombre,duracion_minutos,precio,precio_desde,tipo_precio), especialista:especialistas(nombre)')
+        .eq('especialista_id', espId)
+        .in('estado', ['confirmada', 'pendiente', 'en_proceso'])
+        .gte('fecha_inicio', hoy.toISOString())
+        .order('fecha_inicio', { ascending: true }),
+      supabase
+        .from('citas')
+        .select('*, cliente:clientes(nombre), servicio:servicios(nombre,duracion_minutos,precio,precio_desde,tipo_precio), especialista:especialistas(nombre)')
+        .eq('especialista_id', espId)
+        .eq('canal', 'extra')
+        .eq('estado', 'completada')
+        .gte('fecha_inicio', hoy.toISOString())
+        .lte('fecha_inicio', manana.toISOString())
+        .order('fecha_inicio', { ascending: true }),
+    ])
+
     setCitas((data as Cita[]) || [])
+    setExtrasHoy((extras as Cita[]) || [])
     setLoading(false); setRefreshing(false)
   }, [supabase, espId])
 
@@ -202,7 +218,7 @@ export default function EspecialistaPanel({ userEmail, userName, especialistaId 
 
       {/* ── Content ────────────────────────────────────────────────────── */}
       <div className="max-w-2xl mx-auto px-4 py-6">
-        {tab === 'agenda'     && <AgendaTab citas={citas} citasHoy={citasHoy} grupos={grupos} loading={loading} onIniciar={marcarEnProceso} onCompletar={c => setCitaACompletar(c)} />}
+        {tab === 'agenda'     && <AgendaTab citas={citas} citasHoy={citasHoy} grupos={grupos} extrasHoy={extrasHoy} loading={loading} onIniciar={marcarEnProceso} onCompletar={c => setCitaACompletar(c)} />}
         {tab === 'nueva-cita' && <NuevaCitaTab espId={espId} onSaved={() => { loadCitas(true); setTab('agenda') }} />}
         {tab === 'comisiones' && <ComisionesTab espId={espId} />}
       </div>
@@ -222,10 +238,11 @@ export default function EspecialistaPanel({ userEmail, userName, especialistaId 
 
 // ── AgendaTab ──────────────────────────────────────────────────────────────
 
-function AgendaTab({ citas, citasHoy, grupos, loading, onIniciar, onCompletar }: {
+function AgendaTab({ citas, citasHoy, grupos, extrasHoy, loading, onIniciar, onCompletar }: {
   citas: Cita[]
   citasHoy: Cita[]
   grupos: Record<string, Cita[]>
+  extrasHoy: Cita[]
   loading: boolean
   onIniciar: (id: string) => void
   onCompletar: (cita: Cita) => void
@@ -249,6 +266,36 @@ function AgendaTab({ citas, citasHoy, grupos, loading, onIniciar, onCompletar }:
           <p className="text-2xl font-bold text-beauty-text-dark">{citas.length}</p>
         </div>
       </div>
+
+      {/* Servicios extras de hoy */}
+      {extrasHoy.length > 0 && (
+        <div className="bg-amber-50 border border-amber-200 rounded-2xl overflow-hidden">
+          <div className="flex items-center gap-2 px-4 py-3 border-b border-amber-100">
+            <span className="text-base">⭐</span>
+            <h3 className="font-semibold text-amber-800 text-sm">Servicios Extra de Hoy</h3>
+            <span className="text-xs text-amber-600 bg-amber-100 px-1.5 py-0.5 rounded-full ml-auto">{extrasHoy.length}</span>
+          </div>
+          <div className="divide-y divide-amber-100">
+            {extrasHoy.map(extra => (
+              <div key={extra.id} className="flex items-center gap-3 px-4 py-3">
+                <div className="w-9 h-9 rounded-full bg-amber-100 flex items-center justify-center shrink-0 text-sm font-bold text-amber-700">
+                  {(extra.cliente?.nombre || 'C').charAt(0).toUpperCase()}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-gray-800 text-sm truncate">{extra.servicio?.nombre ?? 'Servicio extra'}</p>
+                  <p className="text-xs text-gray-500 truncate">{extra.cliente?.nombre ?? '—'}</p>
+                </div>
+                <div className="text-right shrink-0">
+                  {extra.valor_final ? (
+                    <p className="font-bold text-amber-700 text-sm">{formatCurrency(extra.valor_final)}</p>
+                  ) : null}
+                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 border border-purple-200">Completada</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Lista */}
       {loading ? (
