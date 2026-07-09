@@ -182,6 +182,38 @@ function DetailPanel({ cita, onClose, onCompletar, onCancelar, onEliminar, onIni
   onRevertir: (id: string) => void
 }) {
   const st = STATUS_CONFIG[cita.estado] ?? STATUS_CONFIG.pendiente
+  const [editandoServicio, setEditandoServicio] = useState(false)
+  const [servicios, setServicios] = useState<Array<{id:string;nombre:string}>>([])
+  const [servicioIdEdit, setServicioIdEdit] = useState(cita.servicio_id ?? '')
+  const [savingServicio, setSavingServicio] = useState(false)
+
+  async function cargarServicios() {
+    const res = await fetch('/api/servicios?activo=true')
+    const data = await res.json()
+    if (Array.isArray(data)) setServicios(data.map((s:{id:string;nombre:string}) => ({id:s.id, nombre:s.nombre})))
+    setEditandoServicio(true)
+  }
+
+  async function guardarServicio() {
+    if (!servicioIdEdit) return
+    setSavingServicio(true)
+    try {
+      const res = await fetch(`/api/citas/${cita.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ servicio_id: servicioIdEdit }),
+      })
+      if (res.ok) {
+        toast.success('Servicio actualizado ✓')
+        setEditandoServicio(false)
+        onClose()
+      } else {
+        const j = await res.json()
+        toast.error(`Error: ${j.error}`)
+      }
+    } catch { toast.error('Error de conexión') }
+    setSavingServicio(false)
+  }
 
   return (
     <div className="w-72 bg-white border-l border-gray-100 flex flex-col h-full overflow-y-auto shrink-0">
@@ -234,7 +266,41 @@ function DetailPanel({ cita, onClose, onCompletar, onCancelar, onEliminar, onIni
 
       {/* Info servicio */}
       <div className="p-4 border-b border-gray-100 space-y-3">
-        <InfoRow icon="✂️" label={cita.servicio?.nombre ?? '—'} />
+        {/* Servicio — editable en confirmada y completada */}
+        {(cita.estado === 'confirmada' || cita.estado === 'completada') && !editandoServicio ? (
+          <div className="flex items-center gap-2">
+            <span className="text-sm">✂️</span>
+            <span className="text-xs text-gray-600 flex-1">{cita.servicio?.nombre ?? '—'}</span>
+            <button onClick={cargarServicios}
+              className="text-[10px] font-semibold text-[#8B1E3F] hover:bg-[#FAD6E0] px-2 py-1 rounded-lg transition-colors">
+              Cambiar
+            </button>
+          </div>
+        ) : (cita.estado === 'confirmada' || cita.estado === 'completada') && editandoServicio ? (
+          <div className="space-y-2">
+            <div className="flex items-center gap-1">
+              <span className="text-sm">✂️</span>
+              <span className="text-[10px] font-semibold text-gray-500">Cambiar servicio</span>
+            </div>
+            <select value={servicioIdEdit} onChange={e => setServicioIdEdit(e.target.value)}
+              className="w-full border border-gray-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-[#EFA1B5]">
+              <option value="">— Selecciona —</option>
+              {servicios.map(s => <option key={s.id} value={s.id}>{s.nombre}</option>)}
+            </select>
+            <div className="flex gap-2">
+              <button onClick={() => setEditandoServicio(false)}
+                className="flex-1 py-1.5 rounded-xl border border-gray-200 text-xs text-gray-500 hover:bg-gray-50 transition-colors">
+                Cancelar
+              </button>
+              <button onClick={guardarServicio} disabled={savingServicio || !servicioIdEdit}
+                className="flex-1 py-1.5 rounded-xl bg-[#EFA1B5] text-white text-xs font-semibold disabled:opacity-50 transition-colors">
+                {savingServicio ? 'Guardando...' : 'Guardar'}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <InfoRow icon="✂️" label={cita.servicio?.nombre ?? '—'} />
+        )}
         <InfoRow icon="⏱️" label={`${cita.servicio?.duracion_minutos ?? 0} min`} />
         <InfoRow icon="👩" label={cita.especialista?.nombre ?? '—'} />
         <InfoRow icon="📅" label={formatDate(cita.fecha_inicio)} />
