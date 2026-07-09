@@ -1463,7 +1463,7 @@ export default function AgendaView() {
   const filtroLabel = filtroEsp === 'todas' ? 'general' : filtroEsp.split(' ')[0]
 
   return (
-    <div className="flex flex-col h-full animate-fade-in">
+    <div className="flex flex-col gap-3 animate-fade-in pb-6">
       {/* ── Title bar ──────────────────────────────────────────────── */}
       <div className="flex items-center justify-between mb-2">
         <div>
@@ -1530,7 +1530,7 @@ export default function AgendaView() {
       </div>
 
       {/* ── MOBILE LIST VIEW ───────────────────────────────────────── */}
-      <div className="sm:hidden flex flex-col bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden" style={{minHeight:'520px'}}>
+      <div className="sm:hidden flex flex-col flex-1 bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden min-h-0" style={{minHeight:'600px'}}>
         {/* Mobile toolbar */}
         <div className="flex items-center justify-between px-3 py-2.5 border-b border-gray-100 gap-2">
           <div className="flex items-center gap-1">
@@ -1615,7 +1615,7 @@ export default function AgendaView() {
       </div>
 
       {/* ── DESKTOP CALENDAR + DETAIL PANEL ───────────────────────── */}
-      <div className="hidden sm:flex bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden" style={{minHeight:'680px'}}>
+      <div className="hidden sm:flex flex-1 bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden min-h-0" style={{minHeight:'720px'}}>
 
         {/* Calendar column */}
         <div className="flex flex-col flex-1 min-w-0">
