@@ -172,13 +172,14 @@ function CitaCard({ cita, onClick }: { cita: Cita; onClick: () => void }) {
 }
 
 // ── DetailPanel ──────────────────────────────────────────────────────────────
-function DetailPanel({ cita, onClose, onCompletar, onCancelar, onEliminar, onIniciar }: {
+function DetailPanel({ cita, onClose, onCompletar, onCancelar, onEliminar, onIniciar, onRevertir }: {
   cita: Cita
   onClose: () => void
   onCompletar: (cita: Cita) => void
   onCancelar: (id: string) => void
   onEliminar: (id: string) => void
   onIniciar: (id: string) => void
+  onRevertir: (id: string) => void
 }) {
   const st = STATUS_CONFIG[cita.estado] ?? STATUS_CONFIG.pendiente
 
@@ -299,6 +300,20 @@ function DetailPanel({ cita, onClose, onCompletar, onCancelar, onEliminar, onIni
               Completar
             </button>
           </div>
+        </div>
+      )}
+
+      {/* Editar cita completada */}
+      {cita.estado === 'completada' && (
+        <div className="p-4 mt-auto space-y-2">
+          <button onClick={() => onCompletar(cita)}
+            className="w-full text-xs font-semibold py-2.5 rounded-xl bg-purple-500 text-white hover:bg-purple-600 transition-colors">
+            ✏️ Editar valor cobrado
+          </button>
+          <button onClick={() => onRevertir(cita.id)}
+            className="w-full text-xs font-semibold py-2 rounded-xl border border-amber-200 text-amber-600 hover:bg-amber-50 transition-colors">
+            ↩ Revertir a confirmada
+          </button>
         </div>
       )}
       {/* Eliminar permanentemente */}
@@ -967,6 +982,27 @@ export default function AgendaView() {
     }
   }
 
+  async function revertirCita(id: string) {
+    if (!confirm('¿Revertir esta cita a "Confirmada"? Se perderá el valor cobrado registrado.')) return
+    try {
+      const res = await fetch(`/api/citas/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ estado: 'confirmada', valor_final: null, metodo_pago: null }),
+      })
+      if (!res.ok) {
+        const json = await res.json()
+        toast.error(`Error al revertir: ${json.error ?? res.status}`)
+      } else {
+        toast.success('↩ Cita revertida a confirmada')
+        setSelectedCita(null)
+        loadCitas()
+      }
+    } catch {
+      toast.error('Error de conexión al revertir')
+    }
+  }
+
   async function eliminarCita(id: string) {
     if (!confirm('¿Eliminar esta cita permanentemente?')) return
     const { error } = await supabase.from('citas').delete().eq('id', id)
@@ -1360,6 +1396,7 @@ export default function AgendaView() {
               onCancelar={cancelarCita}
               onEliminar={eliminarCita}
               onIniciar={iniciarCita}
+              onRevertir={revertirCita}
             />
           </div>
         )}
@@ -1380,6 +1417,7 @@ export default function AgendaView() {
               onCancelar={cancelarCita}
               onEliminar={eliminarCita}
               onIniciar={iniciarCita}
+              onRevertir={revertirCita}
             />
           </div>
         </div>
