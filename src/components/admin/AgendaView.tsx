@@ -8,7 +8,7 @@ import { SERVICIOS_DATA } from '@/lib/services-data'
 import {
   Plus, X, Clock, ChevronLeft, ChevronRight,
   MessageCircle, Phone, Mail, Check, AlertCircle,
-  Search, Loader2, CheckCircle,
+  Search, Loader2, CheckCircle, Trash2,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import {
@@ -72,14 +72,14 @@ function citaTop(fecha: string): number {
     hour12: false,
   })
   const [h, m] = colombiaStr.split(':').map(Number)
-  return ((h - 8) * 60 + m) * (64 / 60)
+  return ((h - 8) * 60 + m) * (80 / 60)
 }
 
 function citaHeight(inicio: string, fin: string): number {
   const s = new Date(inicio)
   const e = new Date(fin)
   const mins = (e.getTime() - s.getTime()) / 60000
-  return Math.max(mins * (64 / 60), 40)
+  return Math.max(mins * (80 / 60), 48)
 }
 
 // Compare two dates as the same calendar day in Colombia timezone
@@ -1267,6 +1267,13 @@ export default function AgendaView() {
     const data = await res.json()
     if (Array.isArray(data)) setServiciosExtras(data)
   }, [currentDate])
+
+  async function eliminarServicioExtra(id: string) {
+    if (!confirm('¿Eliminar este servicio extra?')) return
+    const res = await fetch(`/api/servicios-extras?id=${id}`, { method: 'DELETE' })
+    if (res.ok) { toast.success('Servicio extra eliminado'); loadServiciosExtras() }
+    else { const j = await res.json(); toast.error(`Error: ${j.error}`) }
+  }
   // Mobile: show list instead of timeline grid
   const [mobileListMode, setMobileListMode] = useState(true)
   // Filtro por especialista (null = todas)
@@ -1523,7 +1530,7 @@ export default function AgendaView() {
       </div>
 
       {/* ── MOBILE LIST VIEW ───────────────────────────────────────── */}
-      <div className="sm:hidden flex flex-col flex-1 bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden min-h-0">
+      <div className="sm:hidden flex flex-col bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden" style={{minHeight:'520px'}}>
         {/* Mobile toolbar */}
         <div className="flex items-center justify-between px-3 py-2.5 border-b border-gray-100 gap-2">
           <div className="flex items-center gap-1">
@@ -1608,7 +1615,7 @@ export default function AgendaView() {
       </div>
 
       {/* ── DESKTOP CALENDAR + DETAIL PANEL ───────────────────────── */}
-      <div className="hidden sm:flex flex-1 bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden min-h-0">
+      <div className="hidden sm:flex bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden" style={{minHeight:'680px'}}>
 
         {/* Calendar column */}
         <div className="flex flex-col flex-1 min-w-0">
@@ -1710,7 +1717,7 @@ export default function AgendaView() {
                   const ampm = h >= 12 ? 'PM' : 'AM'
                   const h12 = h > 12 ? h - 12 : h === 0 ? 12 : h
                   return (
-                    <div key={h} className="h-16 border-b border-gray-50 flex items-start justify-end pr-2 pt-1">
+                    <div key={h} className="h-20 border-b border-gray-50 flex items-start justify-end pr-2 pt-1">
                       <span className="text-[11px] text-gray-400">{h12}:00 {ampm}</span>
                     </div>
                   )
@@ -1738,7 +1745,7 @@ export default function AgendaView() {
                     </div>
                     <div className="relative">
                       {HOURS.map(h => (
-                        <div key={h} className="h-16 border-b border-gray-50" />
+                        <div key={h} className="h-20 border-b border-gray-50" />
                       ))}
                       {!loading && citasDia.map(cita => (
                         <CitaCard key={cita.id} cita={cita} onClick={() => setSelectedCita(cita)} />
@@ -1868,6 +1875,10 @@ export default function AgendaView() {
                   <span className="font-bold text-amber-700 text-sm shrink-0">
                     {formatCurrency(se.valor_final)}
                   </span>
+                  <button onClick={() => eliminarServicioExtra(se.id)}
+                    className="p-1.5 hover:bg-red-50 rounded-lg transition-colors shrink-0" title="Eliminar">
+                    <Trash2 size={14} className="text-red-400" />
+                  </button>
                 </div>
               ))}
             </div>
@@ -1877,3 +1888,4 @@ export default function AgendaView() {
     </div>
   )
 }
+
