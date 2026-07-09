@@ -1,6 +1,7 @@
 ﻿'use client'
 
 import { useEffect, useState, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import { createClient } from '@/lib/supabase/client'
 import type { Cliente } from '@/types/database'
 import { Search, User, Phone, Calendar, TrendingUp, Trash2, Edit, Save, X, Check } from 'lucide-react'
@@ -161,7 +162,7 @@ export default function ClientesView() {
       </div>
 
       {/* Modal detalle */}
-      {selected && (
+      {selected && typeof document !== 'undefined' && createPortal(
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/50">
           <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl w-full sm:max-w-md animate-slide-up">
             <div className="flex justify-center pt-3 pb-1 sm:hidden">
@@ -253,7 +254,7 @@ export default function ClientesView() {
             )}
           </div>
         </div>
-      )}
+      , document.body)}
     </div>
   )
 }
