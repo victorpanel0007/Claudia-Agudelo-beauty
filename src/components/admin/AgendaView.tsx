@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { createClient } from '@/lib/supabase/client'
 import type { Cita, Cliente, Especialista, Servicio } from '@/types/database'
 import { formatCurrency, formatTime, formatDate } from '@/lib/utils'
@@ -484,7 +485,7 @@ function CompletarModal({ cita, onClose, onConfirm }: {
     setLoading(false)
   }
 
-  return typeof document !== "undefined" ? createPortal(
+  const modal = (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/50 backdrop-blur-sm">
       <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl w-full sm:max-w-sm flex flex-col max-h-[92vh] animate-slide-up">
         {/* Handle bar móvil */}
@@ -562,8 +563,9 @@ function CompletarModal({ cita, onClose, onConfirm }: {
             </button>
           </div>
         </div>
+        </div>
 
-        <div className="flex gap-2 p-5 border-t border-gray-100 shrink-0">
+        <div className="flex gap-2 px-5 pb-5 pt-3 border-t border-gray-100 shrink-0">
           <button
             onClick={onClose}
             className="flex-1 text-sm font-semibold py-2.5 rounded-xl border-2 border-beauty-primary/30 text-beauty-text-muted hover:bg-beauty-bg transition-colors"
@@ -581,7 +583,8 @@ function CompletarModal({ cita, onClose, onConfirm }: {
         </div>
       </div>
     </div>
-  , document.body) : null
+  )
+  return typeof document !== 'undefined' ? createPortal(modal, document.body) : null
 }
 
 // ── NuevaCitaModal ───────────────────────────────────────────────────────────
@@ -736,7 +739,7 @@ function NuevaCitaModal({ onClose, onSaved }: { onClose: () => void; onSaved: ()
     }
   }
 
-  return typeof document !== "undefined" ? createPortal(
+  const modal = (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/50 backdrop-blur-sm">
       <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl w-full sm:max-w-lg flex flex-col max-h-[92vh] animate-slide-up">
         {/* Handle bar móvil */}
@@ -1019,7 +1022,8 @@ function NuevaCitaModal({ onClose, onSaved }: { onClose: () => void; onSaved: ()
         </div>
       </div>
     </div>
-  , document.body) : null
+  )
+  return typeof document !== 'undefined' ? createPortal(modal, document.body) : null
 }
 
 // ── ServicioExtraModal ───────────────────────────────────────────────────────
@@ -1117,7 +1121,7 @@ function ServicioExtraModal({ onClose, onSaved, fecha }: {
 
   const inp = 'w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-beauty-primary focus:ring-2 focus:ring-beauty-primary/20'
 
-  return typeof document !== "undefined" ? createPortal(
+  const modal = (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/50 backdrop-blur-sm">
       <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl w-full sm:max-w-md flex flex-col max-h-[92vh] animate-slide-up">
         {/* Handle bar móvil */}
@@ -1252,7 +1256,8 @@ function ServicioExtraModal({ onClose, onSaved, fecha }: {
         </div>
       </div>
     </div>
-  , document.body) : null
+  )
+  return typeof document !== 'undefined' ? createPortal(modal, document.body) : null
 }
 
 // ── Main AgendaView ──────────────────────────────────────────────────────────
