@@ -1263,6 +1263,7 @@ export default function AgendaView() {
 
   const loadServiciosExtras = useCallback(async () => {
     const fechaStr = currentDate.toLocaleDateString('en-CA', { timeZone: 'America/Bogota' })
+    // Query ligera — solo los campos necesarios para la vista
     const res = await fetch(`/api/servicios-extras?fecha=${fechaStr}`)
     const data = await res.json()
     if (Array.isArray(data)) setServiciosExtras(data)
@@ -1270,9 +1271,17 @@ export default function AgendaView() {
 
   async function eliminarServicioExtra(id: string) {
     if (!confirm('¿Eliminar este servicio extra?')) return
+    // Optimistic: quitar de la lista inmediatamente
+    setServiciosExtras(prev => prev.filter(se => se.id !== id))
     const res = await fetch(`/api/servicios-extras?id=${id}`, { method: 'DELETE' })
-    if (res.ok) { toast.success('Servicio extra eliminado'); loadServiciosExtras() }
-    else { const j = await res.json(); toast.error(`Error: ${j.error}`) }
+    if (res.ok) {
+      toast.success('Servicio extra eliminado')
+    } else {
+      // Revertir si falla
+      const j = await res.json()
+      toast.error(`Error: ${j.error}`)
+      loadServiciosExtras()
+    }
   }
   // Mobile: show list instead of timeline grid
   const [mobileListMode, setMobileListMode] = useState(true)
@@ -1839,7 +1848,7 @@ export default function AgendaView() {
       {showServicioExtra && (
         <ServicioExtraModal
           onClose={() => setShowServicioExtra(false)}
-          onSaved={() => { loadServiciosExtras(); loadCitas() }}
+          onSaved={() => { loadServiciosExtras() }}
           fecha={currentDate.toLocaleDateString('en-CA', { timeZone: 'America/Bogota' })}
         />
       )}
