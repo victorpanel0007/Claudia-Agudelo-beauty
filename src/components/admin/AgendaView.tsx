@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
@@ -1014,6 +1014,235 @@ function NuevaCitaModal({ onClose, onSaved }: { onClose: () => void; onSaved: ()
   )
 }
 
+// ── ServicioExtraModal ───────────────────────────────────────────────────────
+function ServicioExtraModal({ onClose, onSaved, fecha }: {
+  onClose: () => void
+  onSaved: () => void
+  fecha: string
+}) {
+  const supabase = createClient()
+  const [servicios, setServicios] = useState<Array<{id:string;nombre:string;precio?:number|null;precio_desde?:number|null;tipo_precio:string}>>([])
+  const [especialistas, setEspecialistas] = useState<Array<{id:string;nombre:string}>>([])
+  const [clientes, setClientes] = useState<Array<{id:string;nombre:string;telefono:string}>>([])
+  const [saving, setSaving] = useState(false)
+  const [clienteSearch, setClienteSearch] = useState('')
+  const [svcSearch, setSvcSearch] = useState('')
+  const [showSvcDrop, setShowSvcDrop] = useState(false)
+  const [showClienteDrop, setShowClienteDrop] = useState(false)
+  const svcRef = useRef<HTMLDivElement>(null)
+  const clienteRef = useRef<HTMLDivElement>(null)
+
+  const [form, setForm] = useState({
+    servicio_id: '', servicio_nombre: '', valor_final: '',
+    especialista_id: '', especialista_nombre: '',
+    es_nuevo_cliente: false,
+    cliente_id: '', cliente_nombre: '', cliente_telefono: '',
+    fecha,
+  })
+
+  useEffect(() => {
+    Promise.all([
+      fetch('/api/servicios?activo=true').then(r=>r.json()),
+      supabase.from('especialistas').select('id,nombre').eq('activo',true).order('nombre'),
+      supabase.from('clientes').select('id,nombre,telefono').order('nombre'),
+    ]).then(([svcs, esps, cls]) => {
+      if (Array.isArray(svcs)) setServicios(svcs)
+      if (esps.data) setEspecialistas(esps.data as typeof especialistas)
+      if (cls.data) setClientes(cls.data as typeof clientes)
+    })
+    function handleClick(e: MouseEvent) {
+      if (svcRef.current && !svcRef.current.contains(e.target as Node)) setShowSvcDrop(false)
+      if (clienteRef.current && !clienteRef.current.contains(e.target as Node)) setShowClienteDrop(false)
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [supabase])
+
+  function selectServicio(s: typeof servicios[0]) {
+    let valor = ''
+    if (s.tipo_precio === 'fijo' && s.precio) valor = String(s.precio)
+    else if (s.tipo_precio === 'desde' && s.precio_desde) valor = String(s.precio_desde)
+    setForm(f => ({ ...f, servicio_id: s.id, servicio_nombre: s.nombre, valor_final: valor }))
+    setSvcSearch(''); setShowSvcDrop(false)
+  }
+
+  function selectCliente(c: typeof clientes[0]) {
+    setForm(f => ({ ...f, cliente_id: c.id, cliente_nombre: c.nombre, cliente_telefono: c.telefono }))
+    setClienteSearch(c.nombre); setShowClienteDrop(false)
+  }
+
+  async function guardar() {
+    if (!form.servicio_nombre) { toast.error('Selecciona un servicio'); return }
+    if (!form.cliente_nombre.trim()) { toast.error('Ingresa el cliente'); return }
+    if (!form.fecha) { toast.error('Selecciona la fecha'); return }
+    setSaving(true)
+    try {
+      const res = await fetch('/api/servicios-extras', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fecha: form.fecha,
+          servicio_id: form.servicio_id || null,
+          servicio_nombre: form.servicio_nombre,
+          especialista_id: form.especialista_id || null,
+          especialista_nombre: form.especialista_nombre || null,
+          cliente_id: form.es_nuevo_cliente ? null : (form.cliente_id || null),
+          cliente_nombre: form.cliente_nombre.trim(),
+          cliente_telefono: form.cliente_telefono.trim() || null,
+          valor_final: parseFloat(form.valor_final) || 0,
+          es_nuevo_cliente: form.es_nuevo_cliente,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) { toast.error(`Error: ${data.error}`); return }
+      toast.success('⭐ Servicio extra registrado')
+      onSaved(); onClose()
+    } catch { toast.error('Error de conexión') }
+    finally { setSaving(false) }
+  }
+
+  const svcsFiltrados = servicios.filter(s => s.nombre.toLowerCase().includes(svcSearch.toLowerCase())).slice(0, 15)
+  const clientesFiltrados = clientes.filter(c =>
+    c.nombre.toLowerCase().includes(clienteSearch.toLowerCase()) ||
+    c.telefono.includes(clienteSearch)
+  ).slice(0, 6)
+
+  const inp = 'w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-beauty-primary focus:ring-2 focus:ring-beauty-primary/20'
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-slide-up">
+        <div className="flex items-center justify-between p-5 border-b border-gray-100 bg-amber-50">
+          <div>
+            <h3 className="font-bold text-gray-800 flex items-center gap-2">⭐ Servicio Extra</h3>
+            <p className="text-xs text-gray-400 mt-0.5">Se registra como completado sin bloquear agenda</p>
+          </div>
+          <button onClick={onClose} className="p-2 hover:bg-amber-100 rounded-xl"><X size={18} /></button>
+        </div>
+
+        <div className="p-5 space-y-4 overflow-y-auto max-h-[70vh]">
+          {/* Servicio con buscador */}
+          <div>
+            <label className="block text-xs font-semibold text-gray-600 mb-1.5">Servicio *</label>
+            {form.servicio_nombre ? (
+              <div className="flex items-center gap-2 border border-beauty-primary/50 rounded-xl px-3 py-2.5 bg-beauty-primary/5">
+                <span className="text-xs text-beauty-primary font-medium flex-1 truncate">{form.servicio_nombre}</span>
+                <button onClick={() => setForm(f=>({...f,servicio_id:'',servicio_nombre:'',valor_final:''}))}><X size={13} className="text-beauty-primary" /></button>
+              </div>
+            ) : (
+              <div ref={svcRef} className="relative">
+                <div className="flex items-center gap-2 border border-gray-200 rounded-xl px-3 py-2.5 focus-within:border-beauty-primary">
+                  <Search size={13} className="text-gray-400 shrink-0" />
+                  <input value={svcSearch} onChange={e=>{setSvcSearch(e.target.value);setShowSvcDrop(true)}} onFocus={()=>setShowSvcDrop(true)}
+                    placeholder="Buscar servicio..." className="flex-1 text-sm outline-none" />
+                </div>
+                {showSvcDrop && (
+                  <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg z-20 max-h-48 overflow-y-auto">
+                    {svcsFiltrados.map(s => (
+                      <button key={s.id} onMouseDown={()=>selectServicio(s)}
+                        className="w-full text-left px-3 py-2.5 hover:bg-beauty-bg text-sm border-b border-gray-50 last:border-0 flex justify-between">
+                        <span className="truncate">{s.nombre}</span>
+                        <span className="text-gray-400 text-xs shrink-0 ml-2">
+                          {s.tipo_precio==='fijo'&&s.precio ? `$${Number(s.precio).toLocaleString('es-CO')}` :
+                           s.tipo_precio==='desde'&&s.precio_desde ? `Desde $${Number(s.precio_desde).toLocaleString('es-CO')}` : '—'}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Valor */}
+          <div>
+            <label className="block text-xs font-semibold text-gray-600 mb-1.5">Valor cobrado (COP)</label>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
+              <input type="number" min="0" value={form.valor_final} onChange={e=>setForm(f=>({...f,valor_final:e.target.value}))}
+                placeholder="0" className={`${inp} pl-7 text-lg font-bold`} />
+            </div>
+          </div>
+
+          {/* Especialista */}
+          <div>
+            <label className="block text-xs font-semibold text-gray-600 mb-1.5">Especialista</label>
+            <select value={form.especialista_id} onChange={e=>{
+              const esp = especialistas.find(x=>x.id===e.target.value)
+              setForm(f=>({...f,especialista_id:e.target.value,especialista_nombre:esp?.nombre??''}))
+            }} className={inp}>
+              <option value="">Sin asignar</option>
+              {especialistas.map(e=><option key={e.id} value={e.id}>{e.nombre}</option>)}
+            </select>
+          </div>
+
+          {/* Fecha */}
+          <div>
+            <label className="block text-xs font-semibold text-gray-600 mb-1.5">Fecha *</label>
+            <input type="date" value={form.fecha} onChange={e=>setForm(f=>({...f,fecha:e.target.value}))} className={inp} />
+          </div>
+
+          {/* Tipo de cliente */}
+          <div>
+            <label className="block text-xs font-semibold text-gray-600 mb-1.5">Cliente *</label>
+            <div className="flex gap-2 mb-2">
+              {[{v:false,l:'Cliente existente'},{v:true,l:'Cliente nuevo'}].map(opt=>(
+                <button key={String(opt.v)} onClick={()=>setForm(f=>({...f,es_nuevo_cliente:opt.v,cliente_id:'',cliente_nombre:'',cliente_telefono:''}))}
+                  className={`flex-1 text-xs py-2 rounded-xl border font-medium transition-colors ${
+                    form.es_nuevo_cliente===opt.v ? 'border-beauty-primary bg-beauty-primary/10 text-beauty-primary' : 'border-gray-200 text-gray-500'
+                  }`}>{opt.l}</button>
+              ))}
+            </div>
+
+            {form.es_nuevo_cliente ? (
+              <div className="space-y-2">
+                <input value={form.cliente_nombre} onChange={e=>setForm(f=>({...f,cliente_nombre:e.target.value}))}
+                  placeholder="Nombre completo *" className={inp} />
+                <input value={form.cliente_telefono} onChange={e=>setForm(f=>({...f,cliente_telefono:e.target.value}))}
+                  placeholder="WhatsApp (ej: 3001234567)" className={inp} />
+              </div>
+            ) : (
+              <div ref={clienteRef} className="relative">
+                <div className="flex items-center gap-2 border border-gray-200 rounded-xl px-3 py-2.5 focus-within:border-beauty-primary">
+                  <Search size={13} className="text-gray-400 shrink-0" />
+                  <input value={clienteSearch} onChange={e=>{setClienteSearch(e.target.value);setShowClienteDrop(true);setForm(f=>({...f,cliente_id:'',cliente_nombre:''}))}}
+                    onFocus={()=>setShowClienteDrop(true)} placeholder="Buscar por nombre o teléfono..." className="flex-1 text-sm outline-none" />
+                </div>
+                {form.cliente_nombre && (
+                  <div className="mt-1 flex items-center gap-2 bg-beauty-primary/10 border border-beauty-primary/30 rounded-xl px-3 py-2">
+                    <Check size={13} className="text-beauty-primary" />
+                    <span className="text-xs text-beauty-primary font-medium">{form.cliente_nombre}</span>
+                    <button onClick={()=>{setForm(f=>({...f,cliente_id:'',cliente_nombre:''}));setClienteSearch('')}} className="ml-auto"><X size={12} className="text-beauty-primary" /></button>
+                  </div>
+                )}
+                {showClienteDrop && clienteSearch && (
+                  <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg z-20 overflow-hidden">
+                    {clientesFiltrados.map(c=>(
+                      <button key={c.id} onMouseDown={()=>selectCliente(c)}
+                        className="w-full text-left px-3 py-2.5 hover:bg-beauty-bg text-xs flex justify-between border-b border-gray-50 last:border-0">
+                        <span className="font-medium text-gray-700">{c.nombre}</span>
+                        <span className="text-gray-400">{c.telefono}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="p-5 border-t border-gray-100 flex gap-3">
+          <button onClick={onClose} className="flex-1 py-3 rounded-xl border-2 border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-50">Cancelar</button>
+          <button onClick={guardar} disabled={saving}
+            className="flex-1 py-3 rounded-xl bg-amber-500 text-white text-sm font-bold hover:bg-amber-600 transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
+            {saving ? <><Loader2 size={14} className="animate-spin" />Guardando...</> : '⭐ Registrar'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── Main AgendaView ──────────────────────────────────────────────────────────
 export default function AgendaView() {
   const supabase = createClient()
@@ -1025,6 +1254,19 @@ export default function AgendaView() {
   const [viewMode, setViewMode] = useState<'day' | 'week' | 'month'>('day')
   const [currentDate, setCurrentDate] = useState(new Date())
   const [showNuevaCita, setShowNuevaCita] = useState(false)
+  const [showServicioExtra, setShowServicioExtra] = useState(false)
+  const [serviciosExtras, setServiciosExtras] = useState<Array<{
+    id:string; servicio_nombre:string; cliente_nombre:string;
+    especialista_nombre?:string; valor_final:number; fecha:string;
+    servicio?:{nombre:string}; cliente?:{nombre:string}; especialista?:{nombre:string}
+  }>>([])
+
+  const loadServiciosExtras = useCallback(async () => {
+    const fechaStr = currentDate.toLocaleDateString('en-CA', { timeZone: 'America/Bogota' })
+    const res = await fetch(`/api/servicios-extras?fecha=${fechaStr}`)
+    const data = await res.json()
+    if (Array.isArray(data)) setServiciosExtras(data)
+  }, [currentDate])
   // Mobile: show list instead of timeline grid
   const [mobileListMode, setMobileListMode] = useState(true)
   // Filtro por especialista (null = todas)
@@ -1047,6 +1289,7 @@ export default function AgendaView() {
 
   useEffect(() => {
     loadCitas()
+    loadServiciosExtras()
     const ch = supabase
       .channel('agenda-rt-' + Date.now())
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'citas' }, () => loadCitas())
@@ -1219,6 +1462,10 @@ export default function AgendaView() {
             className="flex items-center gap-1.5 text-xs text-red-500 border border-red-200 px-2.5 py-1.5 rounded-xl hover:bg-red-50 transition-colors">
             <span className="hidden sm:inline">🗑️ Limpiar</span>
             <span className="sm:hidden">🗑️</span>
+          </button>
+          <button onClick={() => setShowServicioExtra(true)}
+            className="flex items-center gap-1.5 bg-amber-400 text-white text-xs font-semibold px-3 py-2 rounded-xl hover:bg-amber-500 transition-colors shadow-sm">
+            ⭐ <span className="hidden sm:inline">Extra</span>
           </button>
           <button onClick={() => setShowNuevaCita(true)}
             className="flex items-center gap-1.5 sm:gap-2 bg-beauty-primary text-white text-xs sm:text-sm font-semibold px-3 sm:px-4 py-2 rounded-xl hover:bg-beauty-primary-dark transition-colors shadow-sm">
@@ -1573,6 +1820,44 @@ export default function AgendaView() {
           onClose={() => setShowNuevaCita(false)}
           onSaved={loadCitas}
         />
+      )}
+
+      {/* Servicio extra modal */}
+      {showServicioExtra && (
+        <ServicioExtraModal
+          onClose={() => setShowServicioExtra(false)}
+          onSaved={() => { loadServiciosExtras(); loadCitas() }}
+          fecha={currentDate.toLocaleDateString('en-CA', { timeZone: 'America/Bogota' })}
+        />
+      )}
+
+      {/* ── Servicios Extras del día ──────────────────────────────── */}
+      {serviciosExtras.length > 0 && (
+        <div className="bg-amber-50 border border-amber-200 rounded-2xl overflow-hidden">
+          <div className="flex items-center gap-2 px-4 py-3 border-b border-amber-100">
+            <span className="text-base">⭐</span>
+            <h3 className="font-semibold text-amber-800 text-sm">Servicios Extras</h3>
+            <span className="text-xs text-amber-600 bg-amber-100 px-1.5 py-0.5 rounded-full">{serviciosExtras.length}</span>
+          </div>
+          <div className="divide-y divide-amber-100">
+            {serviciosExtras.map(se => (
+              <div key={se.id} className="flex items-center gap-3 px-4 py-3">
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-gray-800 text-sm truncate">
+                    {se.servicio?.nombre ?? se.servicio_nombre}
+                  </p>
+                  <p className="text-xs text-gray-500 truncate">
+                    {se.cliente?.nombre ?? se.cliente_nombre}
+                    {(se.especialista?.nombre ?? se.especialista_nombre) && ` · ${se.especialista?.nombre ?? se.especialista_nombre}`}
+                  </p>
+                </div>
+                <span className="font-bold text-amber-700 text-sm shrink-0">
+                  {formatCurrency(se.valor_final)}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
       )}
     </div>
   )
