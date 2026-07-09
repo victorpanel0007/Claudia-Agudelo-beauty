@@ -53,9 +53,9 @@ function fmt(v: number) {
   }).format(v)
 }
 function fmtShort(v: number) {
-  if (v >= 1_000_000) return `$${(v / 1_000_000).toFixed(1)}M`
-  if (v >= 1_000)    return `$${(v / 1_000).toFixed(0)}K`
-  return `$${v}`
+  return new Intl.NumberFormat('es-CO', {
+    style: 'currency', currency: 'COP', minimumFractionDigits: 0,
+  }).format(v)
 }
 function todayStr() {
   return new Date().toLocaleDateString('en-CA', { timeZone: 'America/Bogota' })
