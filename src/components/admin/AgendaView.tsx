@@ -1281,6 +1281,7 @@ export default function AgendaView() {
         servicio:servicios(nombre,duracion_minutos,precio,precio_desde,tipo_precio)`
       )
       .neq('estado', 'cancelada')
+      .neq('canal', 'extra')   // Servicios extras tienen su propia sección
       .order('fecha_inicio')
     if (error) console.error('Error cargando citas:', error.message)
     if (data) setCitas(data as Cita[])
@@ -1832,33 +1833,42 @@ export default function AgendaView() {
       )}
 
       {/* ── Servicios Extras del día ──────────────────────────────── */}
-      {serviciosExtras.length > 0 && (
-        <div className="bg-amber-50 border border-amber-200 rounded-2xl overflow-hidden">
-          <div className="flex items-center gap-2 px-4 py-3 border-b border-amber-100">
-            <span className="text-base">⭐</span>
-            <h3 className="font-semibold text-amber-800 text-sm">Servicios Extras</h3>
-            <span className="text-xs text-amber-600 bg-amber-100 px-1.5 py-0.5 rounded-full">{serviciosExtras.length}</span>
-          </div>
-          <div className="divide-y divide-amber-100">
-            {serviciosExtras.map(se => (
-              <div key={se.id} className="flex items-center gap-3 px-4 py-3">
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-gray-800 text-sm truncate">
-                    {se.servicio?.nombre ?? se.servicio_nombre}
-                  </p>
-                  <p className="text-xs text-gray-500 truncate">
-                    {se.cliente?.nombre ?? se.cliente_nombre}
-                    {(se.especialista?.nombre ?? se.especialista_nombre) && ` · ${se.especialista?.nombre ?? se.especialista_nombre}`}
-                  </p>
+      {serviciosExtras.length > 0 && (() => {
+        // Filtrar por especialista seleccionada
+        const extrasDelDia = filtroEsp === 'todas'
+          ? serviciosExtras
+          : serviciosExtras.filter(se =>
+              (se.especialista as {nombre?:string}|null)?.nombre === filtroEsp
+            )
+        if (extrasDelDia.length === 0) return null
+        return (
+          <div className="bg-amber-50 border border-amber-200 rounded-2xl overflow-hidden">
+            <div className="flex items-center gap-2 px-4 py-3 border-b border-amber-100">
+              <span className="text-base">⭐</span>
+              <h3 className="font-semibold text-amber-800 text-sm">Servicios Extras</h3>
+              <span className="text-xs text-amber-600 bg-amber-100 px-1.5 py-0.5 rounded-full">{extrasDelDia.length}</span>
+            </div>
+            <div className="divide-y divide-amber-100">
+              {extrasDelDia.map(se => (
+                <div key={se.id} className="flex items-center gap-3 px-4 py-3">
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-gray-800 text-sm truncate">
+                      {(se.servicio as {nombre?:string}|null)?.nombre ?? 'Servicio'}
+                    </p>
+                    <p className="text-xs text-gray-500 truncate">
+                      {(se.cliente as {nombre?:string}|null)?.nombre ?? '—'}
+                      {(se.especialista as {nombre?:string}|null)?.nombre && ` · ${(se.especialista as {nombre?:string}).nombre}`}
+                    </p>
+                  </div>
+                  <span className="font-bold text-amber-700 text-sm shrink-0">
+                    {formatCurrency(se.valor_final)}
+                  </span>
                 </div>
-                <span className="font-bold text-amber-700 text-sm shrink-0">
-                  {formatCurrency(se.valor_final)}
-                </span>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-        </div>
-      )}
+        )
+      })()}
     </div>
   )
 }
