@@ -484,8 +484,7 @@ function CompletarModal({ cita, onClose, onConfirm }: {
     setLoading(false)
   }
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+  return typeof document !== "undefined" ? createPortal(<div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm animate-slide-up p-6">
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-bold text-beauty-text">Completar Cita</h3>
@@ -577,7 +576,7 @@ function CompletarModal({ cita, onClose, onConfirm }: {
         </div>
       </div>
     </div>
-  )
+  , document.body) : null
 }
 
 // ── NuevaCitaModal ───────────────────────────────────────────────────────────
@@ -732,8 +731,7 @@ function NuevaCitaModal({ onClose, onSaved }: { onClose: () => void; onSaved: ()
     }
   }
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+  return typeof document !== "undefined" ? createPortal(<div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg animate-slide-up overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between p-5 border-b border-gray-100">
@@ -1011,7 +1009,7 @@ function NuevaCitaModal({ onClose, onSaved }: { onClose: () => void; onSaved: ()
         </div>
       </div>
     </div>
-  )
+  , document.body) : null
 }
 
 // ── ServicioExtraModal ───────────────────────────────────────────────────────
@@ -1109,8 +1107,7 @@ function ServicioExtraModal({ onClose, onSaved, fecha }: {
 
   const inp = 'w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-beauty-primary focus:ring-2 focus:ring-beauty-primary/20'
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+  return typeof document !== "undefined" ? createPortal(<div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-slide-up">
         <div className="flex items-center justify-between p-5 border-b border-gray-100 bg-amber-50">
           <div>
@@ -1240,7 +1237,7 @@ function ServicioExtraModal({ onClose, onSaved, fecha }: {
         </div>
       </div>
     </div>
-  )
+  , document.body) : null
 }
 
 // ── Main AgendaView ──────────────────────────────────────────────────────────
@@ -1897,4 +1894,6 @@ export default function AgendaView() {
     </div>
   )
 }
+
+
 

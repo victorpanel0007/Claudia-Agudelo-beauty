@@ -1,6 +1,7 @@
 ﻿'use client'
 
 import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { createClient } from '@/lib/supabase/client'
 import { Clock, Plus, Edit, Save, X, CheckCircle, XCircle, User, Send, RefreshCw, Wifi, WifiOff, CalendarOff, Trash2, Coffee } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -572,7 +573,7 @@ export default function EspecialistasView() {
       </div>
 
       {/* Modal formulario */}
-      {showForm && (
+      {showForm && typeof document !== 'undefined' && createPortal(
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/50">
           <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl w-full sm:max-w-md max-h-[90vh] overflow-y-auto animate-slide-up">
 
@@ -800,7 +801,7 @@ export default function EspecialistasView() {
             </div>
           </div>
         </div>
-      )}
+      , document.body)}
     </div>
   )
 }

@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import { createClient } from '@/lib/supabase/client'
 import {
   DollarSign, Users, CheckCircle, Wallet, CreditCard,
@@ -936,11 +937,15 @@ export default function ComisionesView() {
       </div>{/* end print:hidden */}
 
       {/* ── PAGO MODAL ──────────────────────────────────────────────────────── */}
-      {showPagoModal && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-beauty-lg w-full max-w-lg max-h-[90vh] overflow-y-auto">
+      {showPagoModal && typeof document !== 'undefined' && createPortal(
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+          <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-beauty-lg w-full sm:max-w-lg max-h-[92vh] flex flex-col animate-slide-up">
+            {/* Handle bar móvil */}
+            <div className="flex justify-center pt-3 pb-1 sm:hidden shrink-0">
+              <div className="w-10 h-1 rounded-full bg-gray-200" />
+            </div>
             {/* Modal header */}
-            <div className="flex items-center justify-between p-5 border-b border-gray-100">
+            <div className="flex items-center justify-between p-5 border-b border-gray-100 shrink-0">
               <h3 className="font-bold text-beauty-text">Registrar Pago a Especialista</h3>
               <button onClick={() => setShowPagoModal(false)} className="text-beauty-text-muted hover:text-beauty-borgona">
                 <X size={20} />
@@ -948,7 +953,7 @@ export default function ComisionesView() {
             </div>
 
             {/* Modal body */}
-            <div className="p-5 space-y-4">
+            <div className="p-5 space-y-4 overflow-y-auto flex-1">
 
               {/* Especialista */}
               <div>
@@ -1092,7 +1097,7 @@ export default function ComisionesView() {
             </div>
           </div>
         </div>
-      )}
+      , document.body)}
 
     </div>
   )
