@@ -240,11 +240,11 @@ function MovimientoModal({ tipo, onClose, onSaved }: {
       })
       if (error) { toast.error('Error guardando'); setSaving(false); return }
     } else {
-      // Ingreso manual: registrar como cita completada anónima o simplemente en gastos con valor negativo
-      // Lo guardamos en la misma tabla gastos con valor negativo como convención
+      // Ingreso manual: guardado en gastos con categoria especial 'Ingreso Manual'
+      // valor siempre positivo para no violar constraints de la BD
       const { error } = await supabase.from('gastos').insert({
-        fecha: form.fecha, categoria: 'Otros',
-        descripcion: `[INGRESO] ${form.descripcion.trim()}`, valor: -valor,
+        fecha: form.fecha, categoria: 'Ingreso Manual',
+        descripcion: form.descripcion.trim(), valor,
       })
       if (error) { toast.error('Error guardando'); setSaving(false); return }
     }
@@ -337,16 +337,18 @@ export default function ReportesView() {
     const semStart = new Date(d); semStart.setDate(d.getDate()-6)
     const mesStart = new Date(d.getFullYear(), d.getMonth(), 1)
 
-    const [hoy, sem, mes, gastosMes] = await Promise.all([
+    const [hoy, sem, mes, gastosMes, ingresosManualesMes] = await Promise.all([
       supabase.from('citas').select('valor_final').eq('estado','completada').gte('fecha_inicio',today+'T00:00:00-05:00').lte('fecha_inicio',today+'T23:59:59-05:00'),
       supabase.from('citas').select('valor_final').eq('estado','completada').gte('fecha_inicio',semStart.toLocaleDateString('en-CA',{timeZone:'America/Bogota'})+'T00:00:00-05:00').lte('fecha_inicio',today+'T23:59:59-05:00'),
       supabase.from('citas').select('valor_final').eq('estado','completada').gte('fecha_inicio',mesStart.toLocaleDateString('en-CA',{timeZone:'America/Bogota'})+'T00:00:00-05:00').lte('fecha_inicio',today+'T23:59:59-05:00'),
-      supabase.from('gastos').select('valor').gte('fecha',mesStart.toLocaleDateString('en-CA',{timeZone:'America/Bogota'})).lte('fecha',today),
+      supabase.from('gastos').select('valor').neq('categoria','Ingreso Manual').gte('fecha',mesStart.toLocaleDateString('en-CA',{timeZone:'America/Bogota'})).lte('fecha',today),
+      supabase.from('gastos').select('valor').eq('categoria','Ingreso Manual').gte('fecha',mesStart.toLocaleDateString('en-CA',{timeZone:'America/Bogota'})).lte('fecha',today),
     ])
     const sum = (r:{valor_final?:number|null}[]) => r.reduce((a,c)=>a+(c.valor_final??0),0)
     const sumV = (r:{valor?:number|null}[]) => r.reduce((a,c)=>a+(c.valor??0),0)
     const ingHoy = sum(hoy.data??[]); const ingSem = sum(sem.data??[])
-    const ingMes = sum(mes.data??[]); const gMes = sumV(gastosMes.data??[])
+    const ingMes = sum(mes.data??[]) + sumV(ingresosManualesMes.data??[])
+    const gMes = sumV(gastosMes.data??[])
     setDash({ ingresosHoy:ingHoy, ingresosSemana:ingSem, ingresosMes:ingMes, gastosMes:gMes, gananciaNeta:ingMes-gMes })
     setDashLoading(false)
   }, [supabase])
@@ -357,7 +359,7 @@ export default function ReportesView() {
     const [cRes, gRes] = await Promise.all([
       supabase.from('citas').select('id,fecha_inicio,valor_final,cliente:clientes(nombre),servicio:servicios(nombre),especialista:especialistas(nombre),metodo_pago')
         .eq('estado','completada').gte('fecha_inicio',start+'T00:00:00-05:00').lte('fecha_inicio',end+'T23:59:59-05:00').order('fecha_inicio',{ascending:false}).limit(40),
-      supabase.from('gastos').select('id,fecha,descripcion,valor,categoria').gte('fecha',start).lte('fecha',end).order('fecha',{ascending:false}).limit(20),
+      supabase.from('gastos').select('id,fecha,descripcion,valor,categoria').gte('fecha',start).lte('fecha',end).order('fecha',{ascending:false}).limit(40),
     ])
     const citasH: HistorialItem[] = (cRes.data??[]).map(c => ({
       id: c.id, fecha: c.fecha_inicio,
@@ -369,9 +371,12 @@ export default function ReportesView() {
     }))
     const gastosH: HistorialItem[] = (gRes.data??[]).map(g => ({
       id: g.id, fecha: g.fecha, cliente: g.categoria, servicio: g.descripcion,
-      especialista: '—', valor: g.valor, tipo: 'gasto' as const,
+      especialista: '—', valor: g.valor,
+      // 'Ingreso Manual' se muestra como ingreso, el resto como gasto
+      tipo: g.categoria === 'Ingreso Manual' ? 'ingreso' as const : 'gasto' as const,
     }))
-    setGastos((gRes.data??[]) as typeof gastos)
+    // gastos para el panel de eliminación — solo los que NO son ingresos manuales
+    setGastos((gRes.data??[]).filter(g => g.categoria !== 'Ingreso Manual') as typeof gastos)
     setHistorial([...citasH, ...gastosH].sort((a,b) => b.fecha.localeCompare(a.fecha)))
     setHistLoading(false)
   }, [supabase, period])
@@ -381,17 +386,20 @@ export default function ReportesView() {
     const { start, end } = getPeriodRange(chartFilter)
     const [cRes, gRes] = await Promise.all([
       supabase.from('citas').select('fecha_inicio,valor_final').eq('estado','completada').gte('fecha_inicio',start+'T00:00:00-05:00').lte('fecha_inicio',end+'T23:59:59-05:00'),
-      supabase.from('gastos').select('fecha,valor').gte('fecha',start).lte('fecha',end),
+      supabase.from('gastos').select('fecha,valor,categoria').gte('fecha',start).lte('fecha',end),
     ])
     const citas = cRes.data??[]; const gst = gRes.data??[]
-    // Agrupar por día o semana según filtro
+    // Separar gastos reales de ingresos manuales
+    const gastosReales = gst.filter(g => g.categoria !== 'Ingreso Manual')
+    const ingresosManuales = gst.filter(g => g.categoria === 'Ingreso Manual')
     const map = new Map<string,{ingresos:number;gastos:number}>()
     const key = (d:string) => {
-      if (chartFilter==='hoy') return d.slice(11,13)+'h' // hora
-      return d.slice(5) // MM-DD
+      if (chartFilter==='hoy') return d.slice(11,13)+'h'
+      return d.slice(5)
     }
     citas.forEach(c => { const k=key(c.fecha_inicio); if(!map.has(k))map.set(k,{ingresos:0,gastos:0}); map.get(k)!.ingresos+=c.valor_final??0 })
-    gst.forEach(g => { const k=g.fecha.slice(5); if(!map.has(k))map.set(k,{ingresos:0,gastos:0}); map.get(k)!.gastos+=g.valor })
+    ingresosManuales.forEach(g => { const k=g.fecha.slice(5); if(!map.has(k))map.set(k,{ingresos:0,gastos:0}); map.get(k)!.ingresos+=g.valor })
+    gastosReales.forEach(g => { const k=g.fecha.slice(5); if(!map.has(k))map.set(k,{ingresos:0,gastos:0}); map.get(k)!.gastos+=g.valor })
     const pts = Array.from(map.entries()).sort(([a],[b])=>a.localeCompare(b)).slice(-10).map(([label,v])=>({label,ingresos:v.ingresos,gastos:v.gastos}))
     setChartData(pts); setChartLoading(false)
   }, [supabase, chartFilter])
