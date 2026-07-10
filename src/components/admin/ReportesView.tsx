@@ -337,18 +337,17 @@ export default function ReportesView() {
     const semStart = new Date(d); semStart.setDate(d.getDate()-6)
     const mesStart = new Date(d.getFullYear(), d.getMonth(), 1)
 
-    const [hoy, sem, mes, gastosMes, ingresosManualesMes] = await Promise.all([
+    const [hoy, sem, mes, gastosRes] = await Promise.all([
       supabase.from('citas').select('valor_final').eq('estado','completada').gte('fecha_inicio',today+'T00:00:00-05:00').lte('fecha_inicio',today+'T23:59:59-05:00'),
       supabase.from('citas').select('valor_final').eq('estado','completada').gte('fecha_inicio',semStart.toLocaleDateString('en-CA',{timeZone:'America/Bogota'})+'T00:00:00-05:00').lte('fecha_inicio',today+'T23:59:59-05:00'),
       supabase.from('citas').select('valor_final').eq('estado','completada').gte('fecha_inicio',mesStart.toLocaleDateString('en-CA',{timeZone:'America/Bogota'})+'T00:00:00-05:00').lte('fecha_inicio',today+'T23:59:59-05:00'),
-      supabase.from('gastos').select('valor').not('descripcion','like','[INGRESO]%').gte('fecha',mesStart.toLocaleDateString('en-CA',{timeZone:'America/Bogota'})).lte('fecha',today),
-      supabase.from('gastos').select('valor').like('descripcion','[INGRESO]%').gte('fecha',mesStart.toLocaleDateString('en-CA',{timeZone:'America/Bogota'})).lte('fecha',today),
+      fetch(`/api/gastos?start=${mesStart.toLocaleDateString('en-CA',{timeZone:'America/Bogota'})}&end=${today}`).then(r=>r.json()),
     ])
     const sum = (r:{valor_final?:number|null}[]) => r.reduce((a,c)=>a+(c.valor_final??0),0)
-    const sumV = (r:{valor?:number|null}[]) => r.reduce((a,c)=>a+(c.valor??0),0)
+    const todosGastosMes: {valor:number;descripcion:string}[] = Array.isArray(gastosRes) ? gastosRes : []
     const ingHoy = sum(hoy.data??[]); const ingSem = sum(sem.data??[])
-    const ingMes = sum(mes.data??[]) + sumV(ingresosManualesMes.data??[])
-    const gMes = sumV(gastosMes.data??[])
+    const ingMes = sum(mes.data??[]) + todosGastosMes.filter(g=>g.descripcion?.startsWith('[INGRESO]')).reduce((a,g)=>a+g.valor,0)
+    const gMes = todosGastosMes.filter(g=>!g.descripcion?.startsWith('[INGRESO]')).reduce((a,g)=>a+g.valor,0)
     setDash({ ingresosHoy:ingHoy, ingresosSemana:ingSem, ingresosMes:ingMes, gastosMes:gMes, gananciaNeta:ingMes-gMes })
     setDashLoading(false)
   }, [supabase])
@@ -356,11 +355,12 @@ export default function ReportesView() {
   const loadHistorial = useCallback(async () => {
     setHistLoading(true)
     const { start, end } = getPeriodRange(period)
-    const [cRes, gRes] = await Promise.all([
+    const [cRes, gData] = await Promise.all([
       supabase.from('citas').select('id,fecha_inicio,valor_final,cliente:clientes(nombre),servicio:servicios(nombre),especialista:especialistas(nombre),metodo_pago')
         .eq('estado','completada').gte('fecha_inicio',start+'T00:00:00-05:00').lte('fecha_inicio',end+'T23:59:59-05:00').order('fecha_inicio',{ascending:false}).limit(40),
-      supabase.from('gastos').select('id,fecha,descripcion,valor,categoria').gte('fecha',start).lte('fecha',end).order('fecha',{ascending:false}).limit(40),
+      fetch(`/api/gastos?start=${start}&end=${end}`).then(r=>r.json()),
     ])
+    const gastosRaw: {id:string;fecha:string;descripcion:string;valor:number;categoria:string}[] = Array.isArray(gData) ? gData : []
     const citasH: HistorialItem[] = (cRes.data??[]).map(c => ({
       id: c.id, fecha: c.fecha_inicio,
       cliente: (c.cliente as {nombre?:string}|null)?.nombre ?? '—',
@@ -369,14 +369,13 @@ export default function ReportesView() {
       valor: c.valor_final??0, tipo: 'ingreso' as const,
       metodo_pago: (c as {metodo_pago?:string}).metodo_pago,
     }))
-    const gastosH: HistorialItem[] = (gRes.data??[]).map(g => ({
+    const gastosH: HistorialItem[] = gastosRaw.map(g => ({
       id: g.id, fecha: g.fecha, cliente: g.categoria,
       servicio: g.descripcion.startsWith('[INGRESO] ') ? g.descripcion.slice(10) : g.descripcion,
       especialista: '—', valor: g.valor,
       tipo: g.descripcion.startsWith('[INGRESO]') ? 'ingreso' as const : 'gasto' as const,
     }))
-    // gastos para el panel de eliminación — solo los que NO son ingresos manuales
-    setGastos((gRes.data??[]).filter(g => !g.descripcion.startsWith('[INGRESO]')) as typeof gastos)
+    setGastos(gastosRaw.filter(g => !g.descripcion.startsWith('[INGRESO]')))
     setHistorial([...citasH, ...gastosH].sort((a,b) => b.fecha.localeCompare(a.fecha)))
     setHistLoading(false)
   }, [supabase, period])
@@ -384,12 +383,12 @@ export default function ReportesView() {
   const loadChart = useCallback(async () => {
     setChartLoading(true)
     const { start, end } = getPeriodRange(chartFilter)
-    const [cRes, gRes] = await Promise.all([
+    const [cRes, gData] = await Promise.all([
       supabase.from('citas').select('fecha_inicio,valor_final').eq('estado','completada').gte('fecha_inicio',start+'T00:00:00-05:00').lte('fecha_inicio',end+'T23:59:59-05:00'),
-      supabase.from('gastos').select('fecha,valor,categoria,descripcion').gte('fecha',start).lte('fecha',end),
+      fetch(`/api/gastos?start=${start}&end=${end}`).then(r=>r.json()),
     ])
-    const citas = cRes.data??[]; const gst = gRes.data??[]
-    // Separar gastos reales de ingresos manuales
+    const citas = cRes.data??[]
+    const gst: {fecha:string;valor:number;descripcion:string}[] = Array.isArray(gData) ? gData : []
     const gastosReales = gst.filter(g => !g.descripcion?.startsWith('[INGRESO]'))
     const ingresosManuales = gst.filter(g => g.descripcion?.startsWith('[INGRESO]'))
     const map = new Map<string,{ingresos:number;gastos:number}>()
