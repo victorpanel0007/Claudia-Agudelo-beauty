@@ -88,6 +88,17 @@ interface ConvRow {
   fecha?:           string | null
   especialista_id?: string | null
   slots_json?:      AvailableSlot[] | null
+  // Para flujo de cancelación
+  citas_cancelar_json?: CitaCancelar[] | null
+}
+
+interface CitaCancelar {
+  id: string
+  servicio: string
+  especialista: string
+  fecha_inicio: string
+  hora: string
+  fecha_display: string
 }
 
 type Supabase = Awaited<ReturnType<typeof createAdminClient>>
@@ -377,8 +388,7 @@ async function routeIntent(
       return
 
     case 'cancelar_cita':
-      await delConv(telefono, supabase)
-      await reply(telefono, '❌ Para cancelar tu cita contáctanos directamente.\nO escribe *hola* para hacer una nueva reserva.', supabase)
+      await handleCancelarCita(telefono, conv, supabase)
       return
 
     case 'hablar_asesor':
@@ -621,12 +631,14 @@ function normalizarHoraTexto(hora: string): string | null {
 
 async function dispatchPaso(telefono: string, text: string, conv: ConvRow, supabase: Supabase) {
   switch (conv.paso) {
-    case 'seleccion_categoria':  await handleCatSelection(telefono, text, conv, supabase); break
-    case 'seleccion_servicio':   await handleSvcSelection(telefono, text, conv, supabase); break
-    case 'solicitar_nombre':     await handleNombre(telefono, text, conv, supabase); break
-    case 'solicitar_fecha':      await handleFecha(telefono, text, conv, supabase); break
-    case 'seleccion_especialista': await handleEspecialista(telefono, text, conv, supabase); break
-    case 'seleccion_horario':    await handleHorario(telefono, text, conv, supabase); break
+    case 'seleccion_categoria':      await handleCatSelection(telefono, text, conv, supabase); break
+    case 'seleccion_servicio':       await handleSvcSelection(telefono, text, conv, supabase); break
+    case 'solicitar_nombre':         await handleNombre(telefono, text, conv, supabase); break
+    case 'solicitar_fecha':          await handleFecha(telefono, text, conv, supabase); break
+    case 'seleccion_especialista':   await handleEspecialista(telefono, text, conv, supabase); break
+    case 'seleccion_horario':        await handleHorario(telefono, text, conv, supabase); break
+    case 'confirmar_cancelacion':    await handleConfirmarCancelacion(telefono, text, conv, supabase); break
+    case 'seleccion_cita_cancelar':  await handleSeleccionCitaCancelar(telefono, text, conv, supabase); break
     default:
       await delConv(telefono, supabase)
       await reply(telefono, await buildMainMenu(), supabase)
@@ -864,6 +876,192 @@ async function handleHorario(t: string, text: string, conv: ConvRow, sb: Supabas
       tipo: 'sistema', fecha: new Date().toISOString(),
     })
   } catch { /* no bloquear */ }
+}
+
+// ── Flujo de cancelación de citas ─────────────────────────────────────────────
+
+/**
+ * Punto de entrada para cancelar cita.
+ * Busca citas futuras del cliente y presenta opciones.
+ */
+async function handleCancelarCita(telefono: string, conv: ConvRow | null, supabase: Supabase) {
+  // 1. Identificar cliente
+  const cliente = await buscarCliente(telefono, supabase)
+  if (!cliente) {
+    await reply(telefono, '😊 No encontré ningún cliente registrado con tu número.\nEscribe *hola* si deseas agendar una cita nueva.', supabase)
+    return
+  }
+
+  // 2. Buscar citas futuras con estado confirmada, pendiente o en_proceso
+  const ahora = new Date().toISOString()
+  const { data: citas } = await supabase
+    .from('citas')
+    .select('id, fecha_inicio, fecha_fin, servicio:servicios(nombre), especialista:especialistas(nombre)')
+    .eq('cliente_id', cliente.id)
+    .in('estado', ['confirmada', 'pendiente', 'en_proceso'])
+    .gte('fecha_inicio', ahora)
+    .order('fecha_inicio', { ascending: true })
+    .limit(10)
+
+  if (!citas || citas.length === 0) {
+    await reply(telefono, `😊 Hola *${cliente.nombre}*, no tienes citas activas para cancelar.\nSi deseas agendar una nueva, escribe *hola*.`, supabase)
+    return
+  }
+
+  // Formatear citas para mostrar y guardar en conv
+  const citasFormateadas: CitaCancelar[] = citas.map(c => {
+    const fechaObj = new Date(c.fecha_inicio)
+    return {
+      id: c.id,
+      servicio: (c.servicio as { nombre?: string } | null)?.nombre ?? 'Servicio',
+      especialista: (c.especialista as { nombre?: string } | null)?.nombre ?? 'Especialista',
+      fecha_inicio: c.fecha_inicio,
+      hora: fechaObj.toLocaleString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'America/Bogota' }),
+      fecha_display: formatDate(fechaObj),
+    }
+  })
+
+  if (citasFormateadas.length === 1) {
+    // Una sola cita → pedir confirmación directa
+    const c = citasFormateadas[0]
+    await setConv(supabase, {
+      telefono, paso: 'confirmar_cancelacion',
+      nombre: cliente.nombre,
+      citas_cancelar_json: citasFormateadas,
+    })
+    await reply(telefono,
+      `📋 *Cita encontrada:*\n\n` +
+      `💅 Servicio: *${c.servicio}*\n` +
+      `👩 Especialista: *${c.especialista}*\n` +
+      `📅 Fecha: *${c.fecha_display}*\n` +
+      `⏰ Hora: *${c.hora}*\n\n` +
+      `¿Deseas cancelar esta cita?\n*1.* Sí, cancelar\n*2.* No, mantenerla`,
+      supabase
+    )
+  } else {
+    // Varias citas → mostrar lista
+    const lista = citasFormateadas.map((c, i) =>
+      `${nb(i+1)} *${c.servicio}* — ${c.hora} · ${c.fecha_display}\n    👩 ${c.especialista}`
+    ).join('\n\n')
+    await setConv(supabase, {
+      telefono, paso: 'seleccion_cita_cancelar',
+      nombre: cliente.nombre,
+      citas_cancelar_json: citasFormateadas,
+    })
+    await reply(telefono,
+      `📋 *${cliente.nombre}*, tienes ${citasFormateadas.length} citas activas:\n\n${lista}\n\n` +
+      `¿Cuál deseas cancelar? Escribe el número.\n_(Escribe *0* para no cancelar ninguna)_`,
+      supabase
+    )
+  }
+}
+
+/**
+ * Maneja la confirmación "Sí/No" para una sola cita.
+ */
+async function handleConfirmarCancelacion(telefono: string, text: string, conv: ConvRow, supabase: Supabase) {
+  const t = text.toLowerCase().trim()
+  const citas = (conv.citas_cancelar_json as CitaCancelar[] | null) ?? []
+
+  // No cancelar
+  if (t === '2' || t === 'no' || t === 'no gracias' || t === 'no, mantenerla') {
+    await delConv(telefono, supabase)
+    await reply(telefono, '✅ Perfecto, tu cita sigue activa. ¡Te esperamos! 💖', supabase)
+    return
+  }
+
+  // Confirmar cancelación
+  if (t === '1' || t === 'sí' || t === 'si' || t === 'confirmar' || t === 'cancelar' || t === 'yes') {
+    if (!citas.length) {
+      await delConv(telefono, supabase)
+      await reply(telefono, '❌ No encontré la cita. Escribe *hola* para reintentar.', supabase)
+      return
+    }
+    await ejecutarCancelacion(telefono, citas[0], conv.nombre ?? '', supabase)
+    return
+  }
+
+  // Respuesta no reconocida
+  await reply(telefono, '❓ Por favor responde *1* para cancelar o *2* para mantener tu cita.', supabase)
+}
+
+/**
+ * Maneja la selección de cuál cita cancelar cuando hay varias.
+ */
+async function handleSeleccionCitaCancelar(telefono: string, text: string, conv: ConvRow, supabase: Supabase) {
+  const citas = (conv.citas_cancelar_json as CitaCancelar[] | null) ?? []
+  const num = parseInt(text.trim())
+
+  if (num === 0 || text.toLowerCase() === 'no' || text.toLowerCase() === 'ninguna') {
+    await delConv(telefono, supabase)
+    await reply(telefono, '✅ Entendido, no se canceló ninguna cita. ¡Te esperamos! 💖', supabase)
+    return
+  }
+
+  if (isNaN(num) || num < 1 || num > citas.length) {
+    await reply(telefono, `❌ Escribe un número del *1* al *${citas.length}*, o *0* para no cancelar ninguna.`, supabase)
+    return
+  }
+
+  const citaSeleccionada = citas[num - 1]
+  // Pedir confirmación antes de cancelar
+  await setConv(supabase, { ...conv, paso: 'confirmar_cancelacion', citas_cancelar_json: [citaSeleccionada] })
+  await reply(telefono,
+    `📋 *Confirmar cancelación:*\n\n` +
+    `💅 *${citaSeleccionada.servicio}*\n` +
+    `👩 ${citaSeleccionada.especialista}\n` +
+    `📅 ${citaSeleccionada.fecha_display} · ⏰ ${citaSeleccionada.hora}\n\n` +
+    `¿Confirmas la cancelación?\n*1.* Sí, cancelar\n*2.* No, mantenerla`,
+    supabase
+  )
+}
+
+/**
+ * Ejecuta la cancelación en Supabase y notifica al cliente.
+ */
+async function ejecutarCancelacion(
+  telefono: string,
+  cita: CitaCancelar,
+  nombreCliente: string,
+  supabase: Supabase
+) {
+  const ahora = new Date().toISOString()
+
+  const { error } = await supabase
+    .from('citas')
+    .update({
+      estado: 'cancelada',
+      updated_at: ahora,
+    })
+    .eq('id', cita.id)
+    .in('estado', ['confirmada', 'pendiente', 'en_proceso']) // solo cancela si aún está activa
+
+  if (error) {
+    console.error('[Cancelar cita] Error:', error)
+    await reply(telefono, '❌ Ocurrió un error al cancelar tu cita. Por favor contáctanos directamente.', supabase)
+    return
+  }
+
+  // Registrar en mensajes para auditoría
+  try {
+    await supabase.from('mensajes_whatsapp').insert({
+      telefono,
+      mensaje: `❌ Cita cancelada por cliente: ${cita.servicio} con ${cita.especialista} el ${cita.fecha_display} a las ${cita.hora}`,
+      tipo: 'sistema',
+      fecha: ahora,
+    })
+  } catch { /* no bloquear */ }
+
+  await delConv(telefono, supabase)
+  await reply(telefono,
+    `✅ *Cita cancelada exitosamente*\n\n` +
+    `💅 Servicio: *${cita.servicio}*\n` +
+    `👩 Especialista: *${cita.especialista}*\n` +
+    `📅 ${cita.fecha_display} · ⏰ ${cita.hora}\n\n` +
+    `Lamentamos que no puedas asistir, *${nombreCliente}*. ¡Esperamos verte pronto! 💖\n\n` +
+    `Si deseas agendar una nueva cita, escribe *hola*.`,
+    supabase
+  )
 }
 
 // ── Helpers de precio ─────────────────────────────────────────────────────────
