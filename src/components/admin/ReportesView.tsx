@@ -221,7 +221,6 @@ function MovimientoModal({ tipo, onClose, onSaved }: {
   onClose: () => void
   onSaved: () => void
 }) {
-  const supabase = createClient()
   const [form, setForm] = useState({
     fecha: todayStr(), categoria: 'Productos' as GastoCategoria,
     descripcion: '', valor: '', metodoPago: 'efectivo',
@@ -233,20 +232,21 @@ function MovimientoModal({ tipo, onClose, onSaved }: {
     const valor = parseFloat(form.valor)
     if (!valor || valor <= 0) { toast.error('Ingresa un valor válido'); return }
     setSaving(true)
-    if (tipo === 'gasto') {
-      const { error } = await supabase.from('gastos').insert({
-        fecha: form.fecha, categoria: form.categoria,
-        descripcion: form.descripcion.trim(), valor,
+    try {
+      const res = await fetch('/api/gastos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fecha: form.fecha,
+          categoria: tipo === 'gasto' ? form.categoria : 'Ingreso Manual',
+          descripcion: form.descripcion.trim(),
+          valor,
+        }),
       })
-      if (error) { toast.error('Error guardando'); setSaving(false); return }
-    } else {
-      // Ingreso manual: guardado en gastos con categoria especial 'Ingreso Manual'
-      // valor siempre positivo para no violar constraints de la BD
-      const { error } = await supabase.from('gastos').insert({
-        fecha: form.fecha, categoria: 'Ingreso Manual',
-        descripcion: form.descripcion.trim(), valor,
-      })
-      if (error) { toast.error('Error guardando'); setSaving(false); return }
+      const json = await res.json()
+      if (!res.ok) { toast.error(`Error: ${json.error ?? res.statusText}`); setSaving(false); return }
+    } catch (e) {
+      toast.error(`Error de conexión: ${(e as Error).message}`); setSaving(false); return
     }
     toast.success(tipo === 'gasto' ? '💸 Gasto registrado' : '💰 Ingreso registrado')
     setSaving(false); onSaved(); onClose()
@@ -414,9 +414,10 @@ export default function ReportesView() {
   useEffect(() => { loadChart() }, [loadChart])
 
   async function deleteGasto(id: string) {
-    if (!confirm('¿Eliminar este gasto?')) return
-    await supabase.from('gastos').delete().eq('id', id)
-    toast.success('Gasto eliminado')
+    if (!confirm('¿Eliminar este registro?')) return
+    const res = await fetch(`/api/gastos?id=${id}`, { method: 'DELETE' })
+    if (!res.ok) { toast.error('Error al eliminar'); return }
+    toast.success('Registro eliminado')
     loadHistorial(); loadDash()
   }
 
