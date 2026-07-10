@@ -756,6 +756,28 @@ async function handleHorario(t: string, text: string, conv: ConvRow, sb: Supabas
   }
   const slot = slots[num - 1]
 
+  // ── Validar que el slot no haya pasado (puede ocurrir si el cliente tardó en responder) ──
+  const ahoraUTC = new Date()
+  const slotInicio = new Date(slot.fecha_inicio)
+  if (slotInicio.getTime() <= ahoraUTC.getTime()) {
+    await delConv(t, sb)
+    // Intentar buscar nuevos slots disponibles ahora
+    const nuevosSlots = await getAvailableSlots(
+      new Date(conv.fecha!), conv.duracion ?? 60,
+      conv.especialista_id ?? undefined
+    )
+    if (nuevosSlots.length) {
+      const MAX = 20
+      const shown = nuevosSlots.slice(0, Math.min(MAX, nuevosSlots.length))
+      await setConv(sb, { ...conv, slots_json: shown, paso: 'seleccion_horario' })
+      await reply(t, `⚠️ Ese horario ya no está disponible.\n\nAquí están los horarios actualizados:\n\n${buildHorariosMenu(shown, formatDate(new Date(conv.fecha!)))}`, sb)
+    } else {
+      await reply(t, `😔 Ya no hay disponibilidad para hoy.\n\n¿Quieres agendar para otro día? Escribe la fecha, por ejemplo: *mañana*, *el sábado*.`, sb)
+      await setConv(sb, { ...conv, paso: 'solicitar_fecha' })
+    }
+    return
+  }
+
   // Buscar o crear cliente
   let clienteId = ''
   const { data: existing } = await sb.from('clientes').select('id').eq('telefono', t).maybeSingle()
