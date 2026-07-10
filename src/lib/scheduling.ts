@@ -17,6 +17,7 @@ export interface AvailableSlot {
  *     - current >= workStart
  *     - current + duracion <= workEnd   ← el servicio completo debe terminar ANTES del cierre
  *     - No choca con ninguna cita existente
+ *     - Si la fecha es HOY en Colombia: current > ahora (no mostrar slots pasados)
  *
  * Esto garantiza que un servicio de 60 min con cierre a las 19:00
  * ofrezca como último slot las 18:00 (termina exactamente a las 19:00),
@@ -39,6 +40,20 @@ export async function getAvailableSlots(
 
   // ── Obtener la fecha del día en Colombia ────────────────────────────────
   const fechaStr = fecha.toLocaleDateString('en-CA', { timeZone: 'America/Bogota' }) // YYYY-MM-DD
+
+  // ── Hora actual en Colombia (para filtrar slots pasados si es hoy) ───────
+  const ahoraUTC = new Date() // siempre UTC internamente
+  const hoyColStr = ahoraUTC.toLocaleDateString('en-CA', { timeZone: 'America/Bogota' })
+  const esHoy = fechaStr === hoyColStr
+
+  // Log de depuración
+  const ahoraColStr = ahoraUTC.toLocaleString('es-CO', {
+    timeZone: 'America/Bogota',
+    hour: '2-digit', minute: '2-digit', hour12: true,
+  })
+  console.info(
+    `[Slots] Zona: America/Bogota | Ahora: ${hoyColStr} ${ahoraColStr} | Fecha solicitada: ${fechaStr} | Es hoy: ${esHoy}`
+  )
 
   // ── Obtener citas del día (solo confirmadas o en proceso) ───────────────
   const dayStart = new Date(`${fechaStr}T00:00:00-05:00`)
@@ -113,17 +128,35 @@ export async function getAvailableSlots(
       })
     }
 
-    // ── Generar slots ────────────────────────────────────────────────────
-    //
-    // Paso del slot configurable — actualmente 30 min.
-    // La condición de corte es:  slotEnd <= workEnd
-    //   → el servicio debe TERMINAR dentro o exactamente al cierre.
-    //   → NUNCA se ofrece un slot que haga que la cita pase del horario.
-    //
-    const paso = 30 // minutos entre slots — podría venir de config en el futuro
+    // ── Calcular punto de inicio para slots de hoy ───────────────────────
+    // Si es hoy: avanzar el punto de inicio al próximo slot futuro
+    // Si es otro día: empezar desde workStart normalmente
+    const paso = 30 // minutos entre slots
 
     let current = new Date(workStart)
 
+    if (esHoy && ahoraUTC.getTime() > workStart.getTime()) {
+      // Cuántos minutos han pasado desde el inicio de la jornada
+      const msTranscurridos = ahoraUTC.getTime() - workStart.getTime()
+      const slotsTranscurridos = Math.ceil(msTranscurridos / (paso * 60000))
+      current = addMinutes(workStart, slotsTranscurridos * paso)
+    }
+
+    const slotsEsp: string[] = []
+    const descartadosEsp: string[] = []
+
+    // Registrar cuáles slots del día se descartan por ser pasados
+    if (esHoy) {
+      let tmpSlot = new Date(workStart)
+      while (tmpSlot.getTime() < current.getTime()) {
+        descartadosEsp.push(tmpSlot.toLocaleString('en-US', {
+          hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'America/Bogota',
+        }))
+        tmpSlot = addMinutes(tmpSlot, paso)
+      }
+    }
+
+    // ── Generar slots ────────────────────────────────────────────────────
     while (true) {
       const slotEnd = addMinutes(current, duracionMinutos)
 
@@ -136,7 +169,6 @@ export async function getAvailableSlots(
       )
 
       if (!isOccupied) {
-        // Formato limpio sin puntos ni espacios extra: "9:00 AM", "1:30 PM"
         const colStr = current.toLocaleString('en-US', {
           hour: 'numeric',
           minute: '2-digit',
@@ -151,11 +183,15 @@ export async function getAvailableSlots(
           fecha_inicio:        current.toISOString(),
           fecha_fin:           slotEnd.toISOString(),
         })
+        slotsEsp.push(colStr)
       }
 
-      // Avanzar al siguiente slot
       current = addMinutes(current, paso)
     }
+
+    console.info(
+      `[Slots] Especialista: ${esp.nombre} | Obtenidos: ${[...descartadosEsp, ...slotsEsp].join(', ') || 'ninguno'} | Descartados (pasados): ${descartadosEsp.join(', ') || 'ninguno'} | Finales: ${slotsEsp.join(', ') || 'ninguno'}`
+    )
   }
 
   // Ordenar por hora de inicio
@@ -174,6 +210,16 @@ export async function createAppointment(data: {
   observaciones?: string
 }): Promise<{ id: string } | null> {
   const supabase = await createAdminClient()
+
+  // ── Validar que el slot no haya pasado (zona Colombia) ──────────────────
+  const ahoraUTC = new Date()
+  const slotInicio = new Date(data.fecha_inicio)
+  if (slotInicio.getTime() <= ahoraUTC.getTime()) {
+    const slotStr = slotInicio.toLocaleString('es-CO', { timeZone: 'America/Bogota' })
+    const ahoraStr = ahoraUTC.toLocaleString('es-CO', { timeZone: 'America/Bogota' })
+    console.warn(`[createAppointment] Slot rechazado — ya pasó. Slot: ${slotStr} | Ahora: ${ahoraStr}`)
+    return null
+  }
 
   // Verificar conflictos antes de insertar
   const { data: conflict } = await supabase
