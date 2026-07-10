@@ -58,7 +58,10 @@ function espRangeOf(p: EspPeriod) {
 async function fetchGastos(start: string, end: string) {
   const r = await fetch(`/api/gastos?start=${start}&end=${end}`)
   const d = await r.json()
-  return Array.isArray(d) ? d as {id:string;fecha:string;descripcion:string;valor:number;categoria:string}[] : []
+  if (!r.ok) { console.error('[fetchGastos] Error:', d); return [] }
+  const arr = Array.isArray(d) ? d as {id:string;fecha:string;descripcion:string;valor:number;categoria:string}[] : []
+  console.info(`[fetchGastos] ${start}→${end}: ${arr.length} registros`)
+  return arr
 }
 function esIngreso(desc: string) { return desc.startsWith('[INGRESO]') }
 function descLimpia(desc: string) { return desc.startsWith('[INGRESO] ') ? desc.slice(10) : desc }
@@ -320,17 +323,24 @@ export default function ReportesView() {
   useEffect(()=>{ loadHistorial() },[loadHistorial])
   useEffect(()=>{ loadChart() },[loadChart])
 
-  function reload() { loadDash(); loadHistorial(); loadChart() }
+  const reload = useCallback(()=>{ loadDash(); loadHistorial(); loadChart() },[loadDash,loadHistorial,loadChart])
 
-  async function onDelete(id: string, label: string) {
+  const onDelete = useCallback(async (id: string, label: string) => {
     toast(t=>(
       <span className="flex items-center gap-3 text-sm">
         <span>¿Eliminar <strong>{label}</strong>?</span>
-        <button onClick={async()=>{ toast.dismiss(t.id); const r=await fetch(`/api/gastos?id=${id}`,{method:'DELETE'}); r.ok?toast.success('Eliminado'):toast.error('Error al eliminar'); reload() }} className="bg-red-500 text-white px-2 py-1 rounded text-xs font-bold">Sí</button>
+        <button
+          onClick={async()=>{
+            toast.dismiss(t.id)
+            const r = await fetch(`/api/gastos?id=${id}`, { method:'DELETE' })
+            if (r.ok) { toast.success('Eliminado') } else { toast.error('Error al eliminar') }
+            loadDash(); loadHistorial(); loadChart()
+          }}
+          className="bg-red-500 text-white px-2 py-1 rounded text-xs font-bold">Sí</button>
         <button onClick={()=>toast.dismiss(t.id)} className="text-gray-400 text-xs">No</button>
       </span>
     ),{duration:8000})
-  }
+  },[loadDash,loadHistorial,loadChart])
 
   const PBTN: {key:Period;label:string}[] = [{key:'hoy',label:'Hoy'},{key:'semana',label:'Semana'},{key:'quincena',label:'Quincena'},{key:'mes',label:'Mes'}]
   const EPBTN: {key:EspPeriod;label:string}[] = [{key:'hoy',label:'Hoy'},{key:'7dias',label:'7d'},{key:'15dias',label:'15d'},{key:'este_mes',label:'Este mes'},{key:'mes_anterior',label:'Mes ant.'}]
