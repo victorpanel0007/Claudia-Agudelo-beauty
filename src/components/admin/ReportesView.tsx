@@ -222,8 +222,10 @@ function MovimientoModal({ tipo, onClose, onSaved }: {
   onClose: () => void
   onSaved: () => void
 }) {
+  // Siempre calcular la fecha actual de Colombia al abrir el modal
+  const fechaHoy = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Bogota' })
   const [form, setForm] = useState({
-    fecha: todayStr(), categoria: 'Productos' as GastoCategoria,
+    fecha: fechaHoy, categoria: 'Productos' as GastoCategoria,
     descripcion: '', valor: '', metodoPago: 'efectivo',
   })
   const [saving, setSaving] = useState(false)
@@ -420,12 +422,28 @@ export default function ReportesView() {
   useEffect(() => { loadHistorial() }, [loadHistorial])
   useEffect(() => { loadChart() }, [loadChart])
 
-  async function deleteGasto(id: string) {
-    if (!confirm('¿Eliminar este registro?')) return
-    const res = await fetch(`/api/gastos?id=${id}`, { method: 'DELETE' })
-    if (!res.ok) { toast.error('Error al eliminar'); return }
-    toast.success('Registro eliminado')
-    loadHistorial(); loadDash()
+  async function deleteGasto(id: string, descripcion?: string) {
+    const label = descripcion ?? 'este registro'
+    // confirm() puede estar bloqueado en algunos browsers — usar toast con acción
+    toast((t) => (
+      <span className="flex items-center gap-3 text-sm">
+        <span>¿Eliminar <strong>{label}</strong>?</span>
+        <button
+          onClick={async () => {
+            toast.dismiss(t.id)
+            const res = await fetch(`/api/gastos?id=${id}`, { method: 'DELETE' })
+            if (!res.ok) { toast.error('Error al eliminar'); return }
+            toast.success('Registro eliminado')
+            loadHistorial(); loadDash()
+          }}
+          className="bg-red-500 text-white px-2 py-1 rounded text-xs font-bold">
+          Sí, eliminar
+        </button>
+        <button onClick={() => toast.dismiss(t.id)} className="text-gray-400 text-xs">
+          Cancelar
+        </button>
+      </span>
+    ), { duration: 8000 })
   }
 
   function exportCSV() {
@@ -563,7 +581,7 @@ export default function ReportesView() {
                     {h.tipo==='ingreso' ? '+' : '-'}{fmtShort(h.valor)}
                   </p>
                   {h.esManual && (
-                    <button onClick={() => deleteGasto(h.id)}
+                    <button onClick={() => deleteGasto(h.id, h.servicio)}
                       className="p-1.5 text-red-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors">
                       <Trash2 size={12} />
                     </button>
