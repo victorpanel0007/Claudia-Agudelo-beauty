@@ -238,8 +238,8 @@ function MovimientoModal({ tipo, onClose, onSaved }: {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           fecha: form.fecha,
-          categoria: tipo === 'gasto' ? form.categoria : 'Ingreso Manual',
-          descripcion: form.descripcion.trim(),
+          categoria: tipo === 'gasto' ? form.categoria : 'Otros',
+          descripcion: tipo === 'gasto' ? form.descripcion.trim() : `[INGRESO] ${form.descripcion.trim()}`,
           valor,
         }),
       })
@@ -341,8 +341,8 @@ export default function ReportesView() {
       supabase.from('citas').select('valor_final').eq('estado','completada').gte('fecha_inicio',today+'T00:00:00-05:00').lte('fecha_inicio',today+'T23:59:59-05:00'),
       supabase.from('citas').select('valor_final').eq('estado','completada').gte('fecha_inicio',semStart.toLocaleDateString('en-CA',{timeZone:'America/Bogota'})+'T00:00:00-05:00').lte('fecha_inicio',today+'T23:59:59-05:00'),
       supabase.from('citas').select('valor_final').eq('estado','completada').gte('fecha_inicio',mesStart.toLocaleDateString('en-CA',{timeZone:'America/Bogota'})+'T00:00:00-05:00').lte('fecha_inicio',today+'T23:59:59-05:00'),
-      supabase.from('gastos').select('valor').neq('categoria','Ingreso Manual').gte('fecha',mesStart.toLocaleDateString('en-CA',{timeZone:'America/Bogota'})).lte('fecha',today),
-      supabase.from('gastos').select('valor').eq('categoria','Ingreso Manual').gte('fecha',mesStart.toLocaleDateString('en-CA',{timeZone:'America/Bogota'})).lte('fecha',today),
+      supabase.from('gastos').select('valor').not('descripcion','like','[INGRESO]%').gte('fecha',mesStart.toLocaleDateString('en-CA',{timeZone:'America/Bogota'})).lte('fecha',today),
+      supabase.from('gastos').select('valor').like('descripcion','[INGRESO]%').gte('fecha',mesStart.toLocaleDateString('en-CA',{timeZone:'America/Bogota'})).lte('fecha',today),
     ])
     const sum = (r:{valor_final?:number|null}[]) => r.reduce((a,c)=>a+(c.valor_final??0),0)
     const sumV = (r:{valor?:number|null}[]) => r.reduce((a,c)=>a+(c.valor??0),0)
@@ -370,13 +370,13 @@ export default function ReportesView() {
       metodo_pago: (c as {metodo_pago?:string}).metodo_pago,
     }))
     const gastosH: HistorialItem[] = (gRes.data??[]).map(g => ({
-      id: g.id, fecha: g.fecha, cliente: g.categoria, servicio: g.descripcion,
+      id: g.id, fecha: g.fecha, cliente: g.categoria,
+      servicio: g.descripcion.startsWith('[INGRESO] ') ? g.descripcion.slice(10) : g.descripcion,
       especialista: '—', valor: g.valor,
-      // 'Ingreso Manual' se muestra como ingreso, el resto como gasto
-      tipo: g.categoria === 'Ingreso Manual' ? 'ingreso' as const : 'gasto' as const,
+      tipo: g.descripcion.startsWith('[INGRESO]') ? 'ingreso' as const : 'gasto' as const,
     }))
     // gastos para el panel de eliminación — solo los que NO son ingresos manuales
-    setGastos((gRes.data??[]).filter(g => g.categoria !== 'Ingreso Manual') as typeof gastos)
+    setGastos((gRes.data??[]).filter(g => !g.descripcion.startsWith('[INGRESO]')) as typeof gastos)
     setHistorial([...citasH, ...gastosH].sort((a,b) => b.fecha.localeCompare(a.fecha)))
     setHistLoading(false)
   }, [supabase, period])
@@ -386,12 +386,12 @@ export default function ReportesView() {
     const { start, end } = getPeriodRange(chartFilter)
     const [cRes, gRes] = await Promise.all([
       supabase.from('citas').select('fecha_inicio,valor_final').eq('estado','completada').gte('fecha_inicio',start+'T00:00:00-05:00').lte('fecha_inicio',end+'T23:59:59-05:00'),
-      supabase.from('gastos').select('fecha,valor,categoria').gte('fecha',start).lte('fecha',end),
+      supabase.from('gastos').select('fecha,valor,categoria,descripcion').gte('fecha',start).lte('fecha',end),
     ])
     const citas = cRes.data??[]; const gst = gRes.data??[]
     // Separar gastos reales de ingresos manuales
-    const gastosReales = gst.filter(g => g.categoria !== 'Ingreso Manual')
-    const ingresosManuales = gst.filter(g => g.categoria === 'Ingreso Manual')
+    const gastosReales = gst.filter(g => !g.descripcion?.startsWith('[INGRESO]'))
+    const ingresosManuales = gst.filter(g => g.descripcion?.startsWith('[INGRESO]'))
     const map = new Map<string,{ingresos:number;gastos:number}>()
     const key = (d:string) => {
       if (chartFilter==='hoy') return d.slice(11,13)+'h'
