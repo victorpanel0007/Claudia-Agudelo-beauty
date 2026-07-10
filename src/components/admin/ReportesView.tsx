@@ -37,6 +37,7 @@ interface HistorialItem {
   id: string; fecha: string; cliente: string; servicio: string
   especialista: string; valor: number; tipo: 'ingreso' | 'gasto'
   metodo_pago?: string
+  esManual?: boolean  // true = viene de tabla gastos (puede eliminarse)
 }
 interface DashboardData {
   ingresosHoy: number; ingresosSemana: number
@@ -337,17 +338,23 @@ export default function ReportesView() {
     const semStart = new Date(d); semStart.setDate(d.getDate()-6)
     const mesStart = new Date(d.getFullYear(), d.getMonth(), 1)
 
-    const [hoy, sem, mes, gastosRes] = await Promise.all([
+    const [hoy, sem, mes, gastosRes, gastosHoy, gastosSem] = await Promise.all([
       supabase.from('citas').select('valor_final').eq('estado','completada').gte('fecha_inicio',today+'T00:00:00-05:00').lte('fecha_inicio',today+'T23:59:59-05:00'),
       supabase.from('citas').select('valor_final').eq('estado','completada').gte('fecha_inicio',semStart.toLocaleDateString('en-CA',{timeZone:'America/Bogota'})+'T00:00:00-05:00').lte('fecha_inicio',today+'T23:59:59-05:00'),
       supabase.from('citas').select('valor_final').eq('estado','completada').gte('fecha_inicio',mesStart.toLocaleDateString('en-CA',{timeZone:'America/Bogota'})+'T00:00:00-05:00').lte('fecha_inicio',today+'T23:59:59-05:00'),
       fetch(`/api/gastos?start=${mesStart.toLocaleDateString('en-CA',{timeZone:'America/Bogota'})}&end=${today}`).then(r=>r.json()),
+      fetch(`/api/gastos?start=${today}&end=${today}`).then(r=>r.json()),
+      fetch(`/api/gastos?start=${semStart.toLocaleDateString('en-CA',{timeZone:'America/Bogota'})}&end=${today}`).then(r=>r.json()),
     ])
     const sum = (r:{valor_final?:number|null}[]) => r.reduce((a,c)=>a+(c.valor_final??0),0)
+    const ingManual = (arr: {valor:number;descripcion:string}[]) =>
+      (Array.isArray(arr) ? arr : []).filter(g=>g.descripcion?.startsWith('[INGRESO]')).reduce((a,g)=>a+g.valor,0)
     const todosGastosMes: {valor:number;descripcion:string}[] = Array.isArray(gastosRes) ? gastosRes : []
-    const ingHoy = sum(hoy.data??[]); const ingSem = sum(sem.data??[])
-    const ingMes = sum(mes.data??[]) + todosGastosMes.filter(g=>g.descripcion?.startsWith('[INGRESO]')).reduce((a,g)=>a+g.valor,0)
-    const gMes = todosGastosMes.filter(g=>!g.descripcion?.startsWith('[INGRESO]')).reduce((a,g)=>a+g.valor,0)
+
+    const ingHoy  = sum(hoy.data??[])  + ingManual(gastosHoy)
+    const ingSem  = sum(sem.data??[])  + ingManual(gastosSem)
+    const ingMes  = sum(mes.data??[])  + ingManual(todosGastosMes)
+    const gMes    = todosGastosMes.filter(g=>!g.descripcion?.startsWith('[INGRESO]')).reduce((a,g)=>a+g.valor,0)
     setDash({ ingresosHoy:ingHoy, ingresosSemana:ingSem, ingresosMes:ingMes, gastosMes:gMes, gananciaNeta:ingMes-gMes })
     setDashLoading(false)
   }, [supabase])
@@ -374,6 +381,7 @@ export default function ReportesView() {
       servicio: g.descripcion.startsWith('[INGRESO] ') ? g.descripcion.slice(10) : g.descripcion,
       especialista: '—', valor: g.valor,
       tipo: g.descripcion.startsWith('[INGRESO]') ? 'ingreso' as const : 'gasto' as const,
+      esManual: true,
     }))
     setGastos(gastosRaw.filter(g => !g.descripcion.startsWith('[INGRESO]')))
     setHistorial([...citasH, ...gastosH].sort((a,b) => b.fecha.localeCompare(a.fecha)))
@@ -554,7 +562,7 @@ export default function ReportesView() {
                   <p className={`font-bold text-sm ${h.tipo==='ingreso' ? 'text-emerald-600' : 'text-rose-600'}`}>
                     {h.tipo==='ingreso' ? '+' : '-'}{fmtShort(h.valor)}
                   </p>
-                  {h.tipo==='gasto' && (
+                  {h.esManual && (
                     <button onClick={() => deleteGasto(h.id)}
                       className="p-1.5 text-red-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors">
                       <Trash2 size={12} />
