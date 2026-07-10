@@ -87,9 +87,7 @@ interface ConvRow {
   nombre?:          string | null
   fecha?:           string | null
   especialista_id?: string | null
-  slots_json?:      AvailableSlot[] | null
-  // Para flujo de cancelación
-  citas_cancelar_json?: CitaCancelar[] | null
+  slots_json?:      AvailableSlot[] | null | CitaCancelar[]
 }
 
 interface CitaCancelar {
@@ -927,7 +925,7 @@ async function handleCancelarCita(telefono: string, conv: ConvRow | null, supaba
     await setConv(supabase, {
       telefono, paso: 'confirmar_cancelacion',
       nombre: cliente.nombre,
-      citas_cancelar_json: citasFormateadas,
+      slots_json: citasFormateadas as unknown as AvailableSlot[],
     })
     await reply(telefono,
       `📋 *Cita encontrada:*\n\n` +
@@ -946,7 +944,7 @@ async function handleCancelarCita(telefono: string, conv: ConvRow | null, supaba
     await setConv(supabase, {
       telefono, paso: 'seleccion_cita_cancelar',
       nombre: cliente.nombre,
-      citas_cancelar_json: citasFormateadas,
+      slots_json: citasFormateadas as unknown as AvailableSlot[],
     })
     await reply(telefono,
       `📋 *${cliente.nombre}*, tienes ${citasFormateadas.length} citas activas:\n\n${lista}\n\n` +
@@ -961,7 +959,7 @@ async function handleCancelarCita(telefono: string, conv: ConvRow | null, supaba
  */
 async function handleConfirmarCancelacion(telefono: string, text: string, conv: ConvRow, supabase: Supabase) {
   const t = text.toLowerCase().trim()
-  const citas = (conv.citas_cancelar_json as CitaCancelar[] | null) ?? []
+  const citas = (conv.slots_json as unknown as CitaCancelar[] | null) ?? []
 
   // No cancelar
   if (t === '2' || t === 'no' || t === 'no gracias' || t === 'no, mantenerla') {
@@ -989,7 +987,7 @@ async function handleConfirmarCancelacion(telefono: string, text: string, conv: 
  * Maneja la selección de cuál cita cancelar cuando hay varias.
  */
 async function handleSeleccionCitaCancelar(telefono: string, text: string, conv: ConvRow, supabase: Supabase) {
-  const citas = (conv.citas_cancelar_json as CitaCancelar[] | null) ?? []
+  const citas = (conv.slots_json as unknown as CitaCancelar[] | null) ?? []
   const num = parseInt(text.trim())
 
   if (num === 0 || text.toLowerCase() === 'no' || text.toLowerCase() === 'ninguna') {
@@ -1005,7 +1003,7 @@ async function handleSeleccionCitaCancelar(telefono: string, text: string, conv:
 
   const citaSeleccionada = citas[num - 1]
   // Pedir confirmación antes de cancelar
-  await setConv(supabase, { ...conv, paso: 'confirmar_cancelacion', citas_cancelar_json: [citaSeleccionada] })
+  await setConv(supabase, { ...conv, paso: 'confirmar_cancelacion', slots_json: [citaSeleccionada] as unknown as AvailableSlot[] })
   await reply(telefono,
     `📋 *Confirmar cancelación:*\n\n` +
     `💅 *${citaSeleccionada.servicio}*\n` +
