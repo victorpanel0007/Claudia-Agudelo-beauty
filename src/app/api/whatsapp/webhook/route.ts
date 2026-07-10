@@ -296,8 +296,16 @@ async function processMessage(telefono: string, texto: string) {
     'inicio','menu','menú','hi','hello','0','reiniciar']
   if (resetWords.includes(lower)) {
     await delConv(telefono, supabase)
-    await reply(telefono, await buildMainMenu(), supabase)
-    await setConv(supabase, { telefono, paso: 'seleccion_categoria' })
+    // Consultar si el cliente ya existe → saludo personalizado
+    const clienteExistente = await buscarCliente(telefono, supabase)
+    const menuMsg = await buildMainMenu()
+    if (clienteExistente) {
+      const saludo = `👋 ¡Hola de nuevo, *${clienteExistente.nombre}*! 💖\nQué gusto tenerte por acá.\n\n${menuMsg}`
+      await reply(telefono, saludo, supabase)
+    } else {
+      await reply(telefono, menuMsg, supabase)
+    }
+    await setConv(supabase, { telefono, paso: 'seleccion_categoria', nombre: clienteExistente?.nombre ?? null })
     return
   }
 
@@ -335,15 +343,16 @@ async function routeIntent(
   switch (ext.intencion) {
 
     case 'saludo':
-      await delConv(telefono, supabase)
-      await reply(telefono, await buildMainMenu(), supabase)
-      await setConv(supabase, { telefono, paso: 'seleccion_categoria' })
-      return
-
     case 'ver_categorias':
       await delConv(telefono, supabase)
-      await reply(telefono, await buildMainMenu(), supabase)
-      await setConv(supabase, { telefono, paso: 'seleccion_categoria' })
+      const clienteSaludo = await buscarCliente(telefono, supabase)
+      const menuSaludo = await buildMainMenu()
+      if (clienteSaludo && ext.intencion === 'saludo') {
+        await reply(telefono, `👋 ¡Hola de nuevo, *${clienteSaludo.nombre}*! 💖\nQué gusto tenerte por acá.\n\n${menuSaludo}`, supabase)
+      } else {
+        await reply(telefono, menuSaludo, supabase)
+      }
+      await setConv(supabase, { telefono, paso: 'seleccion_categoria', nombre: clienteSaludo?.nombre ?? null })
       return
 
     case 'ver_servicios':
@@ -627,17 +636,38 @@ async function dispatchPaso(telefono: string, text: string, conv: ConvRow, supab
 
 /**
  * Busca si el teléfono ya tiene un cliente registrado en BD.
- * Si lo encuentra devuelve el nombre; si no, devuelve null.
+ * Normaliza el número antes de buscar para evitar problemas de formato.
+ * Retorna { nombre, id } si existe, null si no.
  */
-async function buscarNombreCliente(telefono: string, supabase: Supabase): Promise<string | null> {
+async function buscarCliente(telefono: string, supabase: Supabase): Promise<{ id: string; nombre: string } | null> {
+  // Normalizar: quitar todo lo que no sea dígito, luego asegurar prefijo 57
+  const digits = telefono.replace(/\D/g, '')
+  const normalizado = digits.startsWith('57') && digits.length === 12
+    ? digits
+    : digits.length === 10 ? `57${digits}` : digits
+
+  // Buscar por número normalizado O por número sin prefijo (tolerancia)
+  const sinPrefijo = normalizado.startsWith('57') ? normalizado.slice(2) : normalizado
+
   const { data } = await supabase
     .from('clientes')
-    .select('nombre')
-    .eq('telefono', telefono)
+    .select('id, nombre')
+    .or(`telefono.eq.${normalizado},telefono.eq.${sinPrefijo},telefono.eq.${telefono}`)
     .order('fecha_registro', { ascending: false })
     .limit(1)
     .maybeSingle()
-  return (data?.nombre as string) || null
+
+  if (!data?.nombre) return null
+  return { id: data.id as string, nombre: data.nombre as string }
+}
+
+/**
+ * Busca si el teléfono ya tiene un cliente registrado en BD.
+ * Retorna solo el nombre (compatibilidad hacia atrás).
+ */
+async function buscarNombreCliente(telefono: string, supabase: Supabase): Promise<string | null> {
+  const cliente = await buscarCliente(telefono, supabase)
+  return cliente?.nombre ?? null
 }
 
 /**
@@ -778,14 +808,17 @@ async function handleHorario(t: string, text: string, conv: ConvRow, sb: Supabas
     return
   }
 
-  // Buscar o crear cliente
+  // Buscar o crear cliente — usando la función centralizada con normalización
   let clienteId = ''
-  const { data: existing } = await sb.from('clientes').select('id').eq('telefono', t).maybeSingle()
-  if (existing) {
-    clienteId = existing.id
+  const clienteExistente = await buscarCliente(t, sb)
+  if (clienteExistente) {
+    clienteId = clienteExistente.id
   } else {
+    // Normalizar teléfono al insertar
+    const digits = t.replace(/\D/g, '')
+    const telNorm = digits.startsWith('57') && digits.length === 12 ? digits : digits.length === 10 ? `57${digits}` : digits
     const { data: nc } = await sb.from('clientes')
-      .insert({ nombre: conv.nombre, telefono: t, fecha_registro: new Date().toISOString() })
+      .insert({ nombre: conv.nombre, telefono: telNorm, fecha_registro: new Date().toISOString() })
       .select('id').single()
     clienteId = nc?.id ?? ''
   }
