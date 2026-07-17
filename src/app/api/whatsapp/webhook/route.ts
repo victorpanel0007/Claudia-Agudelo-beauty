@@ -252,6 +252,21 @@ export async function POST(request: NextRequest) {
 
     // Limpiar pausas vencidas en cada mensaje (sin bloquear)
     limpiarPausasVencidas(supabase).catch(() => {})
+
+    // Marcar mensaje como leído (simula comportamiento humano, reduce riesgo de ban)
+    const msgKey = body.data?.key
+    if (msgKey && process.env.WHATSAPP_PROVIDER !== 'twilio') {
+      const BASE_URL = process.env.EVOLUTION_API_URL
+      const API_KEY  = process.env.EVOLUTION_API_KEY
+      const INSTANCE = process.env.EVOLUTION_INSTANCE_NAME
+      if (BASE_URL && API_KEY && INSTANCE) {
+        fetch(`${BASE_URL}/chat/markMessageAsRead/${INSTANCE}`, {
+          method: 'POST',
+          headers: { apikey: API_KEY, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ readMessages: [{ id: msgKey.id, fromMe: false, remoteJid: msgKey.remoteJid }] }),
+        }).catch(() => {})
+      }
+    }
     if (isAudio) {
       await handleAudio(from, body.data)
       return NextResponse.json({ ok: true })
