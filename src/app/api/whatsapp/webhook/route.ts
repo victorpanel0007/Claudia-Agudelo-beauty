@@ -297,7 +297,7 @@ async function handleAudio(telefono: string, webhookData: Record<string, unknown
 
 // ── Motor principal — único para texto Y audio ────────────────────────────────
 
-async function processMessage(telefono: string, texto: string) {
+export async function processMessage(telefono: string, texto: string) {
   const supabase = await createAdminClient()
 
   try {
@@ -1111,10 +1111,50 @@ async function buildPrecioResponse(svcNombre?: string | null, catId?: string | n
 
 // ── Helper reply ──────────────────────────────────────────────────────────────
 
+async function sendViaProvider(telefono: string, message: string): Promise<void> {
+  const provider = process.env.WHATSAPP_PROVIDER ?? 'evolution'
+
+  if (provider === 'twilio') {
+    const SID   = process.env.TWILIO_ACCOUNT_SID ?? ''
+    const TOKEN = process.env.TWILIO_AUTH_TOKEN  ?? ''
+    const FROM  = process.env.TWILIO_WHATSAPP_FROM ?? 'whatsapp:+14155238886'
+    const digits = telefono.replace(/\D/g, '')
+    const number = digits.startsWith('57') && digits.length === 12 ? digits
+      : digits.length === 10 ? `57${digits}` : digits
+
+    const params = new URLSearchParams({
+      From: FROM,
+      To:   `whatsapp:+${number}`,
+      Body: message,
+    })
+    try {
+      const res = await fetch(
+        `https://api.twilio.com/2010-04-01/Accounts/${SID}/Messages.json`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: 'Basic ' + Buffer.from(`${SID}:${TOKEN}`).toString('base64'),
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          body: params,
+        }
+      )
+      const data = await res.json() as { sid?: string; status?: string; message?: string }
+      if (!res.ok) console.error(`[Twilio] Error: ${data.message}`)
+      else console.info(`[Twilio] Enviado a ${number} | ${data.status}`)
+    } catch (e) {
+      console.error(`[Twilio] send failed ${number}:`, (e as Error).message)
+    }
+  } else {
+    // Evolution API (default)
+    sendWhatsAppMessage(telefono, message).catch(e =>
+      console.error(`[Evolution] send failed ${telefono}:`, (e as Error).message)
+    )
+  }
+}
+
 async function reply(telefono: string, message: string, supabase: Supabase) {
-  sendWhatsAppMessage(telefono, message).catch(e =>
-    console.error(`[WA send failed ${telefono}]:`, e?.message)
-  )
+  sendViaProvider(telefono, message)
   try {
     await supabase.from('mensajes_whatsapp').insert({
       telefono, mensaje: message, tipo: 'saliente', fecha: new Date().toISOString(),
