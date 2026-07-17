@@ -1114,6 +1114,10 @@ async function buildPrecioResponse(svcNombre?: string | null, catId?: string | n
 async function sendViaProvider(telefono: string, message: string): Promise<void> {
   const provider = process.env.WHATSAPP_PROVIDER ?? 'evolution'
 
+  // Delay aleatorio 1-3 segundos para simular escritura humana y reducir riesgo de ban
+  const delay = 1000 + Math.floor(Math.random() * 2000)
+  await new Promise(resolve => setTimeout(resolve, delay))
+
   if (provider === 'twilio') {
     const SID   = process.env.TWILIO_ACCOUNT_SID ?? ''
     const TOKEN = process.env.TWILIO_AUTH_TOKEN  ?? ''
@@ -1146,7 +1150,21 @@ async function sendViaProvider(telefono: string, message: string): Promise<void>
       console.error(`[Twilio] send failed ${number}:`, (e as Error).message)
     }
   } else {
-    // Evolution API (default)
+    // Evolution API (default) — enviar presencia "escribiendo" antes del mensaje
+    const BASE_URL = process.env.EVOLUTION_API_URL
+    const API_KEY  = process.env.EVOLUTION_API_KEY
+    const INSTANCE = process.env.EVOLUTION_INSTANCE_NAME
+    if (BASE_URL && API_KEY && INSTANCE) {
+      // Indicador "escribiendo..." (~1.5 seg)
+      fetch(`${BASE_URL}/chat/presence/${INSTANCE}`, {
+        method: 'POST',
+        headers: { apikey: API_KEY, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          number: telefono,
+          options: { presence: 'composing', delay: 1500 }
+        }),
+      }).catch(() => {}) // no bloquear si falla
+    }
     sendWhatsAppMessage(telefono, message).catch(e =>
       console.error(`[Evolution] send failed ${telefono}:`, (e as Error).message)
     )
