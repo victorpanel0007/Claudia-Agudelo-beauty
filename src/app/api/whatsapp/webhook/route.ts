@@ -196,6 +196,12 @@ async function getConv(telefono: string, supabase: Supabase): Promise<ConvRow | 
   return data as ConvRow | null
 }
 
+async function limpiarPausasVencidas(supabase: Supabase): Promise<void> {
+  try {
+    await supabase.from('bot_pausas').delete().lt('pausado_hasta', new Date().toISOString())
+  } catch { /* no bloquear */ }
+}
+
 async function setConv(supabase: Supabase, row: ConvRow): Promise<void> {
   await supabase.from('conversaciones_bot').upsert(row, { onConflict: 'telefono' })
 }
@@ -243,6 +249,9 @@ export async function POST(request: NextRequest) {
     }
 
     const isAudio = !!message?.audioMessage || !!message?.pttMessage
+
+    // Limpiar pausas vencidas en cada mensaje (sin bloquear)
+    limpiarPausasVencidas(supabase).catch(() => {})
     if (isAudio) {
       await handleAudio(from, body.data)
       return NextResponse.json({ ok: true })
