@@ -4,13 +4,12 @@ export async function GET() {
   const evoUrl  = process.env.EVOLUTION_API_URL ?? 'NO CONFIGURADA'
   const evoKey  = process.env.EVOLUTION_API_KEY  ?? 'NO CONFIGURADA'
   const evoInst = process.env.EVOLUTION_INSTANCE_NAME ?? 'NO CONFIGURADA'
+  const openAiKey = process.env.OPENAI_API_KEY ?? 'NO CONFIGURADA'
+  const provider = process.env.WHATSAPP_PROVIDER ?? 'evolution (default)'
 
-  // Enmascarar la key por seguridad
-  const keyMask = evoKey !== 'NO CONFIGURADA'
-    ? evoKey.slice(0, 6) + '...' + evoKey.slice(-4)
-    : 'NO CONFIGURADA'
+  const keyMask = (k: string) => k !== 'NO CONFIGURADA' ? k.slice(0,6)+'...'+k.slice(-4) : 'NO CONFIGURADA'
 
-  // Probar conexión con Evolution API
+  // Probar conexión Evolution API
   let evoStatus = 'no probado'
   let evoError  = ''
   try {
@@ -25,11 +24,30 @@ export async function GET() {
     evoStatus = 'ERROR'
   }
 
+  // Probar OpenAI
+  let openAiStatus = 'no probado'
+  if (openAiKey !== 'NO CONFIGURADA') {
+    try {
+      const res = await fetch('https://api.openai.com/v1/models', {
+        headers: { Authorization: `Bearer ${openAiKey}` },
+        signal: AbortSignal.timeout(5000),
+      })
+      openAiStatus = res.ok ? 'OK' : `HTTP ${res.status}`
+    } catch (e) {
+      openAiStatus = `ERROR: ${(e as Error).message}`
+    }
+  } else {
+    openAiStatus = 'CLAVE NO CONFIGURADA'
+  }
+
   return NextResponse.json({
+    WHATSAPP_PROVIDER:       provider,
     EVOLUTION_API_URL:       evoUrl,
-    EVOLUTION_API_KEY:       keyMask,
+    EVOLUTION_API_KEY:       keyMask(evoKey),
     EVOLUTION_INSTANCE_NAME: evoInst,
-    conexion_estado:         evoStatus,
-    conexion_error:          evoError || null,
+    evolution_estado:        evoStatus,
+    evolution_error:         evoError || null,
+    OPENAI_API_KEY:          keyMask(openAiKey),
+    openai_estado:           openAiStatus,
   })
 }
