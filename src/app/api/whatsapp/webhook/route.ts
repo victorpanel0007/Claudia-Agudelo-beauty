@@ -1129,10 +1129,6 @@ async function buildPrecioResponse(svcNombre?: string | null, catId?: string | n
 async function sendViaProvider(telefono: string, message: string): Promise<void> {
   const provider = process.env.WHATSAPP_PROVIDER ?? 'evolution'
 
-  // Delay corto (300-700ms) para simular comportamiento humano sin demorar demasiado
-  const delay = 300 + Math.floor(Math.random() * 400)
-  await new Promise(resolve => setTimeout(resolve, delay))
-
   if (provider === 'twilio') {
     const SID   = process.env.TWILIO_ACCOUNT_SID ?? ''
     const TOKEN = process.env.TWILIO_AUTH_TOKEN  ?? ''
@@ -1140,46 +1136,20 @@ async function sendViaProvider(telefono: string, message: string): Promise<void>
     const digits = telefono.replace(/\D/g, '')
     const number = digits.startsWith('57') && digits.length === 12 ? digits
       : digits.length === 10 ? `57${digits}` : digits
-
-    const params = new URLSearchParams({
-      From: FROM,
-      To:   `whatsapp:+${number}`,
-      Body: message,
-    })
+    const params = new URLSearchParams({ From: FROM, To: `whatsapp:+${number}`, Body: message })
     try {
-      const res = await fetch(
-        `https://api.twilio.com/2010-04-01/Accounts/${SID}/Messages.json`,
-        {
-          method: 'POST',
-          headers: {
-            Authorization: 'Basic ' + Buffer.from(`${SID}:${TOKEN}`).toString('base64'),
-            'Content-Type': 'application/x-www-form-urlencoded',
-          },
-          body: params,
-        }
-      )
+      const res = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${SID}/Messages.json`, {
+        method: 'POST',
+        headers: { Authorization: 'Basic ' + Buffer.from(`${SID}:${TOKEN}`).toString('base64'), 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: params,
+      })
       const data = await res.json() as { sid?: string; status?: string; message?: string }
       if (!res.ok) console.error(`[Twilio] Error: ${data.message}`)
-      else console.info(`[Twilio] Enviado a ${number} | ${data.status}`)
     } catch (e) {
       console.error(`[Twilio] send failed ${number}:`, (e as Error).message)
     }
   } else {
-    // Evolution API (default) — enviar presencia "escribiendo" antes del mensaje
-    const BASE_URL = process.env.EVOLUTION_API_URL
-    const API_KEY  = process.env.EVOLUTION_API_KEY
-    const INSTANCE = process.env.EVOLUTION_INSTANCE_NAME
-    if (BASE_URL && API_KEY && INSTANCE) {
-      // Indicador "escribiendo..." (~1.5 seg)
-      fetch(`${BASE_URL}/chat/presence/${INSTANCE}`, {
-        method: 'POST',
-        headers: { apikey: API_KEY, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          number: telefono,
-          options: { presence: 'composing', delay: 500 }
-        }),
-      }).catch(() => {}) // no bloquear si falla
-    }
+    // Evolution API — envío directo sin delays ni presence
     sendWhatsAppMessage(telefono, message).catch(e =>
       console.error(`[Evolution] send failed ${telefono}:`, (e as Error).message)
     )
