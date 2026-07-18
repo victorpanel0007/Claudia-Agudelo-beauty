@@ -1129,8 +1129,8 @@ async function buildPrecioResponse(svcNombre?: string | null, catId?: string | n
 async function sendViaProvider(telefono: string, message: string): Promise<void> {
   const provider = process.env.WHATSAPP_PROVIDER ?? 'evolution'
 
-  // Delay aleatorio 0.5-1.5 segundos para simular escritura humana y reducir riesgo de ban
-  const delay = 500 + Math.floor(Math.random() * 1000)
+  // Delay corto (300-700ms) para simular comportamiento humano sin demorar demasiado
+  const delay = 300 + Math.floor(Math.random() * 400)
   await new Promise(resolve => setTimeout(resolve, delay))
 
   if (provider === 'twilio') {
@@ -1176,7 +1176,7 @@ async function sendViaProvider(telefono: string, message: string): Promise<void>
         headers: { apikey: API_KEY, 'Content-Type': 'application/json' },
         body: JSON.stringify({
           number: telefono,
-          options: { presence: 'composing', delay: 1500 }
+          options: { presence: 'composing', delay: 500 }
         }),
       }).catch(() => {}) // no bloquear si falla
     }
