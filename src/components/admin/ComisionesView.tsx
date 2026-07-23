@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import {
   DollarSign, Users, CheckCircle, Wallet, CreditCard,
   AlertCircle, FileText, Download, Printer, Plus, X,
-  ChevronDown, Pencil, Check, Trash2,
+  ChevronDown, Pencil, Check, Trash2, Eye,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -14,6 +14,7 @@ import toast from 'react-hot-toast'
 
 type PeriodKey = 'hoy' | 'semana' | 'quincena' | 'mes' | 'anio' | 'personalizado'
 type PagoEstado = 'pendiente' | 'pagado' | 'parcial'
+type ComisionEstadoFiltro = 'todos' | 'pendiente' | 'pagado' | 'anulado'
 type PeriodoLabel = 'semanal' | 'quincenal' | 'mensual' | 'personalizado'
 type MetodoPago = 'efectivo' | 'transferencia' | 'nequi' | 'daviplata' | 'cheque' | 'otro'
 
@@ -170,6 +171,12 @@ export default function ComisionesView() {
     observaciones: '',
   })
 
+  // Filtro estado comisión
+  const [estadoFiltro, setEstadoFiltro] = useState<ComisionEstadoFiltro>('todos')
+
+  // Modal confirmación de pago (paso previo)
+  const [showConfirmModal, setShowConfirmModal] = useState(false)
+
   // ── Load Especialistas & Configs ─────────────────────────────────────────
 
   const loadEspecialistas = useCallback(async () => {
@@ -252,9 +259,45 @@ export default function ComisionesView() {
     const gananciaSpa = totalFacturado - comisionEspecialista
     const citasRealizadas = citas.length
     const totalPagado = pagos.reduce((a, p) => a + p.valor_pagado, 0)
-    const saldoPendiente = Math.max(0, comisionEspecialista - totalPagado)
+    // Saldo pendiente: solo citas cuyo pago_estado NO es 'pagado'
+    const saldoPendiente = citas
+      .filter(c => (c.pago_estado ?? 'pendiente') !== 'pagado')
+      .reduce((a, c) => {
+        const base = c.comision_especialista ?? ((c.valor_final ?? 0) * espPct / 100)
+        return a + base
+      }, 0)
     return { totalFacturado, comisionEspecialista, gananciaSpa, citasRealizadas, totalPagado, saldoPendiente }
   })()
+
+  // ── Citas filtradas por estado ────────────────────────────────────────────
+  const citasFiltradas = estadoFiltro === 'todos'
+    ? citas
+    : estadoFiltro === 'anulado'
+      ? citas.filter(c => c.pago_estado === 'parcial') // 'parcial' no se usa como anulado; citas canceladas no llegan aquí
+      : citas.filter(c => (c.pago_estado ?? 'pendiente') === estadoFiltro)
+
+  // Contadores para el filtro
+  const contPendiente = citas.filter(c => (c.pago_estado ?? 'pendiente') === 'pendiente').length
+  const contPagado    = citas.filter(c => c.pago_estado === 'pagado').length
+
+  const ESTADO_FILTROS: { key: ComisionEstadoFiltro; label: string; count: number }[] = [
+    { key: 'todos',     label: 'Todos',          count: citas.length },
+    { key: 'pendiente', label: '⏳ Pendientes',  count: contPendiente },
+    { key: 'pagado',    label: '✅ Pagadas',      count: contPagado },
+  ]
+
+  // ── Datos para resumen en modal confirmación ──────────────────────────────
+  const espSelNombre = especialistas.find(e => e.id === pagoForm.especialista_id)?.nombre ?? '—'
+  const citasPendientesEnPeriodo = citas.filter(c =>
+    c.pago_estado !== 'pagado' &&
+    pagoForm.especialista_id &&
+    // Solo las citas cargadas del período seleccionado
+    true
+  )
+  const espPctConfirm = pagoForm.especialista_id ? getPct(pagoForm.especialista_id) : 40
+  const totalComisionConfirm = citasPendientesEnPeriodo.reduce((a, c) => {
+    return a + (c.comision_especialista ?? ((c.valor_final ?? 0) * espPctConfirm / 100))
+  }, 0)
 
   // ── Edit % inline ─────────────────────────────────────────────────────────
 
@@ -291,6 +334,15 @@ export default function ComisionesView() {
     setShowPagoModal(true)
   }
 
+  // Abrir confirmación desde el formulario de pago
+  function openConfirmacion() {
+    if (!pagoForm.especialista_id) { toast.error('Selecciona un especialista'); return }
+    const valor = parseFloat(pagoForm.valor_pagado)
+    if (isNaN(valor) || valor <= 0) { toast.error('Ingresa un valor válido'); return }
+    setShowPagoModal(false)
+    setShowConfirmModal(true)
+  }
+
   async function savePago() {
     if (!pagoForm.especialista_id) { toast.error('Selecciona un especialista'); return }
     const valor = parseFloat(pagoForm.valor_pagado)
@@ -314,8 +366,9 @@ export default function ComisionesView() {
       body: JSON.stringify(body),
     })
     if (!res.ok) { toast.error('Error registrando pago'); setSavingPago(false); return }
-    toast.success('Pago registrado exitosamente')
+    toast.success('✅ Pago registrado — comisiones marcadas como Pagadas')
     setSavingPago(false)
+    setShowConfirmModal(false)
     setShowPagoModal(false)
     loadPagos()
     loadCitas()
@@ -755,15 +808,37 @@ export default function ComisionesView() {
             )}
           </div>
 
+          {/* Filtro estado comisión */}
+          <div className="px-4 pt-3 pb-1 flex flex-wrap gap-2">
+            {ESTADO_FILTROS.map(f => (
+              <button
+                key={f.key}
+                onClick={() => setEstadoFiltro(f.key)}
+                className={`text-xs font-semibold px-3 py-1.5 rounded-full border transition-colors flex items-center gap-1.5 ${
+                  estadoFiltro === f.key
+                    ? 'bg-beauty-primary text-white border-beauty-primary'
+                    : 'bg-white text-beauty-text-muted border-beauty-primary/20 hover:border-beauty-primary/50'
+                }`}
+              >
+                {f.label}
+                <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${estadoFiltro === f.key ? 'bg-white/20' : 'bg-gray-100'}`}>
+                  {f.count}
+                </span>
+              </button>
+            ))}
+          </div>
+
           {loadingCitas ? (
             <div className="space-y-2 p-4">{[1,2,3,4].map(i => <div key={i} className="h-10 bg-beauty-rosa-claro/30 rounded-lg animate-pulse" />)}</div>
-          ) : citas.length === 0 ? (
-            <p className="text-beauty-text-muted text-sm text-center py-10">Sin citas completadas en el período</p>
+          ) : citasFiltradas.length === 0 ? (
+            <p className="text-beauty-text-muted text-sm text-center py-10">
+              {estadoFiltro === 'todos' ? 'Sin citas completadas en el período' : `Sin citas con estado "${estadoFiltro}" en el período`}
+            </p>
           ) : (
             <>
               {/* Móvil: tarjetas */}
               <div className="divide-y divide-gray-50 lg:hidden">
-                {citas.map(c => {
+                {citasFiltradas.map(c => {
                   const pct = c.porcentaje_comision ?? (selectedEspId ? getPct(selectedEspId) : 40)
                   const comision = c.comision_especialista ?? ((c.valor_final ?? 0) * pct / 100)
                   const ganancia = c.ganancia_spa ?? ((c.valor_final ?? 0) - comision)
@@ -803,7 +878,7 @@ export default function ComisionesView() {
                     </tr>
                   </thead>
                   <tbody>
-                    {citas.map(c => {
+                    {citasFiltradas.map(c => {
                       const pct = c.porcentaje_comision ?? (selectedEspId ? getPct(selectedEspId) : 40)
                       const comision = c.comision_especialista ?? ((c.valor_final ?? 0) * pct / 100)
                       const ganancia = c.ganancia_spa ?? ((c.valor_final ?? 0) - comision)
@@ -1081,6 +1156,93 @@ export default function ComisionesView() {
                 Cancelar
               </button>
               <button
+                onClick={openConfirmacion}
+                className="flex items-center gap-2 bg-beauty-borgona text-white font-semibold px-5 py-2 rounded-xl hover:bg-beauty-borgona-dark transition-colors"
+              >
+                <Eye size={16} /> Ver resumen y confirmar
+              </button>
+            </div>
+          </div>
+        </div>
+      , document.body)}
+
+      {/* ── MODAL CONFIRMACIÓN DE PAGO ──────────────────────────────────────── */}
+      {showConfirmModal && typeof document !== 'undefined' && createPortal(
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+          <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-beauty-lg w-full sm:max-w-lg max-h-[92vh] flex flex-col animate-slide-up">
+            <div className="flex justify-center pt-3 pb-1 sm:hidden shrink-0">
+              <div className="w-10 h-1 rounded-full bg-gray-200" />
+            </div>
+            {/* Header */}
+            <div className="flex items-center justify-between p-5 border-b border-gray-100 shrink-0 bg-amber-50">
+              <div className="flex items-center gap-2">
+                <span className="text-xl">💳</span>
+                <h3 className="font-bold text-beauty-text">Confirmar Pago</h3>
+              </div>
+              <button onClick={() => { setShowConfirmModal(false); setShowPagoModal(true) }} className="text-beauty-text-muted hover:text-beauty-borgona">
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Resumen */}
+            <div className="p-5 space-y-4 overflow-y-auto flex-1">
+              <p className="text-xs text-beauty-text-muted">Revisa el resumen antes de confirmar. Esta acción marcará las comisiones incluidas como <strong>Pagadas</strong>.</p>
+
+              <div className="bg-[#FFF8EE] rounded-2xl p-4 space-y-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-xs text-beauty-text-muted font-medium">Especialista</span>
+                  <span className="text-sm font-bold text-beauty-text">{espSelNombre}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-xs text-beauty-text-muted font-medium">Período</span>
+                  <span className="text-sm text-beauty-text">
+                    {pagoForm.fecha_inicio_periodo && pagoForm.fecha_fin_periodo
+                      ? `${pagoForm.fecha_inicio_periodo} → ${pagoForm.fecha_fin_periodo}`
+                      : pagoForm.fecha}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-xs text-beauty-text-muted font-medium">Citas pendientes incluidas</span>
+                  <span className="text-sm font-semibold text-beauty-text">{citasPendientesEnPeriodo.length}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-xs text-beauty-text-muted font-medium">Total comisiones del período</span>
+                  <span className="text-sm font-semibold text-beauty-borgona">{formatCurrency(totalComisionConfirm)}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-xs text-beauty-text-muted font-medium">Método de pago</span>
+                  <span className="text-sm text-beauty-text capitalize">{pagoForm.metodo_pago}</span>
+                </div>
+                <div className="h-px bg-beauty-primary/10" />
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-bold text-beauty-borgona">Valor a pagar</span>
+                  <span className="text-lg font-bold text-beauty-borgona">{formatCurrency(parseFloat(pagoForm.valor_pagado) || 0)}</span>
+                </div>
+                {pagoForm.observaciones && (
+                  <div>
+                    <span className="text-xs text-beauty-text-muted font-medium block mb-1">Observaciones</span>
+                    <p className="text-sm text-beauty-text bg-white rounded-lg px-3 py-2">{pagoForm.observaciones}</p>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl p-3">
+                <AlertCircle size={15} className="text-amber-600 shrink-0 mt-0.5" />
+                <p className="text-xs text-amber-700">
+                  Al confirmar, todas las <strong>{citasPendientesEnPeriodo.length} citas pendientes</strong> del período quedarán marcadas como <strong>Pagadas</strong> y no volverán a aparecer en el saldo pendiente.
+                </p>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="flex justify-end gap-3 p-5 border-t border-gray-100 shrink-0">
+              <button
+                onClick={() => { setShowConfirmModal(false); setShowPagoModal(true) }}
+                className="px-4 py-2 text-sm text-beauty-text-muted hover:text-beauty-borgona border border-gray-200 rounded-xl transition-colors"
+              >
+                Volver
+              </button>
+              <button
                 onClick={savePago}
                 disabled={savingPago}
                 className="flex items-center gap-2 bg-beauty-borgona text-white font-semibold px-5 py-2 rounded-xl hover:bg-beauty-borgona-dark transition-colors disabled:opacity-60"
@@ -1091,7 +1253,7 @@ export default function ComisionesView() {
                     Guardando...
                   </>
                 ) : (
-                  <><Check size={16} /> Guardar Pago</>
+                  <><Check size={16} /> Confirmar Pago</>
                 )}
               </button>
             </div>

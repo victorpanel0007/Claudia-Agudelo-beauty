@@ -32,7 +32,37 @@ export async function POST(request: NextRequest) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  // 2. Auto-registrar en gastos (no bloquea si falla)
+  // 2. Marcar citas del período como pagadas ─────────────────────────────
+  // Si se pasan fecha_inicio_periodo / fecha_fin_periodo las usamos;
+  // si no, usamos la fecha del pago como referencia puntual.
+  try {
+    const espId     = body.especialista_id as string | undefined
+    const periodoIni = (body.fecha_inicio_periodo as string | undefined) ?? (body.fecha as string)
+    const periodoFin = (body.fecha_fin_periodo   as string | undefined) ?? (body.fecha as string)
+
+    if (espId && periodoIni && periodoFin) {
+      const startTs = `${periodoIni}T00:00:00-05:00`
+      const endTs   = `${periodoFin}T23:59:59-05:00`
+
+      // Marcar todas las comisiones pendientes del período como pagadas
+      const { error: citaErr } = await supabase
+        .from('citas')
+        .update({ pago_estado: 'pagado' })
+        .eq('especialista_id', espId)
+        .eq('estado',          'completada')
+        .eq('pago_estado',     'pendiente')
+        .gte('fecha_inicio',   startTs)
+        .lte('fecha_inicio',   endTs)
+
+      if (citaErr) {
+        console.error('[pagos] Error actualizando pago_estado de citas:', citaErr)
+      }
+    }
+  } catch (e) {
+    console.error('[pagos] Error marcando citas como pagadas:', e)
+  }
+
+  // 3. Auto-registrar en gastos (no bloquea si falla)
   try {
     const descripcion = `Pago comisión - ${body.especialista_nombre ?? 'Especialista'} (${body.periodo ?? 'período'})`
     await supabase.from('gastos').insert({
