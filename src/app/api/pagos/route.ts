@@ -33,25 +33,22 @@ export async function POST(request: NextRequest) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
   // 2. Marcar citas del período como pagadas ─────────────────────────────
-  // Si se pasan fecha_inicio_periodo / fecha_fin_periodo las usamos;
-  // si no, usamos la fecha del pago como referencia puntual.
+  // Marca como pagadas TODAS las citas pendientes de la especialista
+  // desde el inicio de los tiempos hasta la fecha_fin_periodo (o fecha del pago).
+  // Así no depende de que el usuario haya rellenado las fechas del período.
   try {
-    const espId     = body.especialista_id as string | undefined
-    const periodoIni = (body.fecha_inicio_periodo as string | undefined) ?? (body.fecha as string)
-    const periodoFin = (body.fecha_fin_periodo   as string | undefined) ?? (body.fecha as string)
+    const espId      = body.especialista_id as string | undefined
+    const periodoFin = (body.fecha_fin_periodo as string | undefined) ?? (body.fecha as string)
 
-    if (espId && periodoIni && periodoFin) {
-      const startTs = `${periodoIni}T00:00:00-05:00`
-      const endTs   = `${periodoFin}T23:59:59-05:00`
+    if (espId && periodoFin) {
+      const endTs = `${periodoFin}T23:59:59-05:00`
 
-      // Marcar todas las comisiones pendientes del período como pagadas
       const { error: citaErr } = await supabase
         .from('citas')
         .update({ pago_estado: 'pagado' })
         .eq('especialista_id', espId)
         .eq('estado',          'completada')
         .eq('pago_estado',     'pendiente')
-        .gte('fecha_inicio',   startTs)
         .lte('fecha_inicio',   endTs)
 
       if (citaErr) {
