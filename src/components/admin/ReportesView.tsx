@@ -6,8 +6,10 @@ import { createClient } from '@/lib/supabase/client'
 import {
   TrendingDown, Users, BarChart2, Clock, Scissors,
   Download, X, Check, Loader2, Plus, Trash2, ChevronRight,
+  Calendar, ArrowUpRight, ArrowDownRight, Minus,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
+import HistorialContable from '@/components/admin/HistorialContable'
 
 // ── Types ──────────────────────────────────────────────────────────────────
 type Period   = 'hoy' | 'semana' | 'quincena' | 'mes'
@@ -345,15 +347,29 @@ export default function ReportesView() {
   const PBTN: {key:Period;label:string}[] = [{key:'hoy',label:'Hoy'},{key:'semana',label:'Semana'},{key:'quincena',label:'Quincena'},{key:'mes',label:'Mes'}]
   const EPBTN: {key:EspPeriod;label:string}[] = [{key:'hoy',label:'Hoy'},{key:'7dias',label:'7d'},{key:'15dias',label:'15d'},{key:'este_mes',label:'Este mes'},{key:'mes_anterior',label:'Mes ant.'}]
 
+  // ── Estado para el tab activo ────────────────────────────────────────────
+  const [activeTab, setActiveTab] = useState<'actual'|'historial'>('actual')
+
   return (
     <div className="space-y-4 animate-fade-in pb-8">
 
-      {/* Header */}
-      <div className="flex items-center justify-between">
+      {/* Header con tabs */}
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <div><h2 className="text-xl font-bold text-gray-800">Contabilidad</h2><p className="text-xs text-gray-400">Ingresos, gastos y comisiones</p></div>
-        <div className="flex items-center gap-2 overflow-x-auto scrollbar-none">
-          {PBTN.map(b=><button key={b.key} onClick={()=>setPeriod(b.key)} className={`shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full border transition-colors ${period===b.key?'bg-[#EFA1B5] text-white border-[#EFA1B5]':'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}>{b.label}</button>)}
+        <div className="flex items-center gap-2">
+          <div className="flex bg-gray-100 p-1 rounded-xl">
+            <button onClick={()=>setActiveTab('actual')} className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${activeTab==='actual'?'bg-white text-gray-800 shadow-sm':'text-gray-500'}`}>Mes actual</button>
+            <button onClick={()=>setActiveTab('historial')} className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${activeTab==='historial'?'bg-white text-gray-800 shadow-sm':'text-gray-500'}`}>📊 Historial</button>
+          </div>
         </div>
+      </div>
+
+      {/* ── TAB ACTUAL ───────────────────────────────────────────────────── */}
+      {activeTab === 'actual' && (<>
+
+      {/* Filtros período */}
+      <div className="flex items-center gap-2 overflow-x-auto scrollbar-none">
+        {PBTN.map(b=><button key={b.key} onClick={()=>setPeriod(b.key)} className={`shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full border transition-colors ${period===b.key?'bg-[#EFA1B5] text-white border-[#EFA1B5]':'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}>{b.label}</button>)}
       </div>
 
       {/* Stats */}
@@ -457,6 +473,13 @@ export default function ReportesView() {
       </button>
 
       {modal&&<MovimientoModal tipo={modal} onClose={()=>setModal(null)} onSaved={reload}/>}
+    </>)}
+
+      {/* ── TAB HISTORIAL ──────────────────────────────────────────────────── */}
+      {activeTab === 'historial' && (
+        <HistorialContable supabase={supabase} especialistas={especialistas}/>
+      )}
+
     </div>
   )
 }
