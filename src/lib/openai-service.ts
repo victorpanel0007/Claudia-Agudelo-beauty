@@ -1,13 +1,9 @@
 /**
- * OpenAI Service
+ * OpenAI Service (SPA)
  *
  * Responsabilidades:
- *   1. transcribeAudio()  — Descarga audio de Evolution API y transcribe con Whisper (en memoria)
- *   2. extractIntent()    — Analiza CUALQUIER mensaje (texto o transcripción) con GPT-4o-mini
- *                           y devuelve TODOS los datos extraídos en una sola llamada
- *
- * El webhook usa extractIntent() para texto Y para audio por igual.
- * No hay dos flujos distintos — solo uno que entiende lenguaje natural.
+ *   1. transcribeAudio()  — YA NO SE USA desde el SPA. La transcripción la hace el backend Railway.
+ *   2. extractIntent()    — Analiza mensajes con GPT-4o-mini para extraer intención y datos.
  */
 
 import axios, { AxiosError } from 'axios'
@@ -16,6 +12,8 @@ import { CATEGORIAS, SERVICIOS_DATA } from '@/lib/services-data'
 
 // ── Config ────────────────────────────────────────────────────────────────────
 
+// NOTA: Evolution API ya no se usa. La integración WhatsApp ahora corre en Railway + DualHook.
+// Estas variables quedan como fallback legacy pero no se deben configurar en producción.
 const EVO_URL  = process.env.EVOLUTION_API_URL
 const EVO_KEY  = process.env.EVOLUTION_API_KEY
 const EVO_INST = process.env.EVOLUTION_INSTANCE_NAME
