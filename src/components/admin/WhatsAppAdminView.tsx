@@ -43,6 +43,7 @@ export default function WhatsAppAdminView() {
   const [testMsg, setTestMsg] = useState('')
   const [sending, setSending] = useState(false)
   const [webhookUrl, setWebhookUrl] = useState('')
+  const [backendUrl, setBackendUrl] = useState('https://claudia-beauty-backend-production.up.railway.app')
   const [instanceStatus, setInstanceStatus] = useState<'checking' | 'connected' | 'disconnected'>('checking')
   const [pausas, setPausas] = useState<Record<string, PausaInfo>>({})
   const [pausaMinutos, setPausaMinutos] = useState(20)
@@ -88,7 +89,10 @@ export default function WhatsAppAdminView() {
 
   useEffect(() => {
     loadMensajes()
-    setWebhookUrl(`${window.location.origin}/api/whatsapp/webhook`)
+    // La URL correcta del webhook es la del backend Railway, NO la del SPA
+    const railwayBackend = process.env.NEXT_PUBLIC_WHATSAPP_BACKEND_URL ?? 'https://claudia-beauty-backend-production.up.railway.app'
+    setBackendUrl(railwayBackend)
+    setWebhookUrl(`${railwayBackend}/webhooks/dualhook`)
     checkInstanceStatus()
     loadPausas()
 
@@ -533,13 +537,13 @@ export default function WhatsAppAdminView() {
           <div className="beauty-card p-5">
             <h3 className="font-bold text-beauty-text mb-4 flex items-center gap-2">
               <Settings size={18} className="text-beauty-secondary" />
-              Configuración Evolution API
+              Configuración DualHook (Railway Backend)
             </h3>
 
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  URL del Webhook
+                  URL del Webhook (configurar en DualHook)
                 </label>
                 <div className="flex gap-2">
                   <input
@@ -558,16 +562,17 @@ export default function WhatsAppAdminView() {
                   </button>
                 </div>
                 <p className="text-xs text-gray-400 mt-1">
-                  Configura esta URL en tu panel de Evolution API → Webhooks
+                  Configura esta URL en tu panel de DualHook → Webhooks
                 </p>
               </div>
 
               <div className="bg-gray-50 rounded-xl p-4 space-y-2 text-sm">
-                <p className="font-medium text-beauty-text text-sm">Variables de entorno</p>
+                <p className="font-medium text-beauty-text text-sm">Variables de entorno en Railway</p>
                 {[
-                  { key: 'EVOLUTION_API_URL', desc: 'URL base de Evolution API' },
-                  { key: 'EVOLUTION_API_KEY', desc: 'API Key de acceso' },
-                  { key: 'EVOLUTION_INSTANCE_NAME', desc: 'Nombre de la instancia' },
+                  { key: 'DUALHOOK_API_KEY', desc: 'API Key de DualHook' },
+                  { key: 'DUALHOOK_PHONE_NUMBER_ID', desc: 'Phone Number ID de Meta' },
+                  { key: 'DUALHOOK_VERIFY_TOKEN', desc: 'Token de verificación del webhook' },
+                  { key: 'DUALHOOK_WEBHOOK_SECRET', desc: 'Secret para validar firma (opcional)' },
                 ].map(v => (
                   <div key={v.key} className="flex items-start gap-2">
                     <Circle size={6} className="text-beauty-secondary mt-1.5 shrink-0" />
@@ -600,16 +605,16 @@ export default function WhatsAppAdminView() {
               </div>
 
               <div className="bg-beauty-rosa-claro border border-beauty-primary rounded-xl p-4">
-                <p className="text-sm font-semibold text-beauty-text mb-2">Estado del bot</p>                <div className="flex items-center gap-2">
+                <p className="text-sm font-semibold text-beauty-text mb-2">Estado del backend</p>                <div className="flex items-center gap-2">
                   {instanceStatus === 'connected' ? (
                     <>
                       <span className="w-3 h-3 bg-green-500 rounded-full animate-pulse" />
-                      <span className="text-green-700 text-sm font-medium">Evolution API conectada</span>
+                      <span className="text-green-700 text-sm font-medium">Backend Railway conectado</span>
                     </>
                   ) : instanceStatus === 'disconnected' ? (
                     <>
                       <span className="w-3 h-3 bg-red-500 rounded-full" />
-                      <span className="text-red-600 text-sm">Sin conexión — verifica las credenciales</span>
+                      <span className="text-red-600 text-sm">Sin conexión — verifica las credenciales en Railway</span>
                     </>
                   ) : (
                     <>
@@ -698,28 +703,28 @@ export default function WhatsAppAdminView() {
           <div className="lg:col-span-2 beauty-card p-5">
             <h3 className="font-bold text-beauty-text mb-4 flex items-center gap-2">
               <ChevronRight size={18} className="text-beauty-secondary" />
-              Guía de configuración
+              Guía de configuración DualHook
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               {[
                 {
                   step: '1',
-                  title: 'Crear instancia en Evolution API',
-                  items: ['Accede a tu panel de Evolution API', 'Crea una nueva instancia', 'Escanea el QR con WhatsApp'],
+                  title: 'Configurar variables en Railway',
+                  items: ['DUALHOOK_API_KEY con tu clave de DualHook', 'DUALHOOK_PHONE_NUMBER_ID con tu Phone Number ID', 'DUALHOOK_VERIFY_TOKEN con un token secreto propio'],
                   color: 'border-blue-200 bg-blue-50',
                   num: 'bg-blue-500',
                 },
                 {
                   step: '2',
-                  title: 'Configurar el webhook',
-                  items: ['Copia la URL del webhook de arriba', 'En Evolution API → Webhooks', `Pega la URL y activa "messages.upsert"`],
+                  title: 'Configurar el webhook en DualHook',
+                  items: ['Copia la URL del webhook de arriba', 'En DualHook → Webhooks → agregar URL', `Usar el mismo DUALHOOK_VERIFY_TOKEN`],
                   color: 'border-beauty-secondary/40 bg-beauty-rosa-claro',
                   num: 'bg-beauty-secondary',
                 },
                 {
                   step: '3',
                   title: 'Verificar funcionamiento',
-                  items: ['Envía "Hola" al número del negocio', 'El bot debe responder con el menú', 'Completa una reserva de prueba'],
+                  items: ['Envía "Hola" al número del negocio', 'El bot debe responder con el menú', 'Revisa logs en Railway para diagnóstico'],
                   color: 'border-green-200 bg-green-50',
                   num: 'bg-green-500',
                 },
