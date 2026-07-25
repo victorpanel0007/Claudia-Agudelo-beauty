@@ -1,27 +1,20 @@
 import { NextResponse } from 'next/server'
 
 export async function GET() {
-  const evoUrl  = process.env.EVOLUTION_API_URL ?? 'NO CONFIGURADA'
-  const evoKey  = process.env.EVOLUTION_API_KEY  ?? 'NO CONFIGURADA'
-  const evoInst = process.env.EVOLUTION_INSTANCE_NAME ?? 'NO CONFIGURADA'
-  const openAiKey = process.env.OPENAI_API_KEY ?? 'NO CONFIGURADA'
-  const provider = process.env.WHATSAPP_PROVIDER ?? 'evolution (default)'
+  const backendUrl = process.env.WHATSAPP_BACKEND_URL ?? 'https://claudia-beauty-backend-production.up.railway.app'
+  const openAiKey  = process.env.OPENAI_API_KEY ?? 'NO CONFIGURADA'
+  const keyMask = (k: string) => k !== 'NO CONFIGURADA' ? k.slice(0, 6) + '...' + k.slice(-4) : 'NO CONFIGURADA'
 
-  const keyMask = (k: string) => k !== 'NO CONFIGURADA' ? k.slice(0,6)+'...'+k.slice(-4) : 'NO CONFIGURADA'
-
-  // Probar conexión Evolution API
-  let evoStatus = 'no probado'
-  let evoError  = ''
+  // Probar backend Railway
+  let backendStatus = 'no probado'
+  let backendError  = ''
   try {
-    const res = await fetch(`${evoUrl}/instance/connectionState/${evoInst}`, {
-      headers: { apikey: evoKey },
-      signal: AbortSignal.timeout(5000),
-    })
-    const data = await res.json()
-    evoStatus = data?.instance?.state ?? JSON.stringify(data)
+    const res  = await fetch(`${backendUrl}/health`, { signal: AbortSignal.timeout(5000) })
+    const data = await res.json() as { ok?: boolean; supabase?: string }
+    backendStatus = res.ok && data?.ok ? 'connected' : 'error'
   } catch (e) {
-    evoError = (e as Error).message
-    evoStatus = 'ERROR'
+    backendError  = (e as Error).message
+    backendStatus = 'ERROR'
   }
 
   // Probar OpenAI
@@ -41,13 +34,11 @@ export async function GET() {
   }
 
   return NextResponse.json({
-    WHATSAPP_PROVIDER:       provider,
-    EVOLUTION_API_URL:       evoUrl,
-    EVOLUTION_API_KEY:       keyMask(evoKey),
-    EVOLUTION_INSTANCE_NAME: evoInst,
-    evolution_estado:        evoStatus,
-    evolution_error:         evoError || null,
-    OPENAI_API_KEY:          keyMask(openAiKey),
-    openai_estado:           openAiStatus,
+    WHATSAPP_PROVIDER:  'dualhook',
+    WHATSAPP_BACKEND:   backendUrl,
+    backend_estado:     backendStatus,
+    backend_error:      backendError || null,
+    OPENAI_API_KEY:     keyMask(openAiKey),
+    openai_estado:      openAiStatus,
   })
 }
