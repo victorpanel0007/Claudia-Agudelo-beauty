@@ -48,7 +48,8 @@ export function errorHandler(
   logger.error({ err: err.message, stack: err.stack }, 'Error no manejado')
   res.status(500).json({
     error:   'Error interno del servidor',
-    message: env.NODE_ENV !== 'production' ? err.message : undefined,
+    message: err.message,
+    stack:   env.NODE_ENV !== 'production' ? err.stack : undefined,
   })
 }
 

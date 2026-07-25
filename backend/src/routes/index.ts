@@ -1,5 +1,5 @@
 import { Router } from 'express'
-import { healthCheck, rootHandler, versionHandler, testOpenAI, testBot, testSend, testConfig } from '../controllers/health.controller'
+import { healthCheck, rootHandler, versionHandler, testOpenAI, testBot, testSend, testConfig, testSupabase } from '../controllers/health.controller'
 import { verifyWebhook, receiveWebhook } from '../controllers/webhook.controller'
 import { sendMessage, sendImageMessage, sendAudioMessage, sendDocumentMessage, sendLocationMessage } from '../controllers/messages.controller'
 import { webhookRateLimit } from '../middleware'
@@ -26,6 +26,7 @@ router.post('/api/messages/location', sendLocationMessage)
 router.post('/api/test/openai', testOpenAI)
 router.post('/api/test/bot',    testBot)    // Simula mensaje entrante sin DualHook
 router.post('/api/test/send',   testSend)   // Prueba envío directo a número real
-router.get('/api/test/config',  testConfig) // Muestra estado de variables de entorno
+router.get('/api/test/config',    testConfig) // Muestra estado de variables de entorno
+router.get('/api/test/supabase',  testSupabase) // Prueba tablas de Supabase
 
 export default router

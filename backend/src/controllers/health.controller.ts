@@ -45,10 +45,25 @@ export async function testOpenAI(_req: Request, res: Response): Promise<void> {
 }
 
 /**
+ * GET /api/test/supabase
+ * Prueba las tablas que usa el bot directamente.
+ */
+export async function testSupabase(_req: Request, res: Response): Promise<void> {
+  const { getSupabase } = await import('../database/supabase')
+  const sb = getSupabase()
+  const results: Record<string, unknown> = {}
+
+  const tables = ['conversaciones_bot', 'mensajes_whatsapp', 'bot_pausas', 'categorias', 'servicios', 'especialistas', 'clientes']
+  for (const t of tables) {
+    const { error } = await sb.from(t).select('id').limit(1)
+    results[t] = error ? `❌ ${error.message}` : '✅ OK'
+  }
+  res.json(results)
+}
+
+/**
  * POST /api/test/bot
  * Simula un mensaje entrante de WhatsApp sin necesitar DualHook.
- * Body: { telefono: "573001234567", mensaje: "Hola" }
- * Útil para probar el bot de extremo a extremo desde curl/Postman.
  */
 export async function testBot(req: Request, res: Response): Promise<void> {
   const { telefono, mensaje } = req.body as { telefono?: string; mensaje?: string }
@@ -62,8 +77,9 @@ export async function testBot(req: Request, res: Response): Promise<void> {
     webhookLog.info({ telefono }, '[TestBot] ✅ Bot procesó el mensaje correctamente')
     res.json({ ok: true, message: 'Bot procesó el mensaje. Revisa los logs para ver el flujo completo.' })
   } catch (err) {
-    webhookLog.error({ err: (err as Error).message, stack: (err as Error).stack }, '[TestBot] ❌ Error')
-    res.status(500).json({ ok: false, error: (err as Error).message, stack: (err as Error).stack })
+    const error = err as Error
+    webhookLog.error({ err: error.message, stack: error.stack }, '[TestBot] ❌ Error')
+    res.status(500).json({ ok: false, error: error.message, stack: error.stack })
   }
 }
 
