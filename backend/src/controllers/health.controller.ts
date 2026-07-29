@@ -18,6 +18,7 @@ export async function healthCheck(_req: Request, res: Response): Promise<void> {
     supabase:    supabaseOk ? 'connected' : 'error',
     dualhook_configured: !!(env.DUALHOOK_API_KEY && env.DUALHOOK_API_KEY !== '' && env.DUALHOOK_PHONE_NUMBER_ID && env.DUALHOOK_PHONE_NUMBER_ID !== ''),
     openai_configured:   !!(env.OPENAI_API_KEY && env.OPENAI_API_KEY.startsWith('sk-')),
+    meta_token_configured: !!(env.META_ACCESS_TOKEN && env.META_ACCESS_TOKEN !== ''),
     timestamp:   new Date().toISOString(),
     hora_colombia: new Date().toLocaleString('es-CO', { timeZone: 'America/Bogota' }),
   })
@@ -53,9 +54,14 @@ export async function testSupabase(_req: Request, res: Response): Promise<void> 
   const sb = getSupabase()
   const results: Record<string, unknown> = {}
 
-  const tables = ['conversaciones_bot', 'mensajes_whatsapp', 'bot_pausas', 'categorias', 'servicios', 'especialistas', 'clientes']
-  for (const t of tables) {
+  // Tablas con 'id' como PK
+  for (const t of ['categorias', 'servicios', 'especialistas', 'clientes', 'mensajes_whatsapp']) {
     const { error } = await sb.from(t).select('id').limit(1)
+    results[t] = error ? `❌ ${error.message}` : '✅ OK'
+  }
+  // Tablas con 'telefono' como PK
+  for (const t of ['conversaciones_bot', 'bot_pausas']) {
+    const { error } = await sb.from(t).select('telefono').limit(1)
     results[t] = error ? `❌ ${error.message}` : '✅ OK'
   }
   res.json(results)

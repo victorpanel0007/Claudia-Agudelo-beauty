@@ -1,7 +1,7 @@
 /**
  * WhatsApp Service — Meta Cloud API (Graph API)
- * Dualhook maneja los webhooks ENTRANTES.
- * Para ENVIAR mensajes se usa directamente graph.facebook.com.
+ * DualHook maneja los webhooks ENTRANTES (recepción).
+ * Para ENVIAR mensajes se usa directamente graph.facebook.com con META_ACCESS_TOKEN.
  */
 import axios, { AxiosError } from 'axios'
 import { env } from '../config/env'
@@ -11,11 +11,14 @@ import type {
   SendAudioOptions, SendDocumentOptions, SendLocationOptions,
 } from '../types'
 
-const GRAPH_URL = 'https://api.dualhook.com/v25.0'
+// Siempre graph.facebook.com para enviar — DualHook solo recibe
+const GRAPH_URL = 'https://graph.facebook.com/v20.0'
 
 function buildHeaders() {
+  // Usar META_ACCESS_TOKEN si está disponible, sino DUALHOOK_API_KEY como fallback
+  const token = env.META_ACCESS_TOKEN || env.DUALHOOK_API_KEY
   return {
-    Authorization: `Bearer ${env.DUALHOOK_API_KEY}`,
+    Authorization: `Bearer ${token}`,
     'Content-Type': 'application/json',
   }
 }
@@ -41,8 +44,9 @@ function handleAxiosError(err: unknown, context: string): SendResult {
 
 export async function sendText(options: SendTextOptions): Promise<SendResult> {
   const phoneId = getPhoneNumberId()
-  if (!phoneId || !env.DUALHOOK_API_KEY) {
-    return { ok: false, errorMessage: 'DUALHOOK_API_KEY o DUALHOOK_PHONE_NUMBER_ID no configurados' }
+  const token = env.META_ACCESS_TOKEN || env.DUALHOOK_API_KEY
+  if (!phoneId || !token) {
+    return { ok: false, errorMessage: 'META_ACCESS_TOKEN y DUALHOOK_PHONE_NUMBER_ID son requeridos' }
   }
   try {
     const { data, status } = await axios.post(
@@ -159,7 +163,8 @@ export async function sendLocation(options: SendLocationOptions): Promise<SendRe
 
 export async function markAsRead(messageId: string): Promise<void> {
   const phoneId = getPhoneNumberId()
-  if (!phoneId || !env.DUALHOOK_API_KEY) return
+  const token = env.META_ACCESS_TOKEN || env.DUALHOOK_API_KEY
+  if (!phoneId || !token) return
   try {
     await axios.post(
       `${GRAPH_URL}/${phoneId}/messages`,

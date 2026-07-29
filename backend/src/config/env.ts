@@ -19,11 +19,14 @@ const envSchema = z.object({
   OPENAI_API_KEY:             z.string().min(10),
   OPENAI_TRANSCRIPTION_MODEL: z.string().default('whisper-1'),
 
-  // Dualhook — se configuran despues del signup
+  // Dualhook — webhooks entrantes
   DUALHOOK_API_KEY:         z.string().default(''),
   DUALHOOK_VERIFY_TOKEN:    z.string().default('changeme'),
   DUALHOOK_WEBHOOK_SECRET:  z.string().default('changeme'),
   DUALHOOK_PHONE_NUMBER_ID: z.string().default(''),
+
+  // Meta Cloud API — token para ENVIAR mensajes (graph.facebook.com)
+  META_ACCESS_TOKEN:        z.string().default(''),
 
   // Cron
   CRON_SECRET: z.string().default('dev-cron-secret'),
