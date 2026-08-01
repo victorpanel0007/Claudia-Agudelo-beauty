@@ -42,7 +42,14 @@ function rangeOf(p: Period): { start: string; end: string } {
   const today = colDate()
   const d = new Date(today + 'T12:00:00-05:00')
   if (p === 'hoy') return { start: today, end: today }
-  if (p === 'semana')   { const s = new Date(d); s.setDate(d.getDate()-6);  return { start: colDate(s), end: today } }
+  if (p === 'semana') {
+    // Lunes a domingo de la semana actual (semana calendario)
+    const dow = d.getDay() // 0=dom, 1=lun, ..., 6=sab
+    const diffToMonday = dow === 0 ? -6 : 1 - dow // cuántos días restar para llegar al lunes
+    const monday = new Date(d)
+    monday.setDate(d.getDate() + diffToMonday)
+    return { start: colDate(monday), end: today }
+  }
   if (p === 'quincena') { const s = new Date(d); s.setDate(d.getDate()-14); return { start: colDate(s), end: today } }
   return { start: colDate(new Date(d.getFullYear(), d.getMonth(), 1)), end: today }
 }
