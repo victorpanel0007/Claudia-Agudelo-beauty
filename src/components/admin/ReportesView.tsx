@@ -43,12 +43,15 @@ function rangeOf(p: Period): { start: string; end: string } {
   const d = new Date(today + 'T12:00:00-05:00')
   if (p === 'hoy') return { start: today, end: today }
   if (p === 'semana') {
-    // Lunes a domingo de la semana actual (semana calendario)
+    // Lunes a domingo de la semana actual, pero sin cruzar el inicio del mes
     const dow = d.getDay() // 0=dom, 1=lun, ..., 6=sab
-    const diffToMonday = dow === 0 ? -6 : 1 - dow // cuántos días restar para llegar al lunes
+    const diffToMonday = dow === 0 ? -6 : 1 - dow
     const monday = new Date(d)
     monday.setDate(d.getDate() + diffToMonday)
-    return { start: colDate(monday), end: today }
+    // Si el lunes es de un mes anterior, usar el primer día del mes actual
+    const primerDiaMes = new Date(d.getFullYear(), d.getMonth(), 1)
+    const semanaStart = monday < primerDiaMes ? primerDiaMes : monday
+    return { start: colDate(semanaStart), end: today }
   }
   if (p === 'quincena') { const s = new Date(d); s.setDate(d.getDate()-14); return { start: colDate(s), end: today } }
   return { start: colDate(new Date(d.getFullYear(), d.getMonth(), 1)), end: today }
