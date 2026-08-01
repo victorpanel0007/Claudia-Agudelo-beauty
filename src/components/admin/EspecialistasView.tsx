@@ -261,15 +261,30 @@ export default function EspecialistasView() {
 
   async function handleEliminarEspecialista() {
     if (!editingId || !form.nombre) return
-    if (!confirm(`¿Eliminar a ${form.nombre}? Esta acción no se puede deshacer.`)) return
+    if (!confirm(`¿Eliminar a ${form.nombre}?\n\nSus citas, pagos y comisiones históricas se conservarán en contabilidad.\nSolo se eliminará su perfil de especialista.`)) return
     setSaving(true)
-    const { error } = await supabase.from('especialistas').delete().eq('id', editingId)
-    if (error) {
-      toast.error('Error al eliminar: ' + error.message)
-    } else {
-      toast.success(`🗑️ ${form.nombre} eliminada`)
+    try {
+      // 1. Desvincular citas (conservar para contabilidad — poner especialista_id null)
+      await supabase.from('citas').update({ especialista_id: null }).eq('especialista_id', editingId)
+
+      // 2. Eliminar registros que sí dependen del perfil (días bloqueados, descansos)
+      await supabase.from('dias_bloqueados').delete().eq('especialista_id', editingId)
+      await supabase.from('descansos_especialista').delete().eq('especialista_id', editingId)
+      await supabase.from('servicios_extras').delete().eq('especialista_id', editingId)
+      await supabase.from('notificaciones_especialista').delete().eq('especialista_id', editingId)
+
+      // 3. Eliminar solo el registro de la especialista
+      const { error } = await supabase.from('especialistas').delete().eq('id', editingId)
+      if (error) {
+        toast.error('Error al eliminar: ' + error.message)
+        setSaving(false)
+        return
+      }
+      toast.success(`🗑️ ${form.nombre} eliminada — historial de contabilidad conservado`)
       closeForm()
       loadData()
+    } catch (e) {
+      toast.error('Error inesperado: ' + (e as Error).message)
     }
     setSaving(false)
   }
