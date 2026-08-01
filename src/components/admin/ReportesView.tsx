@@ -264,8 +264,15 @@ export default function ReportesView() {
     setDashLoading(true)
     const today = colDate()
     const d = new Date(today+'T12:00:00-05:00')
-    const semStart = colDate(new Date(new Date(d).setDate(d.getDate()-6)))
-    const mesStart = colDate(new Date(d.getFullYear(), d.getMonth(), 1))
+    // Semana = lunes de esta semana, sin cruzar el inicio del mes
+    const dow = d.getDay()
+    const diffToMonday = dow === 0 ? -6 : 1 - dow
+    const monday = new Date(d)
+    monday.setDate(d.getDate() + diffToMonday)
+    const primerDiaMes = new Date(d.getFullYear(), d.getMonth(), 1)
+    const semanaStart = monday < primerDiaMes ? primerDiaMes : monday
+    const semStart = colDate(semanaStart)
+    const mesStart = colDate(primerDiaMes)
     const [citHoy, citSem, citMes, gHoy, gSem, gMes] = await Promise.all([
       supabase.from('citas').select('valor_final').eq('estado','completada').gte('fecha_inicio',today+'T00:00:00-05:00').lte('fecha_inicio',today+'T23:59:59-05:00'),
       supabase.from('citas').select('valor_final').eq('estado','completada').gte('fecha_inicio',semStart+'T00:00:00-05:00').lte('fecha_inicio',today+'T23:59:59-05:00'),
