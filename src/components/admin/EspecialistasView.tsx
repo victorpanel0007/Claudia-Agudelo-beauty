@@ -20,6 +20,7 @@ interface Descanso {
 interface FormState {
   nombre: string; horario_inicio: string; horario_fin: string
   activo: boolean; whatsapp: string; notificaciones: boolean
+  email: string; password: string
 }
 
 const DIAS = [
@@ -66,6 +67,8 @@ const DEFAULT_FORM: FormState = {
   activo: true,
   whatsapp: '',
   notificaciones: true,
+  email: '',
+  password: '',
 }
 
 export default function EspecialistasView() {
@@ -292,6 +295,11 @@ export default function EspecialistasView() {
   async function handleSave() {
     if (!form.nombre.trim()) { toast.error('El nombre es requerido'); return }
     if (diasSelected.length === 0) { toast.error('Selecciona al menos un día'); return }
+    // Validar email/password solo al crear
+    if (!editingId) {
+      if (!form.email.trim()) { toast.error('El correo de acceso es requerido'); return }
+      if (!form.password.trim() || form.password.length < 6) { toast.error('La contraseña debe tener al menos 6 caracteres'); return }
+    }
 
     setSaving(true)
     const payload = {
@@ -320,16 +328,38 @@ export default function EspecialistasView() {
         loadData()
       }
     } else {
-      const { error } = await supabase
+      // 1. Crear especialista en BD
+      const { data: espData, error: espError } = await supabase
         .from('especialistas')
         .insert(payload)
-      if (error) {
-        toast.error('Error al crear: ' + error.message)
-      } else {
-        toast.success(`✅ ${form.nombre} creada correctamente`)
-        closeForm()
-        loadData()
+        .select()
+        .single()
+      if (espError || !espData) {
+        toast.error('Error al crear especialista: ' + espError?.message)
+        setSaving(false)
+        return
       }
+
+      // 2. Crear usuario de acceso en Supabase Auth via API
+      const res = await fetch('/api/especialistas/crear-usuario', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email:          form.email.trim(),
+          password:       form.password,
+          nombre:         form.nombre.trim(),
+          especialista_id: espData.id,
+        }),
+      })
+      const result = await res.json()
+      if (!res.ok || !result.ok) {
+        // El especialista ya fue creado, solo falló el usuario — avisamos pero no bloqueamos
+        toast.error(`⚠️ Especialista creada pero error al crear usuario: ${result.error ?? 'desconocido'}`)
+      } else {
+        toast.success(`✅ ${form.nombre} creada con acceso al panel`)
+      }
+      closeForm()
+      loadData()
     }
     setSaving(false)
   }
@@ -719,6 +749,36 @@ export default function EspecialistasView() {
                   {form.activo ? 'Activa — visible para el bot y clientes' : 'Inactiva — no aparece en el bot'}
                 </label>
               </div>
+
+              {/* Acceso al panel — solo al crear */}
+              {!editingId && (
+                <div className="border border-beauty-secondary/30 rounded-xl p-4 space-y-3 bg-beauty-rosa-claro">
+                  <p className="text-sm font-semibold text-beauty-text">🔐 Acceso al panel</p>
+                  <p className="text-xs text-gray-500">Estas credenciales le permitirán iniciar sesión en el panel de especialista.</p>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Correo electrónico *</label>
+                    <input
+                      type="email"
+                      value={form.email}
+                      onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
+                      className="input-beauty"
+                      placeholder="especialista@correo.com"
+                      autoComplete="off"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Contraseña * (mín. 6 caracteres)</label>
+                    <input
+                      type="password"
+                      value={form.password}
+                      onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
+                      className="input-beauty"
+                      placeholder="••••••••"
+                      autoComplete="new-password"
+                    />
+                  </div>
+                </div>
+              )}
 
               {/* ── Descansos ─────────────────────────────────────────── */}
               {editingId && (
