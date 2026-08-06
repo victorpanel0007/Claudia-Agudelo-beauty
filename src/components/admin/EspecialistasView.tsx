@@ -168,6 +168,8 @@ export default function EspecialistasView() {
       activo:          e.activo,
       whatsapp:        e.whatsapp || '',
       notificaciones:  e.notificaciones !== false,
+      email:           '',
+      password:        '',
     })
     loadDescansos(e.id)
     setShowDescForm(false)
