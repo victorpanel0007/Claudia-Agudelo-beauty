@@ -169,12 +169,6 @@ function buildHorariosMenu(slots: AvailableSlot[], fDisplay: string): string {
 
 // ── Formato de fechas ─────────────────────────────────────────────────────────
 
-function formatDate(d: Date | string): string {
-  return new Date(d).toLocaleDateString('es-CO', {
-    timeZone: 'America/Bogota', weekday: 'long', day: 'numeric', month: 'long',
-  })
-}
-
 function formatCurrency(n: number): string {
   return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(n)
 }
@@ -239,44 +233,148 @@ async function createAppointment(data: {
   return cita as { id: string }
 }
 
-// ── Parseo de fecha en español ────────────────────────────────────────────────
+// ── Parseo de fecha en español — parser completo ─────────────────────────────
 
-function parseFlexibleDate(texto: string): { fecha: Date | null; display: string; error?: string } {
-  const hoy = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Bogota' }))
-  const t = texto.toLowerCase().trim()
+const MESES: Record<string, number> = {
+  enero: 0, febrero: 1, marzo: 2, abril: 3, mayo: 4, junio: 5,
+  julio: 6, agosto: 7, septiembre: 8, octubre: 9, noviembre: 10, diciembre: 11,
+  // abreviaciones
+  ene: 0, feb: 1, mar: 2, abr: 3, jun: 5, jul: 6, ago: 7, sep: 8, oct: 9, nov: 10, dic: 11,
+}
 
-  if (t === 'hoy')    return { fecha: hoy, display: formatDate(hoy) }
-  if (t === 'mañana' || t === 'manana') {
-    const m = new Date(hoy); m.setDate(m.getDate() + 1)
-    return { fecha: m, display: formatDate(m) }
+const DIAS_SEMANA: Record<string, number> = {
+  domingo: 0, lunes: 1, martes: 2, miercoles: 3, miércoles: 3,
+  jueves: 4, viernes: 5, sabado: 6, sábado: 6,
+}
+
+function hoyBogota(): Date {
+  // Fecha actual en zona America/Bogota sin horas
+  const str = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Bogota' })
+  const [y, m, d] = str.split('-').map(Number)
+  return new Date(y, m - 1, d)
+}
+
+function formatDate(d: Date | string): string {
+  return new Date(d).toLocaleDateString('es-CO', {
+    timeZone: 'America/Bogota', weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+  })
+}
+
+interface ParseResult {
+  fecha: Date | null
+  display: string       // "lunes 10 de agosto de 2026"
+  iso: string           // "2026-08-10"
+  confirmMsg: string    // Mensaje que el bot envía para confirmar
+  error?: string
+  ambigua?: boolean     // true si necesita confirmación explícita
+}
+
+function parseFlexibleDate(texto: string): ParseResult {
+  const hoy = hoyBogota()
+  const t = texto.toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')  // quitar tildes para comparar
+    .trim()
+
+  const toISO = (d: Date) => d.toLocaleDateString('en-CA', { timeZone: 'America/Bogota' })
+  const toDisplay = (d: Date) => formatDate(d)
+  const ok = (d: Date, ambigua = false): ParseResult => {
+    const iso = toISO(d)
+    const display = toDisplay(d)
+    const confirmMsg = `📅 Entendí que quieres cita para el *${display}*. ¿Es correcto? (escribe *sí* para confirmar o la fecha correcta)`
+    return { fecha: d, display, iso, confirmMsg, ambigua }
+  }
+  const err = (msg: string): ParseResult => ({
+    fecha: null, display: '', iso: '', confirmMsg: '',
+    error: msg,
+  })
+
+  // ── Relativos simples ──────────────────────────────────────────────────
+  if (t === 'hoy') return ok(hoy)
+
+  if (t === 'manana' || t === 'mañana') {
+    const d = new Date(hoy); d.setDate(d.getDate() + 1)
+    return ok(d)
   }
 
-  const dias: Record<string, number> = { lunes:1, martes:2, miercoles:3, jueves:4, viernes:5, sabado:6, domingo:0 }
-  for (const [nombre, num] of Object.entries(dias)) {
-    if (t.includes(nombre)) {
-      const d = new Date(hoy)
-      let diff = num - d.getDay()
-      if (diff <= 0) diff += 7
-      d.setDate(d.getDate() + diff)
-      return { fecha: d, display: formatDate(d) }
+  if (t === 'pasado manana' || t === 'pasado mañana') {
+    const d = new Date(hoy); d.setDate(d.getDate() + 2)
+    return ok(d)
+  }
+
+  // ── "la próxima semana" / "la semana que viene" ────────────────────────
+  if (t.includes('proxima semana') || t.includes('semana que viene') || t.includes('siguiente semana')) {
+    // Lunes de la próxima semana
+    const d = new Date(hoy)
+    const dow = d.getDay() // 0=dom
+    const diffToNextMonday = dow === 0 ? 1 : 8 - dow
+    d.setDate(d.getDate() + diffToNextMonday)
+    return ok(d)
+  }
+
+  // ── Días de la semana ──────────────────────────────────────────────────
+  // Detectar "próximo X", "el X", "este X", "el X 14"
+  const esProximo = t.includes('proximo') || t.includes('siguiente') || t.includes('que viene')
+  for (const [nombreDia, numDia] of Object.entries(DIAS_SEMANA)) {
+    if (!t.includes(nombreDia)) continue
+
+    // Intentar extraer número de día concreto: "el viernes 14"
+    const matchNum = t.match(/\b(\d{1,2})\b/)
+    if (matchNum) {
+      const dia = parseInt(matchNum[1])
+      // Buscar en los próximos 60 días una fecha que sea ese día de semana y ese número
+      for (let i = 1; i <= 60; i++) {
+        const d = new Date(hoy); d.setDate(hoy.getDate() + i)
+        if (d.getDay() === numDia && d.getDate() === dia) return ok(d)
+      }
+    }
+
+    // Sin número: calcular próxima ocurrencia
+    const d = new Date(hoy)
+    let diff = numDia - d.getDay()
+    if (diff <= 0 || esProximo) diff += 7  // "próximo" siempre la semana siguiente
+    if (diff === 0) diff = 7               // mismo día → siguiente semana
+    d.setDate(d.getDate() + diff)
+    return ok(d, esProximo ? false : true) // ambigua si no dijo "próximo"
+  }
+
+  // ── "X de MES" / "X MES" / "el X de MES" ─────────────────────────────
+  // Ej: "10 de agosto", "agosto 10", "el 10 agosto", "10 ago"
+  for (const [nombreMes, numMes] of Object.entries(MESES)) {
+    const patterns = [
+      new RegExp(`\\b(\\d{1,2})\\s+de\\s+${nombreMes}\\b`),   // "10 de agosto"
+      new RegExp(`\\b(\\d{1,2})\\s+${nombreMes}\\b`),          // "10 agosto"
+      new RegExp(`\\b${nombreMes}\\s+(\\d{1,2})\\b`),          // "agosto 10"
+    ]
+    for (const pat of patterns) {
+      const m = t.match(pat)
+      if (m) {
+        const dia = parseInt(m[1])
+        const anio = hoy.getFullYear()
+        const d = new Date(anio, numMes, dia)
+        if (isNaN(d.getTime()) || dia < 1 || dia > 31) return err('❌ Fecha inválida.')
+        // Si la fecha ya pasó, asumir el año siguiente
+        if (d < hoy) d.setFullYear(anio + 1)
+        return ok(d)
+      }
     }
   }
 
-  // DD/MM/YYYY o DD/MM
-  const match = t.match(/(\d{1,2})[\/\-](\d{1,2})(?:[\/\-](\d{4}))?/)
-  if (match) {
-    const day = parseInt(match[1])
-    const month = parseInt(match[2]) - 1
-    const year = match[3] ? parseInt(match[3]) : hoy.getFullYear()
-    const d = new Date(year, month, day)
-    if (isNaN(d.getTime())) return { fecha: null, display: '', error: '❌ Fecha invalida.' }
-    return { fecha: d, display: formatDate(d) }
+  // ── DD/MM/YYYY, DD-MM-YYYY, DD/MM, DD-MM ──────────────────────────────
+  const matchNum = t.match(/^(\d{1,2})[\/\-](\d{1,2})(?:[\/\-](\d{4}))?$/)
+  if (matchNum) {
+    const dia   = parseInt(matchNum[1])
+    const mes   = parseInt(matchNum[2]) - 1  // formato DD/MM → mes es el segundo
+    const anio  = matchNum[3] ? parseInt(matchNum[3]) : hoy.getFullYear()
+    const d = new Date(anio, mes, dia)
+    if (isNaN(d.getTime()) || dia < 1 || dia > 31 || mes < 0 || mes > 11) {
+      return err('❌ Fecha inválida. Escribe en formato DD/MM/YYYY, ej: *10/08/2026*')
+    }
+    if (d < hoy) d.setFullYear(anio + 1)
+    return ok(d, true) // siempre confirmar formato numérico — puede confundirse día/mes
   }
 
-  return { fecha: null, display: '', error: '❌ No entendi la fecha. Escribe: *manana*, *el sabado*, *18/07/2026*' }
+  return err('❌ No entendí la fecha 😊\nEscribe algo como: *mañana*, *el viernes*, *10 de agosto*, *10/08*')
 }
-
-// ── Extraccion de intencion con OpenAI ────────────────────────────────────────
 
 async function extractIntent(texto: string, conv: ConvRow | null): Promise<{
   intencion: string; servicio: string | null; categoria_id: string | null
@@ -472,6 +570,7 @@ async function dispatchPaso(telefono: string, text: string, conv: ConvRow): Prom
     case 'seleccion_servicio':     await handleSvcSelection(telefono, text, conv); break
     case 'solicitar_nombre':       await handleNombre(telefono, text, conv); break
     case 'solicitar_fecha':        await handleFecha(telefono, text, conv); break
+    case 'confirmar_fecha':        await handleFecha(telefono, text, conv); break
     case 'seleccion_especialista': await handleEspecialista(telefono, text, conv); break
     case 'seleccion_horario':      await handleHorario(telefono, text, conv); break
     default:
@@ -522,15 +621,44 @@ async function handleNombre(t: string, text: string, conv: ConvRow): Promise<voi
 }
 
 async function handleFecha(t: string, text: string, conv: ConvRow): Promise<void> {
-  const p = parseFlexibleDate(text)
-  if (!p.fecha || p.error) { await reply(t, p.error ?? '❌ No entendi la fecha.'); return }
-  const hoy = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Bogota' })
-  if (p.fecha.toLocaleDateString('en-CA', { timeZone: 'America/Bogota' }) < hoy) {
-    await reply(t, `❌ La fecha *${p.display}* ya paso. Elige una fecha futura.`); return
+  const hoyISO = hoyBogota().toLocaleDateString('en-CA', { timeZone: 'America/Bogota' })
+
+  // Si el cliente está confirmando la fecha ("sí", "si", "correcto", "ok")
+  const confirmWords = ['si', 'sí', 'correcto', 'ok', 'exacto', 'claro', 'confirmado', 'así es', 'así es', '1']
+  if (conv.paso === 'confirmar_fecha' && confirmWords.includes(text.toLowerCase().trim())) {
+    // La fecha ya está guardada en conv.fecha — avanzar
+    const { data: esps } = await getSupabase().from('especialistas').select('id, nombre').eq('activo', true).order('nombre')
+    await setConv({ ...conv, paso: 'seleccion_especialista' })
+    await reply(t, buildEspecialistaMenu((esps ?? []) as { id: string; nombre: string }[], formatDate(conv.fecha!)))
+    return
   }
-  await setConv({ ...conv, fecha: p.fecha.toISOString(), paso: 'seleccion_especialista' })
+
+  const p = parseFlexibleDate(text)
+
+  if (p.error || !p.fecha) {
+    await reply(t, p.error ?? '❌ No entendí la fecha.\nEscribe algo como: *mañana*, *el viernes*, *10 de agosto*, *10/08*')
+    return
+  }
+
+  // Validar que no sea en el pasado
+  if (p.iso < hoyISO) {
+    await reply(t, `❌ La fecha *${p.display}* ya pasó. Elige una fecha futura. 😊`)
+    return
+  }
+
+  // Guardar fecha provisionalmente
+  await setConv({ ...conv, fecha: p.fecha.toISOString(), paso: 'confirmar_fecha' })
+
+  // Si es ambigua o numérica → pedir confirmación explícita
+  if (p.ambigua) {
+    await reply(t, `📅 ¿Te refieres al *${p.display}*?\n\nEscribe *sí* para confirmar o escribe otra fecha.`)
+    return
+  }
+
+  // No ambigua → confirmar y avanzar directo
   const { data: esps } = await getSupabase().from('especialistas').select('id, nombre').eq('activo', true).order('nombre')
-  await reply(t, buildEspecialistaMenu((esps ?? []) as { id: string; nombre: string }[], p.display))
+  await setConv({ ...conv, fecha: p.fecha.toISOString(), paso: 'seleccion_especialista' })
+  await reply(t, `✅ Fecha confirmada: *${p.display}*\n\n${buildEspecialistaMenu((esps ?? []) as { id: string; nombre: string }[], p.display)}`)
 }
 
 async function handleEspecialista(t: string, text: string, conv: ConvRow): Promise<void> {
