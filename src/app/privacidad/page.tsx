@@ -1,6 +1,10 @@
 export const metadata = {
   title: 'Política de Privacidad | Claudia Agudelo Beauty',
   description: 'Política de privacidad y tratamiento de datos personales de Claudia Agudelo Beauty.',
+  alternates: {
+    canonical: 'https://claudiaagudelobeauty.com/privacidad',
+  },
+  robots: { index: true, follow: true },
 }
 
 export default function PrivacidadPage() {

@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom'
 import { createClient } from '@/lib/supabase/client'
 import {
   DollarSign, Users, CheckCircle, Wallet, CreditCard,
-  AlertCircle, FileText, Download, Printer, Plus, X,
+  AlertCircle, FileText, Download, Plus, X,
   ChevronDown, Pencil, Check, Trash2, Eye,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -125,7 +125,261 @@ function estadoBadge(estado: PagoEstado | null) {
 
 // ── Main Component ─────────────────────────────────────────────────────────
 
-export default function ComisionesView() {
+// ── Generador de PDF profesional ──────────────────────────────────────────
+
+async function buildPDF(params: {
+  especialistaNombre: string
+  periodStart: string
+  periodEnd: string
+  citas: CitaRow[]
+  pagos: PagoRow[]
+  summary: Summary
+  getPct: (espId: string) => number
+  selectedEspId: string | null
+}) {
+  const { jsPDF } = await import('jspdf')
+  const autoTable = (await import('jspdf-autotable')).default
+
+  const { especialistaNombre, periodStart, periodEnd, citas, pagos, summary, getPct, selectedEspId } = params
+
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
+  const pageW = doc.internal.pageSize.getWidth()
+  const pageH = doc.internal.pageSize.getHeight()
+  const marginL = 14
+  const marginR = 14
+  const marginT = 14
+  const marginB = 14
+
+  const fmt = (n: number) =>
+    new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(n)
+
+  const fmtFecha = (iso: string) =>
+    new Date(iso).toLocaleDateString('es-CO', { timeZone: 'America/Bogota', day: '2-digit', month: '2-digit', year: 'numeric' })
+
+  const fmtHora = (iso: string) =>
+    new Date(iso).toLocaleTimeString('es-CO', { timeZone: 'America/Bogota', hour: '2-digit', minute: '2-digit', hour12: true })
+
+  // ── Colores ────────────────────────────────────────────────────────────
+  const PRIMARY   = [139, 30, 63]   as [number, number, number]  // beauty-borgona
+  const LIGHT_BG  = [255, 248, 238] as [number, number, number]  // beauty-rosa-claro
+  const GRAY_HEAD = [245, 245, 245] as [number, number, number]
+  const WHITE     = [255, 255, 255] as [number, number, number]
+
+  // ── Función para pie de página ────────────────────────────────────────
+  const addFooter = (pageNum: number, totalPages: number) => {
+    doc.setFontSize(8)
+    doc.setTextColor(150, 150, 150)
+    doc.line(marginL, pageH - marginB, pageW - marginR, pageH - marginB)
+    doc.text(
+      `Claudia Agudelo Beauty — Reporte de Comisiones`,
+      marginL, pageH - marginB + 4
+    )
+    doc.text(
+      `Página ${pageNum} de ${totalPages}`,
+      pageW - marginR, pageH - marginB + 4,
+      { align: 'right' }
+    )
+  }
+
+  // ── ENCABEZADO página 1 ───────────────────────────────────────────────
+  // Fondo rosado
+  doc.setFillColor(...LIGHT_BG)
+  doc.roundedRect(marginL, marginT, pageW - marginL - marginR, 32, 3, 3, 'F')
+
+  // Título
+  doc.setFontSize(18)
+  doc.setFont('helvetica', 'bold')
+  doc.setTextColor(...PRIMARY)
+  doc.text('Claudia Agudelo Beauty', marginL + 4, marginT + 9)
+
+  doc.setFontSize(11)
+  doc.setFont('helvetica', 'normal')
+  doc.setTextColor(80, 80, 80)
+  doc.text('Reporte de Comisiones', marginL + 4, marginT + 16)
+
+  if (especialistaNombre) {
+    doc.setFontSize(9)
+    doc.text(`Especialista: ${especialistaNombre}`, marginL + 4, marginT + 22)
+  }
+  doc.setFontSize(9)
+  doc.text(`Período: ${periodStart} — ${periodEnd}`, marginL + 4, marginT + (especialistaNombre ? 28 : 22))
+
+  doc.setFontSize(8)
+  doc.setTextColor(150, 150, 150)
+  const fechaGen = new Date().toLocaleDateString('es-CO', {
+    timeZone: 'America/Bogota', day: '2-digit', month: '2-digit', year: 'numeric',
+    hour: '2-digit', minute: '2-digit',
+  })
+  doc.text(`Generado: ${fechaGen}`, pageW - marginR, marginT + 9, { align: 'right' })
+
+  let y = marginT + 38
+
+  // ── RESUMEN ────────────────────────────────────────────────────────────
+  doc.setFontSize(10)
+  doc.setFont('helvetica', 'bold')
+  doc.setTextColor(...PRIMARY)
+  doc.text('Resumen del Período', marginL, y)
+  y += 4
+
+  const summaryData = [
+    ['Total Facturado',        fmt(summary.totalFacturado)],
+    ['Comisión Especialista',  fmt(summary.comisionEspecialista)],
+    ['Ganancia Spa',           fmt(summary.gananciaSpa)],
+    ['Citas Realizadas',       String(summary.citasRealizadas)],
+    ['Total Pagado',           fmt(summary.totalPagado)],
+    ['Saldo Pendiente',        fmt(summary.saldoPendiente)],
+  ]
+
+  autoTable(doc, {
+    startY: y,
+    head: [['Indicador', 'Valor']],
+    body: summaryData,
+    margin: { left: marginL, right: marginR },
+    styles: { fontSize: 9, cellPadding: 3 },
+    headStyles: { fillColor: PRIMARY, textColor: WHITE, fontStyle: 'bold' },
+    alternateRowStyles: { fillColor: LIGHT_BG },
+    columnStyles: { 0: { cellWidth: 70 }, 1: { halign: 'right', fontStyle: 'bold' } },
+    didParseCell: (data) => {
+      if (data.section === 'body' && data.row.index === 5 && summary.saldoPendiente > 0) {
+        data.cell.styles.textColor = PRIMARY
+        data.cell.styles.fontStyle = 'bold'
+      }
+    },
+  })
+
+  y = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 8
+
+  // ── TABLA CITAS ────────────────────────────────────────────────────────
+  doc.setFontSize(10)
+  doc.setFont('helvetica', 'bold')
+  doc.setTextColor(...PRIMARY)
+  doc.text(`Citas Completadas (${citas.length})`, marginL, y)
+  y += 4
+
+  const citasBody = citas.map(c => {
+    const pct = c.porcentaje_comision ?? (selectedEspId ? getPct(selectedEspId) : 40)
+    const com = c.comision_especialista ?? ((c.valor_final ?? 0) * pct / 100)
+    const gan = c.ganancia_spa ?? ((c.valor_final ?? 0) - com)
+    return [
+      fmtFecha(c.fecha_inicio),
+      fmtHora(c.fecha_inicio),
+      (c.servicio as { nombre?: string } | null)?.nombre ?? '—',
+      fmt(c.valor_final ?? 0),
+      `${pct}%`,
+      fmt(com),
+      fmt(gan),
+      c.pago_estado ?? 'pendiente',
+    ]
+  })
+
+  const totalCom = citas.reduce((a, c) => {
+    const pct = c.porcentaje_comision ?? (selectedEspId ? getPct(selectedEspId) : 40)
+    return a + (c.comision_especialista ?? ((c.valor_final ?? 0) * pct / 100))
+  }, 0)
+  const totalGan = citas.reduce((a, c) => {
+    const pct = c.porcentaje_comision ?? (selectedEspId ? getPct(selectedEspId) : 40)
+    const com = c.comision_especialista ?? ((c.valor_final ?? 0) * pct / 100)
+    return a + ((c.ganancia_spa ?? ((c.valor_final ?? 0) - com)))
+  }, 0)
+
+  citasBody.push([
+    'TOTALES', '', '',
+    fmt(summary.totalFacturado), '',
+    fmt(totalCom), fmt(totalGan), '',
+  ])
+
+  autoTable(doc, {
+    startY: y,
+    head: [['Fecha', 'Hora', 'Servicio', 'Valor', '% Com.', 'Comisión', 'Ganancia Spa', 'Pago']],
+    body: citasBody,
+    margin: { left: marginL, right: marginR, bottom: marginB + 6 },
+    styles: { fontSize: 7.5, cellPadding: 2.5, overflow: 'linebreak' },
+    headStyles: { fillColor: PRIMARY, textColor: WHITE, fontStyle: 'bold', fontSize: 7.5 },
+    alternateRowStyles: { fillColor: GRAY_HEAD },
+    columnStyles: {
+      0: { cellWidth: 20 },
+      1: { cellWidth: 14 },
+      2: { cellWidth: 40 },
+      3: { halign: 'right', cellWidth: 24 },
+      4: { halign: 'center', cellWidth: 12 },
+      5: { halign: 'right', cellWidth: 24 },
+      6: { halign: 'right', cellWidth: 26 },
+      7: { cellWidth: 16 },
+    },
+    // Fila de totales en negrita con fondo
+    didParseCell: (data) => {
+      if (data.section === 'body' && data.row.index === citasBody.length - 1) {
+        data.cell.styles.fontStyle = 'bold'
+        data.cell.styles.fillColor = LIGHT_BG
+      }
+    },
+    // Repetir encabezados en cada página nueva — autoTable lo hace automáticamente
+    showHead: 'everyPage',
+    // No cortar filas entre páginas
+    rowPageBreak: 'avoid',
+  })
+
+  y = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 8
+
+  // ── HISTORIAL DE PAGOS ─────────────────────────────────────────────────
+  if (pagos.length > 0) {
+    // Si queda poco espacio, saltar página
+    if (y > pageH - 60) {
+      doc.addPage()
+      y = marginT + 6
+    }
+
+    doc.setFontSize(10)
+    doc.setFont('helvetica', 'bold')
+    doc.setTextColor(...PRIMARY)
+    doc.text('Historial de Pagos', marginL, y)
+    y += 4
+
+    const pagosBody = pagos.map(p => [
+      p.fecha,
+      p.periodo,
+      p.especialista_nombre,
+      fmt(p.valor_pagado),
+      p.metodo_pago,
+      p.observaciones ?? '—',
+    ])
+    pagosBody.push(['TOTAL', '', '', fmt(summary.totalPagado), '', ''])
+
+    autoTable(doc, {
+      startY: y,
+      head: [['Fecha', 'Período', 'Especialista', 'Valor', 'Método', 'Observaciones']],
+      body: pagosBody,
+      margin: { left: marginL, right: marginR, bottom: marginB + 6 },
+      styles: { fontSize: 8, cellPadding: 2.5 },
+      headStyles: { fillColor: PRIMARY, textColor: WHITE, fontStyle: 'bold' },
+      alternateRowStyles: { fillColor: GRAY_HEAD },
+      columnStyles: { 3: { halign: 'right', fontStyle: 'bold' } },
+      didParseCell: (data) => {
+        if (data.section === 'body' && data.row.index === pagosBody.length - 1) {
+          data.cell.styles.fontStyle = 'bold'
+          data.cell.styles.fillColor = LIGHT_BG
+        }
+      },
+      showHead: 'everyPage',
+      rowPageBreak: 'avoid',
+    })
+  }
+
+  // ── PIE DE PÁGINA en todas las páginas ────────────────────────────────
+  const totalPages = (doc as unknown as { internal: { getNumberOfPages: () => number } }).internal.getNumberOfPages()
+  for (let i = 1; i <= totalPages; i++) {
+    doc.setPage(i)
+    addFooter(i, totalPages)
+  }
+
+  // ── Descargar ──────────────────────────────────────────────────────────
+  const espSlug = especialistaNombre ? `_${especialistaNombre.split(' ')[0].toLowerCase()}` : ''
+  doc.save(`comisiones${espSlug}_${periodStart}_${periodEnd}.pdf`)
+}
+
+// ── Componente principal ───────────────────────────────────────────────────
+
+function ComisionesView() {
   const supabase = createClient()
 
   const [period, setPeriod] = useState<PeriodKey>('mes')
@@ -144,6 +398,7 @@ export default function ComisionesView() {
   const [showPagoModal, setShowPagoModal] = useState(false)
   const [showConfirmModal, setShowConfirmModal] = useState(false)
   const [savingPago, setSavingPago] = useState(false)
+  const [generandoPDF, setGenerandoPDF] = useState(false)
   const [estadoFiltro, setEstadoFiltro] = useState<ComisionEstadoFiltro>('todos')
   const [pagoForm, setPagoForm] = useState<PagoForm>({
     especialista_id: '', fecha: todayStr(), periodo: 'mensual',
@@ -345,46 +600,6 @@ export default function ComisionesView() {
   return (
     <div className="space-y-6 animate-fade-in">
 
-      {/* PRINT AREA */}
-      <div id="print-area" className="hidden print:block text-black text-sm">
-        <div className="text-center mb-6">
-          <h1 className="text-2xl font-bold">Claudia Agudelo Beauty</h1>
-          <h2 className="text-lg">Reporte de Comisiones</h2>
-          {selectedEspId && <p className="mt-1">Especialista: <strong>{especialistas.find(e => e.id === selectedEspId)?.nombre}</strong></p>}
-          <p>Periodo: {periodStart} — {periodEnd}</p>
-          <p className="text-xs text-gray-500">Generado: {new Date().toLocaleDateString('es-CO', { timeZone: 'America/Bogota' })}</p>
-        </div>
-        <table className="w-full border-collapse border border-gray-300 mb-6 text-xs">
-          <thead><tr className="bg-gray-100"><th className="border border-gray-300 p-2 text-left">Indicador</th><th className="border border-gray-300 p-2 text-right">Valor</th></tr></thead>
-          <tbody>
-            {[['Total Facturado', formatCurrency(summary.totalFacturado)],['Comision Especialista', formatCurrency(summary.comisionEspecialista)],['Ganancia Spa', formatCurrency(summary.gananciaSpa)],['Citas Realizadas', String(summary.citasRealizadas)],['Total Pagado', formatCurrency(summary.totalPagado)],['Saldo Pendiente', formatCurrency(summary.saldoPendiente)]].map(([k, v]) => (
-              <tr key={k}><td className="border border-gray-300 p-2">{k}</td><td className="border border-gray-300 p-2 text-right font-medium">{v}</td></tr>
-            ))}
-          </tbody>
-        </table>
-        <h3 className="font-bold mb-2">Citas Completadas</h3>
-        <table className="w-full border-collapse border border-gray-300 mb-6 text-xs">
-          <thead><tr className="bg-gray-100">{['Fecha','Hora','Servicio','Valor','% Com.','Comision','Ganancia Spa','Pago'].map(h => <th key={h} className="border border-gray-300 p-1 text-left">{h}</th>)}</tr></thead>
-          <tbody>
-            {citas.map(c => {
-              const pct = c.porcentaje_comision ?? (selectedEspId ? getPct(selectedEspId) : 40)
-              const com = c.comision_especialista ?? ((c.valor_final ?? 0) * pct / 100)
-              const gan = c.ganancia_spa ?? ((c.valor_final ?? 0) - com)
-              return <tr key={c.id}><td className="border border-gray-300 p-1">{fmtDate(c.fecha_inicio)}</td><td className="border border-gray-300 p-1">{fmtTime(c.fecha_inicio)}</td><td className="border border-gray-300 p-1">{(c.servicio as { nombre?: string } | null)?.nombre ?? '—'}</td><td className="border border-gray-300 p-1 text-right">{formatCurrency(c.valor_final ?? 0)}</td><td className="border border-gray-300 p-1 text-center">{pct}%</td><td className="border border-gray-300 p-1 text-right">{formatCurrency(com)}</td><td className="border border-gray-300 p-1 text-right">{formatCurrency(gan)}</td><td className="border border-gray-300 p-1 capitalize">{c.pago_estado ?? 'pendiente'}</td></tr>
-            })}
-            <tr className="font-bold bg-gray-50"><td className="border border-gray-300 p-1" colSpan={3}>TOTALES</td><td className="border border-gray-300 p-1 text-right">{formatCurrency(summary.totalFacturado)}</td><td className="border border-gray-300 p-1"></td><td className="border border-gray-300 p-1 text-right">{formatCurrency(summary.comisionEspecialista)}</td><td className="border border-gray-300 p-1 text-right">{formatCurrency(summary.gananciaSpa)}</td><td className="border border-gray-300 p-1"></td></tr>
-          </tbody>
-        </table>
-        <h3 className="font-bold mb-2">Historial de Pagos</h3>
-        <table className="w-full border-collapse border border-gray-300 text-xs">
-          <thead><tr className="bg-gray-100">{['Fecha','Periodo','Especialista','Valor','Metodo','Observaciones'].map(h => <th key={h} className="border border-gray-300 p-1 text-left">{h}</th>)}</tr></thead>
-          <tbody>
-            {pagos.map(p => <tr key={p.id}><td className="border border-gray-300 p-1">{p.fecha}</td><td className="border border-gray-300 p-1 capitalize">{p.periodo}</td><td className="border border-gray-300 p-1">{p.especialista_nombre}</td><td className="border border-gray-300 p-1 text-right">{formatCurrency(p.valor_pagado)}</td><td className="border border-gray-300 p-1 capitalize">{p.metodo_pago}</td><td className="border border-gray-300 p-1">{p.observaciones ?? '—'}</td></tr>)}
-            <tr className="font-bold bg-gray-50"><td className="border border-gray-300 p-1" colSpan={3}>TOTAL PAGADO</td><td className="border border-gray-300 p-1 text-right">{formatCurrency(summary.totalPagado)}</td><td className="border border-gray-300 p-1" colSpan={2}></td></tr>
-          </tbody>
-        </table>
-      </div>
-
       {/* SCREEN CONTENT */}
       <div className="print:hidden space-y-6">
 
@@ -395,9 +610,37 @@ export default function ComisionesView() {
             <p className="text-beauty-text-muted text-sm">Gestion de comisiones por especialista y registro de pagos</p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <button onClick={exportCSV} className="flex items-center gap-1.5 bg-white border border-beauty-primary/40 text-beauty-borgona text-sm px-3 py-2 rounded-lg hover:bg-beauty-rosa-claro transition-colors"><Download size={15} /> Exportar CSV</button>
-            <button onClick={() => window.print()} className="flex items-center gap-1.5 bg-white border border-beauty-primary/40 text-beauty-borgona text-sm px-3 py-2 rounded-lg hover:bg-beauty-rosa-claro transition-colors"><Printer size={15} /> Imprimir</button>
-            <button onClick={() => window.print()} className="flex items-center gap-1.5 bg-white border border-beauty-primary/40 text-beauty-borgona text-sm px-3 py-2 rounded-lg hover:bg-beauty-rosa-claro transition-colors"><FileText size={15} /> Generar PDF</button>
+            <button onClick={exportCSV} className="flex items-center gap-1.5 bg-white border border-beauty-primary/40 text-beauty-borgona text-sm px-3 py-2 rounded-lg hover:bg-beauty-rosa-claro transition-colors">
+              <Download size={15} /> Exportar CSV
+            </button>
+            <button
+              onClick={async () => {
+                setGenerandoPDF(true)
+                try {
+                  await buildPDF({
+                    especialistaNombre: selectedEspId ? (especialistas.find(e => e.id === selectedEspId)?.nombre ?? '') : '',
+                    periodStart,
+                    periodEnd,
+                    citas,
+                    pagos,
+                    summary,
+                    getPct,
+                    selectedEspId,
+                  })
+                } catch (e) {
+                  toast.error('Error generando PDF: ' + (e as Error).message)
+                } finally {
+                  setGenerandoPDF(false)
+                }
+              }}
+              disabled={generandoPDF || loadingCitas}
+              className="flex items-center gap-1.5 bg-beauty-borgona text-white text-sm px-3 py-2 rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50"
+            >
+              {generandoPDF
+                ? <><span className="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" /> Generando...</>
+                : <><FileText size={15} /> Generar PDF</>
+              }
+            </button>
           </div>
         </div>
 
@@ -834,3 +1077,5 @@ export default function ComisionesView() {
     </div>
   )
 }
+
+export default ComisionesView

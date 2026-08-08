@@ -24,7 +24,7 @@ const playfair = Playfair_Display({
 
 // ── Metadata completa para SEO ────────────────────────────────────────────
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'https://www.claudiaagudelobeauty.sbs'),
+  metadataBase: new URL('https://claudiaagudelobeauty.com'),
   title: {
     default: 'Claudia Agudelo Beauty | Salón de Belleza Premium',
     template: '%s | Claudia Agudelo Beauty',
@@ -38,12 +38,17 @@ export const metadata: Metadata = {
   ],
   authors: [{ name: 'Claudia Agudelo Beauty' }],
   creator: 'Claudia Agudelo Beauty',
+  alternates: {
+    canonical: 'https://claudiaagudelobeauty.com',
+    languages: { 'es-CO': 'https://claudiaagudelobeauty.com' },
+  },
   openGraph: {
     title: 'Claudia Agudelo Beauty | Salón de Belleza Premium',
     description: 'Realzamos tu belleza y tu esencia. Reserva tu cita online.',
     type: 'website',
     locale: 'es_CO',
     siteName: 'Claudia Agudelo Beauty',
+    url: 'https://claudiaagudelobeauty.com',
   },
   twitter: {
     card: 'summary_large_image',
@@ -58,11 +63,11 @@ export const metadata: Metadata = {
   manifest: '/manifest.json',
   icons: {
     icon: [
-      { url: '/icon.svg', type: 'image/svg+xml' },
-      { url: '/icon-192.png', sizes: '192x192', type: 'image/png' },
+      { url: '/logo.png', type: 'image/png', sizes: '512x512' },
+      { url: '/logo.png', sizes: '192x192', type: 'image/png' },
     ],
-    apple: '/icon-192.png',
-    shortcut: '/icon.svg',
+    apple: '/logo.png',
+    shortcut: '/logo.png',
   },
 }
 
