@@ -37,7 +37,7 @@ export default function Header() {
         ? 'bg-white/95 backdrop-blur-md shadow-sm py-2'
         : 'bg-white/90 backdrop-blur-sm py-3'
     )}>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 grid grid-cols-[auto_1fr_auto] items-center gap-4">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 flex items-center justify-between gap-4 lg:grid lg:grid-cols-[auto_1fr_auto]">
 
         {/* Logo */}
         <Link href="/" className="flex items-center gap-3 shrink-0" onClick={() => setIsOpen(false)}>
