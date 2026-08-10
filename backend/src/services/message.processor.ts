@@ -9,15 +9,21 @@ import { transcribeFromUrl } from './openai.service'
 import { processBotMessage } from './bot.engine'
 import type { DualhookMessage, DualhookStatus } from '../types'
 
-const PAUSA_MINUTOS = 20
+const PAUSA_MINUTOS = 10
 
 async function isBotPausado(telefono: string): Promise<boolean> {
   const sb = getSupabase()
   const { data } = await sb.from('bot_pausas').select('pausado_hasta').eq('telefono', telefono).maybeSingle()
   if (!data) return false
   if (new Date(data.pausado_hasta as string) > new Date()) return true
+  // Pausa expirada — limpiar
   await sb.from('bot_pausas').delete().eq('telefono', telefono)
   return false
+}
+
+async function reactivarBot(telefono: string): Promise<void> {
+  await getSupabase().from('bot_pausas').delete().eq('telefono', telefono)
+  webhookLog.info({ telefono }, '[Processor] 🟢 Bot reactivado — cliente escribió nuevamente')
 }
 
 async function logMessage(telefono: string, mensaje: string, tipo: 'entrante' | 'saliente' | 'sistema'): Promise<void> {
@@ -41,15 +47,20 @@ export async function processIncomingMessage(msg: DualhookMessage, _contactName:
     webhookLog.warn({ err: (e as Error).message }, '[Processor] No se pudo marcar como leido')
   )
 
-  // Verificar pausa (cuando admin responde manualmente)
-  webhookLog.debug({ telefono }, '[Processor] Verificando si bot está pausado...')
+  // Verificar pausa
   const pausado = await isBotPausado(telefono)
   if (pausado) {
     const text = msg.text?.body ?? ''
     if (text) await logMessage(telefono, text, 'entrante')
-    webhookLog.info({ telefono }, '[Processor] Bot PAUSADO — mensaje registrado pero ignorado por el bot')
-    return
+    webhookLog.info({ telefono }, '[Processor] Bot PAUSADO — mensaje registrado')
+
+    // REACTIVACIÓN AUTOMÁTICA: cuando el cliente vuelve a escribir, reactivar el bot
+    // y procesar su mensaje normalmente
+    await reactivarBot(telefono)
+    webhookLog.info({ telefono }, '[Processor] 🔄 Cliente escribió — bot reactivado, procesando mensaje')
+    // Caer al procesamiento normal abajo
   }
+
   webhookLog.debug({ telefono }, '[Processor] Bot activo — procesando mensaje')
 
   switch (msg.type) {
@@ -114,11 +125,18 @@ export async function processStatusUpdate(status: DualhookStatus): Promise<void>
   }
 }
 
-// Pausar bot cuando admin responde manualmente (llamado desde webhook controller)
-export async function pausarBot(telefono: string): Promise<void> {
-  const pausado_hasta = new Date(Date.now() + PAUSA_MINUTOS * 60 * 1000).toISOString()
+// Pausar bot cuando admin responde manualmente desde el panel del SPA
+export async function pausarBot(telefono: string, minutos = PAUSA_MINUTOS): Promise<void> {
+  const pausado_hasta = new Date(Date.now() + minutos * 60 * 1000).toISOString()
+  webhookLog.info({ telefono, minutos, pausado_hasta }, '[Processor] 🔴 Bot pausado por respuesta del admin')
   await getSupabase().from('bot_pausas').upsert(
     { telefono, pausado_hasta, pausado_por: 'admin_whatsapp' },
     { onConflict: 'telefono' }
   )
+}
+
+// Reactivar bot manualmente
+export async function reanudarBot(telefono: string): Promise<void> {
+  await getSupabase().from('bot_pausas').delete().eq('telefono', telefono)
+  webhookLog.info({ telefono }, '[Processor] 🟢 Bot reactivado manualmente')
 }

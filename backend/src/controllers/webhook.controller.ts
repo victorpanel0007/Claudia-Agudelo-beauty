@@ -3,7 +3,7 @@ import { env } from '../config/env'
 import { webhookLog } from '../config/logger'
 import { validateWebhookSignature } from '../utils/validate-webhook'
 import { isDuplicate } from '../utils/dedup'
-import { processIncomingMessage, processStatusUpdate, pausarBot } from '../services/message.processor'
+import { processIncomingMessage, processStatusUpdate } from '../services/message.processor'
 import type { DualhookWebhookBody, DualhookMessage } from '../types'
 
 // ── GET — Verificacion del webhook (Meta handshake) ─────────────────────────
@@ -95,14 +95,29 @@ export function receiveWebhook(req: Request, res: Response): void {
           type:    msg.type,
           body:    msg.text?.body ?? '[no texto]',
           timestamp: msg.timestamp,
+          phoneNumberId: value.metadata?.phone_number_id,
         }, '[Webhook] 📨 Mensaje entrante detectado')
 
-        // Si el mensaje es del propio numero — comparar con número de teléfono real, NO con phone_number_id
-        // phone_number_id es el ID de Meta (numérico largo), NO el número de WA
-        const myPhoneNumber = env.DUALHOOK_PHONE_NUMBER_ID
-        if (msg.from === myPhoneNumber) {
-          webhookLog.info({ from: msg.from }, '[Webhook] Mensaje propio — pausando bot')
-          pausarBot(msg.from).catch(() => {})
+        // Detectar si el mensaje es del admin (dueño del spa respondiendo manualmente).
+        // Meta envía mensajes enviados desde el propio número con fromMe implícito
+        // a través del phone_number_id del metadata. Si el remitente coincide con
+        // el display_phone_number del metadata, es el propio negocio respondiendo.
+        const displayPhone = value.metadata?.display_phone_number?.replace(/\D/g, '') ?? ''
+        const fromDigits   = msg.from.replace(/\D/g, '')
+        const esRespuestaAdmin =
+          // El remitente ES el número del negocio (dueño responde desde WA Business)
+          fromDigits === displayPhone ||
+          fromDigits === displayPhone.replace(/^57/, '') ||
+          // O coincide con el phone_number_id configurado (algunos proveedores lo usan)
+          msg.from === env.DUALHOOK_PHONE_NUMBER_ID
+
+        if (esRespuestaAdmin) {
+          webhookLog.info({ from: msg.from, displayPhone }, '[Webhook] 🙋 Respuesta del admin detectada — pausando bot')
+          // Pausar para el número del CLIENTE, no del admin.
+          // El número del cliente viene en el contexto — pero como este mensaje viene del admin,
+          // no podemos saber a quién le respondió sin más contexto.
+          // La pausa se aplica vía el SPA cuando el admin responde desde el panel.
+          // Aquí solo logueamos.
           continue
         }
 
