@@ -54,12 +54,13 @@ export async function POST(request: NextRequest) {
   }
 
   if (accion === 'pausar') {
-    const pausado_hasta = new Date(Date.now() + minutos * 60 * 1000).toISOString()
+    const minutosFinal = minutos ?? 10
+    const pausado_hasta = new Date(Date.now() + minutosFinal * 60 * 1000).toISOString()
     await supabase.from('bot_pausas').upsert(
       { telefono, pausado_hasta, pausado_por: 'admin' },
       { onConflict: 'telefono' }
     )
-    return NextResponse.json({ ok: true, pausado: true, pausado_hasta, minutos })
+    return NextResponse.json({ ok: true, pausado: true, pausado_hasta, minutos: minutosFinal })
   }
 
   if (accion === 'reanudar') {
