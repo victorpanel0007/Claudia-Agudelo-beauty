@@ -3,7 +3,7 @@ import { env } from '../config/env'
 import { webhookLog } from '../config/logger'
 import { validateWebhookSignature } from '../utils/validate-webhook'
 import { isDuplicate } from '../utils/dedup'
-import { processIncomingMessage, processStatusUpdate } from '../services/message.processor'
+import { processIncomingMessage, processStatusUpdate, pausarBot } from '../services/message.processor'
 import type { DualhookWebhookBody, DualhookMessage } from '../types'
 
 // ── GET — Verificacion del webhook (Meta handshake) ─────────────────────────
@@ -141,7 +141,20 @@ export function receiveWebhook(req: Request, res: Response): void {
       }
 
       // Estados (sent, delivered, read, failed)
+      // IMPORTANTE: cuando el admin responde manualmente desde WhatsApp Business,
+      // Meta envía un status "sent" con recipient_id = número del cliente.
+      // Esto es la señal para pausar el bot para ese cliente.
       for (const status of value.statuses ?? []) {
+        if (status.status === 'sent') {
+          // El admin envió un mensaje al cliente → pausar bot para ese cliente
+          webhookLog.info({
+            recipient: status.recipient_id,
+            msgId: status.id,
+          }, '[Webhook] 📤 Admin respondió manualmente — pausando bot para este cliente')
+          pausarBot(status.recipient_id).catch(err =>
+            webhookLog.error({ err: (err as Error).message }, '[Webhook] Error pausando bot')
+          )
+        }
         processStatusUpdate(status).catch(err =>
           webhookLog.error({ err: (err as Error).message }, '[Webhook] Error procesando status')
         )
