@@ -178,7 +178,7 @@ function formatCurrency(n: number): string {
 async function getAvailableSlots(fecha: Date, duracion: number, espId?: string): Promise<AvailableSlot[]> {
   const sb = getSupabase()
   const fechaStr = fecha.toLocaleDateString('en-CA', { timeZone: 'America/Bogota' })
-  const { data: esps } = await sb.from('especialistas').select('id, nombre, horario_inicio, horario_fin, dias_trabajo')
+  const { data: esps } = await sb.from('especialistas').select('id, nombre, horario_inicio, horario_fin, dias_laborales')
     .eq('activo', true).order('nombre')
   if (!esps?.length) return []
 
@@ -186,6 +186,14 @@ async function getAvailableSlots(fecha: Date, duracion: number, espId?: string):
   const espsFiltradas = espId ? esps.filter((e: Record<string, unknown>) => e.id === espId) : esps
 
   for (const esp of espsFiltradas) {
+    const diasLaborales = (esp.dias_laborales as number[] | null) ?? [1, 2, 3, 4, 5, 6]
+    const diaSemana = new Date(`${fechaStr}T12:00:00-05:00`).getDay() // 0=dom, 1=lun...
+
+    // Si ese día de la semana no es laboral para esta especialista, saltar
+    if (!diasLaborales.includes(diaSemana)) {
+      webhookLog.debug({ esp: esp.nombre, fechaStr, diaSemana, diasLaborales }, '[Bot] Día no laboral para especialista')
+      continue
+    }
     const inicio = (esp.horario_inicio as string) ?? '09:00'
     const fin    = (esp.horario_fin    as string) ?? '19:00'
     const [hf, mf] = fin.split(':').map(Number)
