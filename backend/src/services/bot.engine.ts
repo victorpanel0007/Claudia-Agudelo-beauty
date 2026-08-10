@@ -203,17 +203,37 @@ async function getAvailableSlots(fecha: Date, duracion: number, espId?: string):
       .gte('fecha_inicio', `${fechaStr}T00:00:00-05:00`)
       .lte('fecha_inicio', `${fechaStr}T23:59:59-05:00`)
 
+    // Consultar descansos de la especialista (hora_inicio y hora_fin en formato HH:MM)
+    const { data: descansos } = await sb.from('descansos_especialista')
+      .select('hora_inicio, hora_fin')
+      .eq('especialista_id', esp.id)
+
+    const descansosEsp = (descansos ?? []) as { hora_inicio: string; hora_fin: string }[]
+
     let cursor = new Date(`${fechaStr}T${inicio}:00-05:00`)
     const endTime = new Date(`${fechaStr}T${String(hf).padStart(2,'0')}:${String(mf).padStart(2,'0')}:00-05:00`)
 
     while (cursor.getTime() + duracion * 60000 <= endTime.getTime()) {
       const slotFin = new Date(cursor.getTime() + duracion * 60000)
-      const ocupado = (citasOcupadas ?? []).some((c: Record<string, unknown>) => {
+
+      // Verificar citas ocupadas
+      const citaOcupada = (citasOcupadas ?? []).some((c: Record<string, unknown>) => {
         const ci = new Date(c.fecha_inicio as string).getTime()
         const cf = new Date(c.fecha_fin   as string).getTime()
         return cursor.getTime() < cf && slotFin.getTime() > ci
       })
-      if (!ocupado) {
+
+      // Verificar si el slot cae dentro de un descanso
+      // hora_inicio/hora_fin están en formato "HH:MM:SS" o "HH:MM"
+      const enDescanso = descansosEsp.some(d => {
+        const descInicio = new Date(`${fechaStr}T${d.hora_inicio.slice(0, 5)}:00-05:00`).getTime()
+        const descFin    = new Date(`${fechaStr}T${d.hora_fin.slice(0, 5)}:00-05:00`).getTime()
+        // El slot se superpone con el descanso si empieza antes de que termine el descanso
+        // y termina después de que empiece el descanso
+        return cursor.getTime() < descFin && slotFin.getTime() > descInicio
+      })
+
+      if (!citaOcupada && !enDescanso) {
         const hora = cursor.toLocaleTimeString('en-US', { timeZone: 'America/Bogota', hour: 'numeric', minute: '2-digit', hour12: true })
         slots.push({
           fecha_inicio:       cursor.toISOString(),
