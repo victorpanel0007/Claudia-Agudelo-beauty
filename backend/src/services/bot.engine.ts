@@ -248,10 +248,26 @@ const DIAS_SEMANA: Record<string, number> = {
 }
 
 function hoyBogota(): Date {
-  // Fecha actual en zona America/Bogota sin horas
+  // Retorna la fecha de hoy en Colombia como medianoche UTC-5
+  // Usando string con offset garantiza que el día sea correcto independiente del servidor
   const str = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Bogota' })
-  const [y, m, d] = str.split('-').map(Number)
-  return new Date(y, m - 1, d)
+  return new Date(`${str}T00:00:00-05:00`)
+}
+
+// Construye una fecha en Colombia a medianoche UTC-5 dado año, mes (0-based) y día
+function fechaBogota(anio: number, mes: number, dia: number): Date {
+  const mm = String(mes + 1).padStart(2, '0')
+  const dd = String(dia).padStart(2, '0')
+  return new Date(`${anio}-${mm}-${dd}T00:00:00-05:00`)
+}
+
+// Suma N días a una fecha Colombia sin cambiar el día
+function sumarDias(d: Date, n: number): Date {
+  const iso = d.toLocaleDateString('en-CA', { timeZone: 'America/Bogota' })
+  const [y, m, day] = iso.split('-').map(Number)
+  const nueva = new Date(Date.UTC(y, m - 1, day + n))
+  const isoNueva = nueva.toLocaleDateString('en-CA', { timeZone: 'UTC' })
+  return new Date(`${isoNueva}T00:00:00-05:00`)
 }
 
 function formatDate(d: Date | string): string {
@@ -271,109 +287,88 @@ interface ParseResult {
 
 function parseFlexibleDate(texto: string): ParseResult {
   const hoy = hoyBogota()
+  const hoyISO = hoy.toLocaleDateString('en-CA', { timeZone: 'America/Bogota' })
   const t = texto.toLowerCase()
-    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')  // quitar tildes para comparar
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
     .trim()
 
   const toISO = (d: Date) => d.toLocaleDateString('en-CA', { timeZone: 'America/Bogota' })
-  const toDisplay = (d: Date) => formatDate(d)
   const ok = (d: Date, ambigua = false): ParseResult => {
     const iso = toISO(d)
-    const display = toDisplay(d)
+    const display = formatDate(d)
     const confirmMsg = `📅 Entendí que quieres cita para el *${display}*. ¿Es correcto? (escribe *sí* para confirmar o la fecha correcta)`
     return { fecha: d, display, iso, confirmMsg, ambigua }
   }
-  const err = (msg: string): ParseResult => ({
-    fecha: null, display: '', iso: '', confirmMsg: '',
-    error: msg,
-  })
+  const err = (msg: string): ParseResult => ({ fecha: null, display: '', iso: '', confirmMsg: '', error: msg })
 
   // ── Relativos simples ──────────────────────────────────────────────────
   if (t === 'hoy') return ok(hoy)
+  if (t === 'manana' || t === 'mañana') return ok(sumarDias(hoy, 1))
+  if (t === 'pasado manana' || t === 'pasado mañana') return ok(sumarDias(hoy, 2))
 
-  if (t === 'manana' || t === 'mañana') {
-    const d = new Date(hoy); d.setDate(d.getDate() + 1)
-    return ok(d)
-  }
-
-  if (t === 'pasado manana' || t === 'pasado mañana') {
-    const d = new Date(hoy); d.setDate(d.getDate() + 2)
-    return ok(d)
-  }
-
-  // ── "la próxima semana" / "la semana que viene" ────────────────────────
+  // ── Próxima semana ──────────────────────────────────────────────────────
   if (t.includes('proxima semana') || t.includes('semana que viene') || t.includes('siguiente semana')) {
-    // Lunes de la próxima semana
-    const d = new Date(hoy)
-    const dow = d.getDay() // 0=dom
-    const diffToNextMonday = dow === 0 ? 1 : 8 - dow
-    d.setDate(d.getDate() + diffToNextMonday)
-    return ok(d)
+    const dow = hoy.getDay() === 0 ? 0 : hoy.getDay()
+    const diff = dow === 0 ? 1 : 8 - dow
+    return ok(sumarDias(hoy, diff))
   }
 
   // ── Días de la semana ──────────────────────────────────────────────────
-  // Detectar "próximo X", "el X", "este X", "el X 14"
   const esProximo = t.includes('proximo') || t.includes('siguiente') || t.includes('que viene')
   for (const [nombreDia, numDia] of Object.entries(DIAS_SEMANA)) {
     if (!t.includes(nombreDia)) continue
 
-    // Intentar extraer número de día concreto: "el viernes 14"
+    // "el viernes 14" — día de semana + número
     const matchNum = t.match(/\b(\d{1,2})\b/)
     if (matchNum) {
       const dia = parseInt(matchNum[1])
-      // Buscar en los próximos 60 días una fecha que sea ese día de semana y ese número
       for (let i = 1; i <= 60; i++) {
-        const d = new Date(hoy); d.setDate(hoy.getDate() + i)
-        if (d.getDay() === numDia && d.getDate() === dia) return ok(d)
+        const d = sumarDias(hoy, i)
+        if (d.getDay() === numDia && new Date(`${toISO(d)}T12:00:00-05:00`).getDate() === dia) return ok(d)
       }
     }
 
-    // Sin número: calcular próxima ocurrencia
-    const d = new Date(hoy)
-    let diff = numDia - d.getDay()
-    if (diff <= 0 || esProximo) diff += 7  // "próximo" siempre la semana siguiente
-    if (diff === 0) diff = 7               // mismo día → siguiente semana
-    d.setDate(d.getDate() + diff)
-    return ok(d, esProximo ? false : true) // ambigua si no dijo "próximo"
+    // Solo nombre: próxima ocurrencia
+    let diff = numDia - hoy.getDay()
+    if (diff <= 0 || esProximo) diff += 7
+    if (diff === 0) diff = 7
+    return ok(sumarDias(hoy, diff), !esProximo)
   }
 
-  // ── "X de MES" / "X MES" / "el X de MES" ─────────────────────────────
-  // Ej: "10 de agosto", "agosto 10", "el 10 agosto", "10 ago"
+  // ── "X de MES" / "X MES" / "MES X" ───────────────────────────────────
   for (const [nombreMes, numMes] of Object.entries(MESES)) {
     const patterns = [
-      new RegExp(`\\b(\\d{1,2})\\s+de\\s+${nombreMes}\\b`),   // "10 de agosto"
-      new RegExp(`\\b(\\d{1,2})\\s+${nombreMes}\\b`),          // "10 agosto"
-      new RegExp(`\\b${nombreMes}\\s+(\\d{1,2})\\b`),          // "agosto 10"
+      new RegExp(`\\b(\\d{1,2})\\s+de\\s+${nombreMes}\\b`),
+      new RegExp(`\\b(\\d{1,2})\\s+${nombreMes}\\b`),
+      new RegExp(`\\b${nombreMes}\\s+(\\d{1,2})\\b`),
     ]
     for (const pat of patterns) {
       const m = t.match(pat)
-      if (m) {
-        const dia = parseInt(m[1])
-        const anio = hoy.getFullYear()
-        const d = new Date(anio, numMes, dia)
-        if (isNaN(d.getTime()) || dia < 1 || dia > 31) return err('❌ Fecha inválida.')
-        // Si la fecha ya pasó, asumir el año siguiente
-        if (d < hoy) d.setFullYear(anio + 1)
-        return ok(d)
-      }
+      if (!m) continue
+      const dia = parseInt(m[1])
+      if (dia < 1 || dia > 31) return err('❌ Fecha inválida.')
+      const anioActual = new Date(`${hoyISO}T12:00:00-05:00`).getFullYear()
+      let d = fechaBogota(anioActual, numMes, dia)
+      // Si ya pasó, asumir año siguiente
+      if (toISO(d) < hoyISO) d = fechaBogota(anioActual + 1, numMes, dia)
+      return ok(d)
     }
   }
 
-  // ── DD/MM/YYYY, DD-MM-YYYY, DD/MM, DD-MM ──────────────────────────────
-  const matchNum = t.match(/^(\d{1,2})[\/\-](\d{1,2})(?:[\/\-](\d{4}))?$/)
-  if (matchNum) {
-    const dia   = parseInt(matchNum[1])
-    const mes   = parseInt(matchNum[2]) - 1  // formato DD/MM → mes es el segundo
-    const anio  = matchNum[3] ? parseInt(matchNum[3]) : hoy.getFullYear()
-    const d = new Date(anio, mes, dia)
-    if (isNaN(d.getTime()) || dia < 1 || dia > 31 || mes < 0 || mes > 11) {
-      return err('❌ Fecha inválida. Escribe en formato DD/MM/YYYY, ej: *10/08/2026*')
-    }
-    if (d < hoy) d.setFullYear(anio + 1)
-    return ok(d, true) // siempre confirmar formato numérico — puede confundirse día/mes
+  // ── DD/MM/YYYY o DD/MM o DD-MM ─────────────────────────────────────────
+  const matchNum2 = t.match(/^(\d{1,2})[\/\-](\d{1,2})(?:[\/\-](\d{4}))?$/)
+  if (matchNum2) {
+    const dia  = parseInt(matchNum2[1])
+    const mes  = parseInt(matchNum2[2]) - 1
+    const anioBase = new Date(`${hoyISO}T12:00:00-05:00`).getFullYear()
+    const anio = matchNum2[3] ? parseInt(matchNum2[3]) : anioBase
+    if (dia < 1 || dia > 31 || mes < 0 || mes > 11) return err('❌ Fecha inválida. Ej: *10/08/2026*')
+    let d = fechaBogota(anio, mes, dia)
+    if (toISO(d) < hoyISO) d = fechaBogota(anio + 1, mes, dia)
+    return ok(d, true) // siempre confirmar numérico
   }
 
-  return err('❌ No entendí la fecha 😊\nEscribe algo como: *mañana*, *el viernes*, *10 de agosto*, *10/08*')
+  return err('❌ No entendí la fecha 😊\nEscribe: *mañana*, *el viernes*, *10 de agosto*, *10/08*')
 }
 
 async function extractIntent(texto: string, conv: ConvRow | null): Promise<{
