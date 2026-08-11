@@ -483,6 +483,16 @@ export async function processBotMessage(telefono: string, texto: string): Promis
     return
   }
 
+  // Si hay conversacion activa en pasos de texto libre → ir directo sin IA
+  // Evita que OpenAI malinterprete nombres, fechas o confirmaciones
+  if (conv) {
+    const pasosTextoLibre = ['solicitar_nombre', 'solicitar_fecha', 'confirmar_fecha']
+    if (pasosTextoLibre.includes(conv.paso)) {
+      await dispatchPaso(telefono, texto.trim(), conv)
+      return
+    }
+  }
+
   // IA para cualquier otro texto
   const ext = await extractIntent(texto, conv)
   webhookLog.info({ telefono, intencion: ext.intencion }, '[Bot] Intencion detectada')
@@ -638,9 +648,26 @@ async function handleSvcSelection(t: string, text: string, conv: ConvRow): Promi
 }
 
 async function handleNombre(t: string, text: string, conv: ConvRow): Promise<void> {
-  if (text.trim().length < 3) { await reply(t, '❌ Escribe tu nombre completo (minimo 3 letras).'); return }
-  await setConv({ ...conv, nombre: text.trim(), paso: 'solicitar_fecha' })
-  await reply(t, `👋 Hola *${text.trim()}*!\n\n📅 ¿Que fecha prefieres?\n\nEjemplos: *manana*, *el sabado*, *18/07/2026*`)
+  const nombre = text.trim()
+  if (nombre.length < 2) { await reply(t, '❌ Escribe tu nombre completo (minimo 2 letras).'); return }
+
+  // Guardar/actualizar cliente en la BD inmediatamente
+  const digits = t.replace(/\D/g, '')
+  const tel = digits.startsWith('57') && digits.length === 12 ? digits : digits.length === 10 ? `57${digits}` : digits
+  try {
+    const sb = getSupabase()
+    // Verificar si ya existe con otro nombre
+    const { data: existing } = await sb.from('clientes').select('id').eq('telefono', tel).maybeSingle()
+    if (!existing) {
+      await sb.from('clientes').insert({ nombre, telefono: tel, fecha_registro: new Date().toISOString() })
+      webhookLog.info({ telefono: t, nombre }, '[BotEngine] ✅ Cliente nuevo guardado en BD')
+    }
+  } catch (e) {
+    webhookLog.warn({ err: (e as Error).message }, '[BotEngine] No se pudo guardar cliente en BD')
+  }
+
+  await setConv({ ...conv, nombre, paso: 'solicitar_fecha' })
+  await reply(t, `👋 Hola *${nombre}*! 😊\n\n📅 ¿Que fecha prefieres para tu cita?\n\nEjemplos: *mañana*, *el viernes*, *10 de agosto*, *10/08*`)
 }
 
 async function handleFecha(t: string, text: string, conv: ConvRow): Promise<void> {
