@@ -266,26 +266,30 @@ export default function EspecialistasView() {
 
   async function handleEliminarEspecialista() {
     if (!editingId || !form.nombre) return
-    if (!confirm(`¿Eliminar a ${form.nombre}?\n\nSus citas, pagos y comisiones históricas se conservarán en contabilidad.\nSolo se eliminará su perfil de especialista.`)) return
+    if (!confirm(`¿Desactivar a ${form.nombre}?\n\nTodas sus citas, pagos, comisiones y servicios históricos se conservarán intactos.\nSolo dejará de aparecer como especialista activa.`)) return
     setSaving(true)
     try {
-      // 1. Desvincular citas (conservar para contabilidad — poner especialista_id null)
-      await supabase.from('citas').update({ especialista_id: null }).eq('especialista_id', editingId)
+      // SOFT DELETE — marcar como inactiva, NO eliminar físicamente
+      // Esto preserva: citas, comisiones, pagos, servicios_extras y todo el historial
+      const { error } = await supabase
+        .from('especialistas')
+        .update({ activo: false })
+        .eq('id', editingId)
 
-      // 2. Eliminar registros que sí dependen del perfil (días bloqueados, descansos)
-      await supabase.from('dias_bloqueados').delete().eq('especialista_id', editingId)
-      await supabase.from('descansos_especialista').delete().eq('especialista_id', editingId)
-      await supabase.from('servicios_extras').delete().eq('especialista_id', editingId)
-      await supabase.from('notificaciones_especialista').delete().eq('especialista_id', editingId)
-
-      // 3. Eliminar solo el registro de la especialista
-      const { error } = await supabase.from('especialistas').delete().eq('id', editingId)
       if (error) {
-        toast.error('Error al eliminar: ' + error.message)
+        toast.error('Error al desactivar: ' + error.message)
         setSaving(false)
         return
       }
-      toast.success(`🗑️ ${form.nombre} eliminada — historial de contabilidad conservado`)
+
+      // Solo eliminar registros puramente operativos (sin valor histórico)
+      await supabase.from('dias_bloqueados').delete().eq('especialista_id', editingId)
+      await supabase.from('descansos_especialista').delete().eq('especialista_id', editingId)
+      await supabase.from('notificaciones_especialista').delete().eq('especialista_id', editingId)
+      // NOTA: servicios_extras, citas, comisiones_config y pagos_especialistas
+      // NO se tocan — se conservan para historial y contabilidad
+
+      toast.success(`🔴 ${form.nombre} desactivada — historial completamente conservado`)
       closeForm()
       loadData()
     } catch (e) {
@@ -876,8 +880,8 @@ export default function EspecialistasView() {
               {/* Eliminar especialista */}
               {editingId && (
                 <button type="button" onClick={handleEliminarEspecialista} disabled={saving}
-                  className="w-full text-xs text-red-500 hover:text-red-700 hover:bg-red-50 py-2 rounded-xl transition-colors border border-red-200">
-                  🗑️ Eliminar especialista permanentemente
+                  className="w-full text-xs text-orange-500 hover:text-orange-700 hover:bg-orange-50 py-2 rounded-xl transition-colors border border-orange-200">
+                  🔴 Desactivar especialista (conserva todo el historial)
                 </button>
               )}
             </div>
