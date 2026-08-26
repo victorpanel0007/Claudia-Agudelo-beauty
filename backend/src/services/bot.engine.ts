@@ -16,6 +16,7 @@ interface ConvRow {
   paso:             string
   categoria_id?:    string | null
   servicio_nombre?: string | null
+  servicio_id?:     string | null   // ID real del servicio en BD (source of truth)
   duracion?:        number | null
   precio?:          string | null
   nombre?:          string | null
@@ -567,11 +568,11 @@ async function handleReservar(telefono: string, ext: { servicio: string | null; 
   if (!nombre) {
     const cliente = await buscarCliente(telefono)
     if (cliente) {
-      await setConv({ telefono, paso: 'solicitar_fecha', servicio_nombre: svcData.nombre, duracion: svcData.duracion_minutos, precio, nombre: cliente.nombre })
+      await setConv({ telefono, paso: 'solicitar_fecha', servicio_nombre: svcData.nombre, servicio_id: svcData.id, duracion: svcData.duracion_minutos, precio, nombre: cliente.nombre })
       await reply(telefono, `👋 Hola de nuevo *${cliente.nombre}*! 😊\n\n📅 ¿Que fecha prefieres para *${svcData.nombre}*?\n\nEjemplos: *manana*, *el sabado*, *18/07/2026*`)
       return
     }
-    await setConv({ telefono, paso: 'solicitar_nombre', servicio_nombre: svcData.nombre, duracion: svcData.duracion_minutos, precio })
+    await setConv({ telefono, paso: 'solicitar_nombre', servicio_nombre: svcData.nombre, servicio_id: svcData.id, duracion: svcData.duracion_minutos, precio })
     const priceMsg = svcData.tipo_precio === 'valoracion' ? '\n\nℹ️ El precio final depende de largo, cantidad y tecnica.' : `\n\n💵 Precio: *${precio}*  ⏱️ Duracion: *${svcData.duracion_minutos} min*`
     await reply(telefono, `💅 *${svcData.nombre}*${priceMsg}\n\n✍️ ¿Cual es tu *nombre completo*?`)
     return
@@ -591,7 +592,7 @@ async function handleReservar(telefono: string, ext: { servicio: string | null; 
   }
 
   const { data: esps } = await getSupabase().from('especialistas').select('id, nombre').eq('activo', true).order('nombre')
-  await setConv({ telefono, paso: 'seleccion_especialista', servicio_nombre: svcData.nombre, duracion: svcData.duracion_minutos, precio, nombre, fecha: parsedFecha.fecha.toISOString() })
+  await setConv({ telefono, paso: 'seleccion_especialista', servicio_nombre: svcData.nombre, servicio_id: svcData.id, duracion: svcData.duracion_minutos, precio, nombre, fecha: parsedFecha.fecha.toISOString() })
   await reply(telefono, buildEspecialistaMenu((esps ?? []) as { id: string; nombre: string }[], parsedFecha.display))
 }
 
@@ -638,11 +639,11 @@ async function handleSvcSelection(t: string, text: string, conv: ConvRow): Promi
 
   const cliente = await buscarCliente(t)
   if (cliente) {
-    await setConv({ ...conv, servicio_nombre: svc.nombre, duracion: svc.duracion_minutos, precio, nombre: cliente.nombre, paso: 'solicitar_fecha' })
+    await setConv({ ...conv, servicio_nombre: svc.nombre, servicio_id: svc.id, duracion: svc.duracion_minutos, precio, nombre: cliente.nombre, paso: 'solicitar_fecha' })
     await reply(t, `👋 Hola de nuevo *${cliente.nombre}*! 😊\n\n📅 ¿Que fecha prefieres para *${svc.nombre}*?`)
     return
   }
-  await setConv({ ...conv, servicio_nombre: svc.nombre, duracion: svc.duracion_minutos, precio, paso: 'solicitar_nombre' })
+  await setConv({ ...conv, servicio_nombre: svc.nombre, servicio_id: svc.id, duracion: svc.duracion_minutos, precio, paso: 'solicitar_nombre' })
   const priceMsg = svc.tipo_precio === 'valoracion' ? '\n\nℹ️ Precio segun largo, cantidad y tecnica.' : `\n\n💵 Precio: *${precio}*  ⏱️ Duracion: *${svc.duracion_minutos} min*`
   await reply(t, `💅 *${svc.nombre}*${priceMsg}\n\n✍️ ¿Cual es tu *nombre completo*?`)
 }
@@ -752,10 +753,13 @@ async function handleHorario(t: string, text: string, conv: ConvRow): Promise<vo
   }
   if (!clienteId) { await reply(t, '❌ Error al procesar. Escribe *hola* para reintentar.'); return }
 
-  const { data: svc } = await getSupabase().from('servicios').select('id').ilike('nombre', `%${(conv.servicio_nombre ?? '').trim()}%`).limit(1).maybeSingle()
+  // Usar servicio_id guardado en la conversación (source of truth).
+  // Evita búsqueda por nombre con wildcards que puede retornar el servicio equivocado.
+  const servicioId = conv.servicio_id ?? null
+
   const cita = await createAppointment({
     cliente_id: clienteId, especialista_id: slot.especialista_id,
-    servicio_id: svc?.id ?? null, fecha_inicio: slot.fecha_inicio, fecha_fin: slot.fecha_fin,
+    servicio_id: servicioId, fecha_inicio: slot.fecha_inicio, fecha_fin: slot.fecha_fin,
   })
   if (!cita) { await reply(t, '❌ Ese horario ya fue reservado. Escribe *hola* para elegir otro.'); await delConv(t); return }
 
