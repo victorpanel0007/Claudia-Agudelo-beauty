@@ -52,6 +52,7 @@ export default function HomePage() {
       <HeroSection />
       <ServicesSection />
       <BookingSection />
+      <WhatsAppSection />
       <GallerySection />
       <TestimonialsSection />
       <ContactSection />

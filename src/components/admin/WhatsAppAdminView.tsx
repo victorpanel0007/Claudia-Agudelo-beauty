@@ -5,22 +5,25 @@ import { createClient } from '@/lib/supabase/client'
 import {
   MessageSquare, Phone, Send, RefreshCw, CheckCircle,
   Circle, Clock, Users, Zap, Settings, ChevronRight,
-  PauseCircle, PlayCircle, Bot,
 } from 'lucide-react'
 import { formatDate, formatTime } from '@/lib/utils'
 import toast from 'react-hot-toast'
 
 interface Mensaje {
-  id: string; telefono: string; mensaje: string
-  fecha: string; tipo: 'entrante' | 'saliente' | 'sistema'
+  id: string
+  telefono: string
+  mensaje: string
+  fecha: string
+  tipo: 'entrante' | 'saliente' | 'sistema'
   cliente?: { nombre: string }
 }
+
 interface ConvGroup {
-  telefono: string; nombre: string; mensajes: Mensaje[]
-  ultimo: string; noLeidos: number
-}
-interface PausaInfo {
-  pausado: boolean; pausado_hasta?: string; minutos_restantes?: number
+  telefono: string
+  nombre: string
+  mensajes: Mensaje[]
+  ultimo: string
+  noLeidos: number
 }
 
 const FLUJO_STEPS = [
@@ -43,11 +46,7 @@ export default function WhatsAppAdminView() {
   const [testMsg, setTestMsg] = useState('')
   const [sending, setSending] = useState(false)
   const [webhookUrl, setWebhookUrl] = useState('')
-  const [backendUrl, setBackendUrl] = useState('https://claudia-beauty-backend-production.up.railway.app')
   const [instanceStatus, setInstanceStatus] = useState<'checking' | 'connected' | 'disconnected'>('checking')
-  const [pausas, setPausas] = useState<Record<string, PausaInfo>>({})
-  const [pausaMinutos, setPausaMinutos] = useState(20)
-  const [togglingPausa, setTogglingPausa] = useState(false)
 
   const supabase = createClient()
 
@@ -89,13 +88,12 @@ export default function WhatsAppAdminView() {
 
   useEffect(() => {
     loadMensajes()
-    // La URL correcta del webhook es la del backend Railway, NO la del SPA
-    const railwayBackend = process.env.NEXT_PUBLIC_WHATSAPP_BACKEND_URL ?? 'https://claudia-beauty-backend-production.up.railway.app'
-    setBackendUrl(railwayBackend)
-    setWebhookUrl(`${railwayBackend}/webhooks/dualhook`)
-    checkInstanceStatus()
-    loadPausas()
+    setWebhookUrl(`${window.location.origin}/api/whatsapp/webhook`)
 
+    // Check Evolution API status
+    checkInstanceStatus()
+
+    // Realtime
     const channel = supabase
       .channel('whatsapp-msgs')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'mensajes_whatsapp' }, () => {
@@ -103,13 +101,7 @@ export default function WhatsAppAdminView() {
       })
       .subscribe()
 
-    // Refrescar estado de pausas cada 30s
-    const pausaInterval = setInterval(loadPausas, 30000)
-
-    return () => {
-      supabase.removeChannel(channel)
-      clearInterval(pausaInterval)
-    }
+    return () => { supabase.removeChannel(channel) }
   }, [loadMensajes, supabase])
 
   async function checkInstanceStatus() {
@@ -119,53 +111,6 @@ export default function WhatsAppAdminView() {
       setInstanceStatus(data.connected ? 'connected' : 'disconnected')
     } catch {
       setInstanceStatus('disconnected')
-    }
-  }
-
-  async function loadPausas() {
-    try {
-      const res = await fetch('/api/whatsapp/pausa')
-      const data = await res.json()
-      if (Array.isArray(data)) {
-        const map: Record<string, PausaInfo> = {}
-        const ahora = new Date()
-        data.forEach((p: { telefono: string; pausado_hasta: string }) => {
-          const pausado_hasta = new Date(p.pausado_hasta)
-          if (pausado_hasta > ahora) {
-            map[p.telefono] = {
-              pausado: true,
-              pausado_hasta: p.pausado_hasta,
-              minutos_restantes: Math.ceil((pausado_hasta.getTime() - ahora.getTime()) / 60000),
-            }
-          }
-        })
-        setPausas(map)
-      }
-    } catch { /* silent */ }
-  }
-
-  async function togglePausa(telefono: string) {
-    setTogglingPausa(true)
-    const esPausado = pausas[telefono]?.pausado
-    try {
-      const res = await fetch('/api/whatsapp/pausa', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          telefono,
-          accion: esPausado ? 'reanudar' : 'pausar',
-          minutos: pausaMinutos,
-        }),
-      })
-      const data = await res.json()
-      if (data.ok) {
-        toast.success(esPausado ? '🟢 Bot reactivado' : `🟠 Bot pausado ${pausaMinutos} min`)
-        loadPausas()
-      }
-    } catch {
-      toast.error('Error al cambiar estado del bot')
-    } finally {
-      setTogglingPausa(false)
     }
   }
 
@@ -294,7 +239,7 @@ export default function WhatsAppAdminView() {
                   <p className="text-gray-300 text-xs mt-1">Los mensajes aparecerán aquí en tiempo real</p>
                 </div>
               ) : conversaciones.map(conv => (
-                  <button
+                <button
                   key={conv.telefono}
                   onClick={() => setSelectedConv(conv)}
                   className={`w-full p-3 text-left hover:bg-gray-50 transition-colors ${
@@ -302,16 +247,10 @@ export default function WhatsAppAdminView() {
                   }`}
                 >
                   <div className="flex items-center gap-3">
-                    <div className="relative">
-                      <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center shrink-0">
-                        <span className="text-green-700 font-bold text-sm">
-                          {conv.nombre.charAt(0).toUpperCase()}
-                        </span>
-                      </div>
-                      {/* Indicador de pausa */}
-                      {pausas[conv.telefono]?.pausado && (
-                        <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-orange-400 rounded-full border-2 border-white" title="Atención humana" />
-                      )}
+                    <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center shrink-0">
+                      <span className="text-green-700 font-bold text-sm">
+                        {conv.nombre.charAt(0).toUpperCase()}
+                      </span>
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between">
@@ -321,11 +260,6 @@ export default function WhatsAppAdminView() {
                       <p className="text-gray-400 text-xs truncate">
                         {conv.mensajes[0]?.mensaje?.slice(0, 40)}...
                       </p>
-                      {pausas[conv.telefono]?.pausado && (
-                        <p className="text-orange-500 text-[10px] font-medium">
-                          🟠 Atención humana · {pausas[conv.telefono].minutos_restantes}min restantes
-                        </p>
-                      )}
                     </div>
                     {conv.noLeidos > 0 && (
                       <span className="bg-green-500 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center shrink-0">
@@ -351,36 +285,8 @@ export default function WhatsAppAdminView() {
                     <p className="font-semibold text-beauty-text text-sm">{selectedConv.nombre}</p>
                     <p className="text-gray-400 text-xs">{selectedConv.telefono}</p>
                   </div>
-                  {/* Indicador de estado del bot */}
-                  {pausas[selectedConv.telefono]?.pausado ? (
-                    <span className="flex items-center gap-1.5 bg-orange-100 text-orange-700 text-xs font-semibold px-2.5 py-1.5 rounded-full">
-                      <span className="w-2 h-2 bg-orange-400 rounded-full" />
-                      Humano · {pausas[selectedConv.telefono].minutos_restantes}min
-                    </span>
-                  ) : (
-                    <span className="flex items-center gap-1.5 bg-green-100 text-green-700 text-xs font-semibold px-2.5 py-1.5 rounded-full">
-                      <Bot size={11} />
-                      Bot activo
-                    </span>
-                  )}
-                  {/* Botón pausar/reanudar */}
-                  <button
-                    onClick={() => togglePausa(selectedConv.telefono)}
-                    disabled={togglingPausa}
-                    title={pausas[selectedConv.telefono]?.pausado ? 'Reanudar bot' : 'Pausar bot'}
-                    className={`p-2 rounded-xl transition-colors ${
-                      pausas[selectedConv.telefono]?.pausado
-                        ? 'bg-green-100 hover:bg-green-200 text-green-700'
-                        : 'bg-orange-100 hover:bg-orange-200 text-orange-600'
-                    }`}
-                  >
-                    {pausas[selectedConv.telefono]?.pausado
-                      ? <PlayCircle size={16} />
-                      : <PauseCircle size={16} />
-                    }
-                  </button>
                   <a
-                    href={`https://wa.me/${selectedConv.telefono.replace(/\D/g,'').startsWith('57') ? '' : '57'}${selectedConv.telefono.replace(/\D/g,'')}`}
+                    href={`https://wa.me/57${selectedConv.telefono}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="bg-green-500 text-white text-xs px-3 py-1.5 rounded-full hover:bg-green-600 transition-colors flex items-center gap-1"
@@ -537,13 +443,13 @@ export default function WhatsAppAdminView() {
           <div className="beauty-card p-5">
             <h3 className="font-bold text-beauty-text mb-4 flex items-center gap-2">
               <Settings size={18} className="text-beauty-secondary" />
-              Configuración DualHook (Railway Backend)
+              Configuración Evolution API
             </h3>
 
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  URL del Webhook (configurar en DualHook)
+                  URL del Webhook
                 </label>
                 <div className="flex gap-2">
                   <input
@@ -562,17 +468,16 @@ export default function WhatsAppAdminView() {
                   </button>
                 </div>
                 <p className="text-xs text-gray-400 mt-1">
-                  Configura esta URL en tu panel de DualHook → Webhooks
+                  Configura esta URL en tu panel de Evolution API → Webhooks
                 </p>
               </div>
 
               <div className="bg-gray-50 rounded-xl p-4 space-y-2 text-sm">
-                <p className="font-medium text-beauty-text text-sm">Variables de entorno en Railway</p>
+                <p className="font-medium text-beauty-text text-sm">Variables de entorno</p>
                 {[
-                  { key: 'DUALHOOK_API_KEY', desc: 'API Key de DualHook' },
-                  { key: 'DUALHOOK_PHONE_NUMBER_ID', desc: 'Phone Number ID de Meta' },
-                  { key: 'DUALHOOK_VERIFY_TOKEN', desc: 'Token de verificación del webhook' },
-                  { key: 'DUALHOOK_WEBHOOK_SECRET', desc: 'Secret para validar firma (opcional)' },
+                  { key: 'EVOLUTION_API_URL', desc: 'URL base de Evolution API' },
+                  { key: 'EVOLUTION_API_KEY', desc: 'API Key de acceso' },
+                  { key: 'EVOLUTION_INSTANCE_NAME', desc: 'Nombre de la instancia' },
                 ].map(v => (
                   <div key={v.key} className="flex items-start gap-2">
                     <Circle size={6} className="text-beauty-secondary mt-1.5 shrink-0" />
@@ -585,36 +490,17 @@ export default function WhatsAppAdminView() {
               </div>
 
               <div className="bg-beauty-rosa-claro border border-beauty-primary rounded-xl p-4">
-                <p className="text-sm font-semibold text-beauty-text mb-3">Pausa automática del bot</p>
-                <div className="flex items-center gap-3 mb-3">
-                  <label className="text-xs text-gray-600 font-medium">Tiempo de pausa:</label>
-                  <div className="flex items-center gap-2">
-                    {[5, 10, 15, 20, 30, 60].map(m => (
-                      <button key={m} onClick={() => setPausaMinutos(m)}
-                        className={`text-xs px-2.5 py-1 rounded-full font-semibold transition-colors ${
-                          pausaMinutos === m ? 'bg-beauty-primary text-white' : 'bg-white text-gray-600 hover:bg-beauty-primary/20'
-                        }`}>
-                        {m}min
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <p className="text-xs text-gray-500">
-                  Cuando el admin responda desde WhatsApp o el panel, el bot se pausa automáticamente por {pausaMinutos} minutos.
-                </p>
-              </div>
-
-              <div className="bg-beauty-rosa-claro border border-beauty-primary rounded-xl p-4">
-                <p className="text-sm font-semibold text-beauty-text mb-2">Estado del backend</p>                <div className="flex items-center gap-2">
+                <p className="text-sm font-semibold text-beauty-text mb-2">Estado del bot</p>
+                <div className="flex items-center gap-2">
                   {instanceStatus === 'connected' ? (
                     <>
                       <span className="w-3 h-3 bg-green-500 rounded-full animate-pulse" />
-                      <span className="text-green-700 text-sm font-medium">Backend Railway conectado</span>
+                      <span className="text-green-700 text-sm font-medium">Evolution API conectada</span>
                     </>
                   ) : instanceStatus === 'disconnected' ? (
                     <>
                       <span className="w-3 h-3 bg-red-500 rounded-full" />
-                      <span className="text-red-600 text-sm">Sin conexión — verifica las credenciales en Railway</span>
+                      <span className="text-red-600 text-sm">Sin conexión — verifica las credenciales</span>
                     </>
                   ) : (
                     <>
@@ -703,28 +589,28 @@ export default function WhatsAppAdminView() {
           <div className="lg:col-span-2 beauty-card p-5">
             <h3 className="font-bold text-beauty-text mb-4 flex items-center gap-2">
               <ChevronRight size={18} className="text-beauty-secondary" />
-              Guía de configuración DualHook
+              Guía de configuración
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               {[
                 {
                   step: '1',
-                  title: 'Configurar variables en Railway',
-                  items: ['DUALHOOK_API_KEY con tu clave de DualHook', 'DUALHOOK_PHONE_NUMBER_ID con tu Phone Number ID', 'DUALHOOK_VERIFY_TOKEN con un token secreto propio'],
+                  title: 'Crear instancia en Evolution API',
+                  items: ['Accede a tu panel de Evolution API', 'Crea una nueva instancia', 'Escanea el QR con WhatsApp'],
                   color: 'border-blue-200 bg-blue-50',
                   num: 'bg-blue-500',
                 },
                 {
                   step: '2',
-                  title: 'Configurar el webhook en DualHook',
-                  items: ['Copia la URL del webhook de arriba', 'En DualHook → Webhooks → agregar URL', `Usar el mismo DUALHOOK_VERIFY_TOKEN`],
+                  title: 'Configurar el webhook',
+                  items: ['Copia la URL del webhook de arriba', 'En Evolution API → Webhooks', `Pega la URL y activa "messages.upsert"`],
                   color: 'border-beauty-secondary/40 bg-beauty-rosa-claro',
                   num: 'bg-beauty-secondary',
                 },
                 {
                   step: '3',
                   title: 'Verificar funcionamiento',
-                  items: ['Envía "Hola" al número del negocio', 'El bot debe responder con el menú', 'Revisa logs en Railway para diagnóstico'],
+                  items: ['Envía "Hola" al número del negocio', 'El bot debe responder con el menú', 'Completa una reserva de prueba'],
                   color: 'border-green-200 bg-green-50',
                   num: 'bg-green-500',
                 },

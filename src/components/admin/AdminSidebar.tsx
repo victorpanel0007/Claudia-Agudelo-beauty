@@ -6,7 +6,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import {
   LayoutDashboard, Calendar, Users, Scissors,
   BarChart3, MessageSquare, UserCheck, Menu, X,
-  LogOut, Globe, Bell, DollarSign, Images,
+  LogOut, Globe, Bell, DollarSign,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
@@ -20,7 +20,6 @@ const navItems = [
   { href: '/admin/notificaciones', icon: Bell,            label: 'Notificaciones' },
   { href: '/admin/comisiones',     icon: DollarSign,      label: 'Comisiones' },
   { href: '/admin/whatsapp',       icon: MessageSquare,   label: 'WhatsApp' },
-  { href: '/admin/galeria',        icon: Images,          label: 'Galería' },
   { href: '/admin/reportes',       icon: BarChart3,       label: 'Reportes' },
 ]
 

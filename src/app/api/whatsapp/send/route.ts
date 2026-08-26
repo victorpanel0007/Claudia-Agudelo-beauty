@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
 
     if (!result.ok) {
       return NextResponse.json(
-        { error: result.errorMessage || 'No se pudo enviar el mensaje. Verifica la conexión con el backend de Railway.' },
+        { error: result.errorMessage || 'No se pudo enviar el mensaje. Verifica la conexión con Evolution API.' },
         { status: 500 }
       )
     }

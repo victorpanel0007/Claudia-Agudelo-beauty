@@ -4,7 +4,6 @@
  */
 
 import { createAdminClient } from './supabase/server'
-import { createClient } from './supabase/server'
 import { NextResponse } from 'next/server'
 
 // ── Definición de Roles ──────────────────────────────────────────────────
@@ -55,9 +54,7 @@ export const PERMISSIONS: Record<UserRole, {
 // ── Obtener rol del usuario actual ────────────────────────────────────────
 export async function getUserRole(): Promise<UserRole | null> {
   try {
-    // Usar createClient (anon key + cookies) para leer la sesión del usuario logueado.
-    // createAdminClient usa service_role y NO lee las cookies de sesión correctamente.
-    const supabase = await createClient()
+    const supabase = await createAdminClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return null
     const rol = user.user_metadata?.rol as UserRole | undefined

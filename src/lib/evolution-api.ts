@@ -1,95 +1,133 @@
-/**
- * Capa de compatibilidad WhatsApp.
- * Antes usaba Evolution API — ahora redirige al backend de Railway (Dualhook).
- * Mantiene exactamente las mismas firmas de funcion para no romper nada.
- */
+import axios, { AxiosError } from 'axios'
 
-const BACKEND_URL = process.env.WHATSAPP_BACKEND_URL ?? 'https://claudia-beauty-backend-production.up.railway.app'
+const BASE_URL = process.env.EVOLUTION_API_URL
+const API_KEY  = process.env.EVOLUTION_API_KEY
+const INSTANCE = process.env.EVOLUTION_INSTANCE_NAME
+
+// ── Resultado detallado de envío ────────────────────────────────────────────
 
 export interface SendResult {
   ok: boolean
   statusCode?: number
   errorMessage?: string
+  /** Respuesta completa de Evolution API (para logging) */
   rawResponse?: unknown
 }
 
-export interface ListRow { rowId: string; title: string; description?: string }
-export interface ListSection { title: string; rows: ListRow[] }
-export interface SendListOptions { to: string; title: string; description: string; buttonText: string; sections: ListSection[]; footer?: string }
-export interface ButtonItem { displayText: string; id: string }
-export interface SendButtonsOptions { to: string; title: string; description: string; footer?: string; buttons: ButtonItem[] }
-export interface SendMediaOptions { to: string; mediatype: 'image' | 'video' | 'document' | 'audio'; media: string; caption?: string; fileName?: string }
-
+/**
+ * Normaliza un número de teléfono al formato internacional Colombia (57XXXXXXXXXX).
+ * Si ya tiene el prefijo 57 (10 dígitos tras el 57), lo deja igual.
+ * Si tiene 10 dígitos (sin 57), lo agrega.
+ */
 export function normalizarTelefono(raw: string): string {
   const digits = raw.replace(/\D/g, '')
-  if (digits.startsWith('57') && digits.length === 12) return digits
-  if (digits.startsWith('57') && digits.length > 12)   return digits.slice(0, 12)
-  if (digits.length === 10) return `57${digits}`
+  if (digits.startsWith('57') && digits.length === 12) return digits   // ya correcto
+  if (digits.startsWith('57') && digits.length > 12)  return digits.slice(0, 12)
+  if (digits.length === 10) return `57${digits}`                        // agregar prefijo
   if (digits.length === 11 && digits.startsWith('0')) return `57${digits.slice(1)}`
-  return digits
+  return digits // devolver tal cual si no encaja (se registrará el error)
 }
 
-async function postToBackend(endpoint: string, body: unknown): Promise<SendResult> {
-  try {
-    const res = await fetch(`${BACKEND_URL}${endpoint}`, {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify(body),
-      signal:  AbortSignal.timeout(10_000),
-    })
-    const data = await res.json() as { ok?: boolean; messageId?: string; error?: string }
-    if (!res.ok) return { ok: false, statusCode: res.status, errorMessage: data?.error ?? res.statusText }
-    return { ok: true, statusCode: res.status, rawResponse: data }
-  } catch (err) {
-    return { ok: false, errorMessage: (err as Error).message }
-  }
-}
-
+/**
+ * Envía un mensaje de WhatsApp a través de Evolution API.
+ * Retorna un objeto detallado con el resultado, nunca lanza.
+ */
 export async function sendWhatsAppMessage(to: string, message: string): Promise<SendResult> {
-  return postToBackend('/api/messages/send', { to: normalizarTelefono(to), text: message })
-}
-
-export async function sendWhatsAppList(options: SendListOptions): Promise<SendResult> {
-  // Fallback a texto plano — la Cloud API oficial no soporta listas interactivas de Baileys
-  const lines = [`*${options.title}*`, '', options.description, '']
-  for (const section of options.sections) {
-    if (section.title) lines.push(`*${section.title}*`)
-    for (const row of section.rows) {
-      lines.push(`• ${row.title}${row.description ? ` — ${row.description}` : ''}`)
+  if (!BASE_URL || !API_KEY || !INSTANCE) {
+    return {
+      ok: false,
+      errorMessage: `Variables de entorno faltantes: ${[
+        !BASE_URL && 'EVOLUTION_API_URL',
+        !API_KEY  && 'EVOLUTION_API_KEY',
+        !INSTANCE && 'EVOLUTION_INSTANCE_NAME',
+      ].filter(Boolean).join(', ')}`,
     }
-    lines.push('')
   }
-  if (options.footer) lines.push(`_${options.footer}_`)
-  return sendWhatsAppMessage(options.to, lines.join('\n').trim())
+
+  const phone = normalizarTelefono(to)
+
+  if (phone.length < 11) {
+    return {
+      ok: false,
+      errorMessage: `Número de teléfono inválido: "${to}" → normalizado a "${phone}" (mínimo 11 dígitos con código de país)`,
+    }
+  }
+
+  try {
+    const { data, status } = await axios.post(
+      `${BASE_URL}/message/sendText/${INSTANCE}`,
+      { number: phone, text: message },
+      {
+        headers: { apikey: API_KEY, 'Content-Type': 'application/json' },
+        timeout: 10000,
+      }
+    )
+    return { ok: true, statusCode: status, rawResponse: data }
+  } catch (err) {
+    const axiosErr = err as AxiosError
+    const statusCode = axiosErr.response?.status
+    const rawResponse = axiosErr.response?.data
+
+    let errorMessage = axiosErr.message
+    if (rawResponse) {
+      try {
+        errorMessage = `HTTP ${statusCode} — ${JSON.stringify(rawResponse)}`
+      } catch {
+        errorMessage = `HTTP ${statusCode} — ${String(rawResponse)}`
+      }
+    }
+
+    console.error('[Evolution API] Error enviando mensaje:', {
+      to: phone,
+      statusCode,
+      errorMessage,
+      rawResponse,
+    })
+
+    return { ok: false, statusCode, errorMessage, rawResponse }
+  }
 }
 
-export async function sendWhatsAppButtons(options: SendButtonsOptions): Promise<SendResult> {
-  const lines = [`*${options.title}*`, '', options.description, '']
-  options.buttons.forEach(b => lines.push(`• ${b.displayText}`))
-  if (options.footer) lines.push('', `_${options.footer}_`)
-  return sendWhatsAppMessage(options.to, lines.join('\n').trim())
-}
+// ── Helpers de mensajes específicos ─────────────────────────────────────────
 
-export async function sendWhatsAppMedia(options: SendMediaOptions): Promise<SendResult> {
-  if (options.mediatype === 'image') {
-    return postToBackend('/api/messages/image', { to: normalizarTelefono(options.to), imageUrl: options.media, caption: options.caption })
-  }
-  if (options.mediatype === 'document') {
-    return postToBackend('/api/messages/document', { to: normalizarTelefono(options.to), docUrl: options.media, caption: options.caption, filename: options.fileName })
-  }
-  if (options.mediatype === 'audio') {
-    return postToBackend('/api/messages/audio', { to: normalizarTelefono(options.to), audioUrl: options.media })
-  }
-  if (options.caption) return sendWhatsAppMessage(options.to, options.caption)
-  return { ok: false, errorMessage: 'Tipo de media no soportado' }
-}
+export async function sendWhatsAppReminder(
+  to: string,
+  serviceName: string,
+  fecha: string,
+  hora: string
+): Promise<SendResult> {
+  const message = `⏰ *Recordatorio de cita*
 
-export async function sendWhatsAppReminder(to: string, serviceName: string, fecha: string, hora: string): Promise<SendResult> {
-  const message = `⏰ *Recordatorio de cita*\n\nServicio: *${serviceName}*\nFecha: *${fecha}*\nHora: *${hora}*\n\nTe esperamos en *Claudia Agudelo Beauty* 💖\n\n¿Necesitas reprogramar? Escribenos 😊`
+Servicio: *${serviceName}*
+Fecha: *${fecha}*
+Hora: *${hora}*
+
+Te esperamos en *Claudia Agudelo Beauty* 💖
+
+¿Necesitas reprogramar? Escríbenos 😊`
   return sendWhatsAppMessage(to, message)
 }
 
-export async function sendAppointmentConfirmation(to: string, data: { cliente: string; servicio: string; especialista: string; fecha: string; hora: string; precio: string }): Promise<SendResult> {
-  const message = `✅ *Cita reservada correctamente*\n\n👤 Cliente: *${data.cliente}*\n💅 Servicio: *${data.servicio}*\n👩 Especialista: *${data.especialista}*\n📅 Fecha: *${data.fecha}*\n⏰ Hora: *${data.hora}*\n💵 Valor: *${data.precio}*\n\nGracias por elegir *Claudia Agudelo Beauty* 💖`
+export async function sendAppointmentConfirmation(
+  to: string,
+  data: {
+    cliente: string
+    servicio: string
+    especialista: string
+    fecha: string
+    hora: string
+    precio: string
+  }
+): Promise<SendResult> {
+  const message = `✅ *Cita reservada correctamente*
+
+👤 Cliente: *${data.cliente}*
+💅 Servicio: *${data.servicio}*
+👩 Especialista: *${data.especialista}*
+📅 Fecha: *${data.fecha}*
+⏰ Hora: *${data.hora}*
+💵 Valor: *${data.precio}*
+
+Gracias por elegir *Claudia Agudelo Beauty* 💖`
   return sendWhatsAppMessage(to, message)
 }
