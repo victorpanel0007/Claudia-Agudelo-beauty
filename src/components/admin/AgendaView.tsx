@@ -1148,9 +1148,11 @@ export default function AgendaView() {
         {/* Detail panel — sidebar on desktop, modal on mobile */}
         {selectedCita && (
           <>
-            {/* Mobile overlay */}
-            <div className="sm:hidden fixed inset-0 z-50 flex items-end justify-center bg-black/50">
-              <div className="bg-white rounded-t-3xl w-full max-h-[85vh] overflow-y-auto shadow-2xl">
+            {/* Mobile overlay — cubre todo el viewport, independiente del contenedor */}
+            <div className="sm:hidden fixed inset-0 z-[9999] flex items-end justify-center bg-black/60"
+              onClick={e => { if (e.target === e.currentTarget) setSelectedCita(null) }}
+            >
+              <div className="bg-white rounded-t-3xl w-full max-h-[90vh] overflow-y-auto shadow-2xl animate-slide-up">
                 <DetailPanel
                   cita={selectedCita}
                   onClose={() => setSelectedCita(null)}
