@@ -359,3 +359,34 @@ DO $$ BEGIN
       ON bot_pausas USING (true) WITH CHECK (true);
   END IF;
 END $$;
+
+
+-- ────────────────────────────────────────────────────────────────
+-- 8. DESCANSOS DE ESPECIALISTAS
+--    Franjas horarias diarias bloqueadas para el bot.
+--    El bot no ofrecerá slots que se superpongan con un descanso.
+-- ────────────────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS descansos_especialista (
+  id              uuid        PRIMARY KEY DEFAULT uuid_generate_v4(),
+  especialista_id uuid        NOT NULL REFERENCES especialistas(id) ON DELETE CASCADE,
+  hora_inicio     time        NOT NULL,   -- ej: '12:00:00'
+  hora_fin        time        NOT NULL,   -- ej: '13:00:00'
+  created_at      timestamptz DEFAULT now(),
+  CONSTRAINT descanso_valido CHECK (hora_fin > hora_inicio)
+);
+
+CREATE INDEX IF NOT EXISTS idx_descansos_esp ON descansos_especialista(especialista_id);
+
+ALTER TABLE descansos_especialista ENABLE ROW LEVEL SECURITY;
+
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE tablename = 'descansos_especialista'
+      AND policyname = 'Full access descansos_especialista'
+  ) THEN
+    CREATE POLICY "Full access descansos_especialista"
+      ON descansos_especialista USING (true) WITH CHECK (true);
+  END IF;
+END $$;

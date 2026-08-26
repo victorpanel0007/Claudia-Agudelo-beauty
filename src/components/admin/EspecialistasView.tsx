@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Clock, Plus, Edit, Save, X, CheckCircle, XCircle, User, Send, RefreshCw, Wifi, WifiOff } from 'lucide-react'
+import { Clock, Plus, Edit, X, CheckCircle, XCircle, User, Send, RefreshCw, Wifi, WifiOff, Trash2, Coffee } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 interface Especialista {
@@ -24,6 +24,12 @@ interface FormState {
   activo: boolean
   whatsapp: string
   notificaciones: boolean
+}
+
+interface Descanso {
+  id?: string
+  hora_inicio: string
+  hora_fin: string
 }
 
 const DIAS = [
@@ -82,6 +88,9 @@ export default function EspecialistasView() {
   const [diasSelected, setDiasSelected] = useState<number[]>([1, 2, 3, 4, 5, 6])
   const [sendingTest, setSendingTest] = useState<string | null>(null)
   const [waStatus, setWaStatus] = useState<'checking' | 'connected' | 'disconnected'>('checking')
+  // Descansos del especialista que se está editando
+  const [descansos, setDescansos] = useState<Descanso[]>([])
+  const [savingDescansos, setSavingDescansos] = useState(false)
   const supabase = createClient()
 
   useEffect(() => {
@@ -118,6 +127,13 @@ export default function EspecialistasView() {
       whatsapp:        e.whatsapp || '',
       notificaciones:  e.notificaciones !== false,
     })
+    // Cargar descansos existentes
+    supabase
+      .from('descansos_especialista')
+      .select('id, hora_inicio, hora_fin')
+      .eq('especialista_id', e.id)
+      .order('hora_inicio')
+      .then(({ data }) => setDescansos((data as Descanso[]) || []))
     setShowForm(true)
   }
 
@@ -125,6 +141,7 @@ export default function EspecialistasView() {
     setEditingId(null)
     setDiasSelected([1, 2, 3, 4, 5, 6])
     setForm(DEFAULT_FORM)
+    setDescansos([])
     setShowForm(true)
   }
 
@@ -132,6 +149,7 @@ export default function EspecialistasView() {
     setShowForm(false)
     setEditingId(null)
     setForm(DEFAULT_FORM)
+    setDescansos([])
   }
 
   function toggleDia(num: number) {
@@ -181,23 +199,55 @@ export default function EspecialistasView() {
       } else if (!data || data.length === 0) {
         toast.error('No se encontró la especialista para actualizar')
       } else {
+        await saveDescansos(editingId)
         toast.success(`✅ ${form.nombre} actualizada correctamente`)
         closeForm()
         loadData()
       }
     } else {
-      const { error } = await supabase
+      const { error, data: newEsp } = await supabase
         .from('especialistas')
         .insert(payload)
+        .select('id')
+        .single()
       if (error) {
         toast.error('Error al crear: ' + error.message)
       } else {
+        if (newEsp?.id) await saveDescansos(newEsp.id)
         toast.success(`✅ ${form.nombre} creada correctamente`)
         closeForm()
         loadData()
       }
     }
     setSaving(false)
+  }
+
+  // ── Descansos helpers ────────────────────────────────────────────────────
+  function addDescanso() {
+    setDescansos(prev => [...prev, { hora_inicio: '12:00', hora_fin: '13:00' }])
+  }
+
+  function removeDescanso(idx: number) {
+    setDescansos(prev => prev.filter((_, i) => i !== idx))
+  }
+
+  function updateDescanso(idx: number, field: 'hora_inicio' | 'hora_fin', value: string) {
+    setDescansos(prev => prev.map((d, i) => i === idx ? { ...d, [field]: value } : d))
+  }
+
+  async function saveDescansos(especialistaId: string) {
+    setSavingDescansos(true)
+    // Eliminar todos los descansos actuales y re-insertar
+    await supabase.from('descansos_especialista').delete().eq('especialista_id', especialistaId)
+    if (descansos.length > 0) {
+      const rows = descansos
+        .filter(d => d.hora_inicio < d.hora_fin)
+        .map(d => ({ especialista_id: especialistaId, hora_inicio: d.hora_inicio, hora_fin: d.hora_fin }))
+      if (rows.length > 0) {
+        await supabase.from('descansos_especialista').insert(rows)
+      }
+    }
+    setSavingDescansos(false)
   }
 
   async function enviarPrueba(e: Especialista) {
@@ -492,6 +542,57 @@ export default function EspecialistasView() {
                 <label className="text-sm font-medium text-gray-700 cursor-pointer">
                   {form.activo ? 'Activa — visible para el bot y clientes' : 'Inactiva — no aparece en el bot'}
                 </label>
+              </div>
+
+              {/* ── Descansos ─────────────────────────────────────────── */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-sm font-medium text-gray-700 flex items-center gap-1.5">
+                    <Coffee size={14} className="text-beauty-secondary" />
+                    Descansos / Breaks
+                  </label>
+                  <button type="button" onClick={addDescanso}
+                    className="flex items-center gap-1 text-xs text-beauty-secondary border border-beauty-secondary/40 px-2.5 py-1.5 rounded-lg hover:bg-beauty-rosa-claro transition-colors">
+                    <Plus size={12} /> Agregar
+                  </button>
+                </div>
+                {descansos.length === 0 ? (
+                  <p className="text-xs text-gray-400 bg-gray-50 rounded-xl p-3 text-center">
+                    Sin descansos configurados — el bot no bloqueará ninguna franja horaria
+                  </p>
+                ) : (
+                  <div className="space-y-2">
+                    {descansos.map((d, i) => (
+                      <div key={i} className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-xl p-3">
+                        <Coffee size={14} className="text-amber-500 shrink-0" />
+                        <div className="flex items-center gap-2 flex-1">
+                          <select
+                            value={d.hora_inicio}
+                            onChange={e => updateDescanso(i, 'hora_inicio', e.target.value)}
+                            className="flex-1 border border-amber-200 rounded-lg px-2 py-1.5 text-xs bg-white focus:outline-none focus:border-amber-400"
+                          >
+                            {TIME_OPTIONS.map(t => <option key={t} value={t}>{formatTime12(t)}</option>)}
+                          </select>
+                          <span className="text-xs text-gray-500 shrink-0">a</span>
+                          <select
+                            value={d.hora_fin}
+                            onChange={e => updateDescanso(i, 'hora_fin', e.target.value)}
+                            className="flex-1 border border-amber-200 rounded-lg px-2 py-1.5 text-xs bg-white focus:outline-none focus:border-amber-400"
+                          >
+                            {TIME_OPTIONS.map(t => <option key={t} value={t}>{formatTime12(t)}</option>)}
+                          </select>
+                        </div>
+                        <button type="button" onClick={() => removeDescanso(i)}
+                          className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors shrink-0">
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
+                    ))}
+                    <p className="text-xs text-gray-400 mt-1">
+                      ℹ️ El bot no ofrecerá horarios que se superpongan con estos descansos.
+                    </p>
+                  </div>
+                )}
               </div>
 
               {/* Botones */}
