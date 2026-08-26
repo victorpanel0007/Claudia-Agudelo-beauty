@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Clock, Plus, Edit, X, CheckCircle, XCircle, User, Send, RefreshCw, Wifi, WifiOff, Trash2, Coffee } from 'lucide-react'
+import { Clock, Plus, Edit, Save, X, CheckCircle, XCircle, User, Send, RefreshCw, Wifi, WifiOff, Trash2, Coffee } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 interface Especialista {
