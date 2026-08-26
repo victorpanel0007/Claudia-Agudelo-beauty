@@ -1203,36 +1203,36 @@ export default function AgendaView() {
           </div>
         </div>
 
-        {/* Detail panel — sidebar on desktop, modal on mobile */}
+        {/* Detail panel — sidebar en desktop únicamente */}
         {selectedCita && (
-          <>
-            {/* Mobile overlay — cubre todo el viewport, independiente del contenedor */}
-            <div className="sm:hidden fixed inset-0 z-[9999] flex items-end justify-center bg-black/60"
-              onClick={e => { if (e.target === e.currentTarget) setSelectedCita(null) }}
-            >
-              <div className="bg-white rounded-t-3xl w-full max-h-[90vh] overflow-y-auto shadow-2xl animate-slide-up">
-                <DetailPanel
-                  cita={selectedCita}
-                  onClose={() => setSelectedCita(null)}
-                  onCompletar={solicitarCompletar}
-                  onCancelar={cancelarCita}
-                  onEliminar={eliminarCita}
-                />
-              </div>
-            </div>
-            {/* Desktop sidebar */}
-            <div className="hidden sm:block">
-              <DetailPanel
-                cita={selectedCita}
-                onClose={() => setSelectedCita(null)}
-                onCompletar={solicitarCompletar}
-                onCancelar={cancelarCita}
-                onEliminar={eliminarCita}
-              />
-            </div>
-          </>
+          <div className="hidden sm:block">
+            <DetailPanel
+              cita={selectedCita}
+              onClose={() => setSelectedCita(null)}
+              onCompletar={solicitarCompletar}
+              onCancelar={cancelarCita}
+              onEliminar={eliminarCita}
+            />
+          </div>
         )}
       </div>
+
+      {/* Modal detalles de cita — MÓVIL (fuera del hidden sm:flex para que se renderice) */}
+      {selectedCita && (
+        <div className="sm:hidden fixed inset-0 z-[9999] flex items-end justify-center bg-black/60"
+          onClick={e => { if (e.target === e.currentTarget) setSelectedCita(null) }}
+        >
+          <div className="bg-white rounded-t-3xl w-full max-h-[90vh] overflow-y-auto shadow-2xl animate-slide-up">
+            <DetailPanel
+              cita={selectedCita}
+              onClose={() => setSelectedCita(null)}
+              onCompletar={solicitarCompletar}
+              onCancelar={cancelarCita}
+              onEliminar={eliminarCita}
+            />
+          </div>
+        </div>
+      )}
 
       {/* Completar modal */}
       {citaACompletar && (
