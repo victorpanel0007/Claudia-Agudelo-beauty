@@ -159,55 +159,6 @@ function DetailPanel({ cita, onClose, onCompletar, onCancelar, onEliminar }: {
   onEliminar: (id: string) => void
 }) {
   const st = STATUS_CONFIG[cita.estado] ?? STATUS_CONFIG.pendiente
-  const supabase = createClient()
-
-  // ── Estado servicio extra ────────────────────────────────────────────────
-  const [showExtra, setShowExtra]         = useState(false)
-  const [serviciosLista, setServiciosLista] = useState<Servicio[]>([])
-  const [extraServicioId, setExtraServicioId] = useState('')
-  const [extraValor, setExtraValor]       = useState('')
-  const [savingExtra, setSavingExtra]     = useState(false)
-
-  // Cargar servicios al abrir el formulario extra
-  useEffect(() => {
-    if (!showExtra || serviciosLista.length > 0) return
-    supabase.from('servicios').select('id,nombre,precio,precio_desde,tipo_precio,duracion_minutos')
-      .eq('activo', true).order('nombre')
-      .then(({ data }) => { if (data) setServiciosLista(data as Servicio[]) })
-  }, [showExtra, supabase, serviciosLista.length])
-
-  async function guardarExtra() {
-    if (!extraServicioId) { toast.error('Selecciona un servicio'); return }
-    const valor = Number(extraValor)
-    if (!valor || valor <= 0) { toast.error('Ingresa un valor válido'); return }
-    setSavingExtra(true)
-    try {
-      const fecha = new Date(cita.fecha_inicio)
-        .toLocaleDateString('en-CA', { timeZone: 'America/Bogota' })
-      const res = await fetch('/api/servicios-extras', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          fecha,
-          servicio_id:      extraServicioId,
-          especialista_id:  cita.especialista_id,
-          cliente_id:       cita.cliente_id,
-          cliente_nombre:   cita.cliente?.nombre ?? '',
-          valor_final:      valor,
-          es_nuevo_cliente: false,
-        }),
-      })
-      if (!res.ok) { const e = await res.json(); throw new Error(e.error) }
-      toast.success('✅ Servicio extra registrado')
-      setShowExtra(false)
-      setExtraServicioId('')
-      setExtraValor('')
-    } catch (e) {
-      toast.error('Error: ' + (e as Error).message)
-    } finally {
-      setSavingExtra(false)
-    }
-  }
 
   return (
     <div className="w-72 bg-white border-l border-gray-100 flex flex-col h-full overflow-y-auto shrink-0">
@@ -318,81 +269,6 @@ function DetailPanel({ cita, onClose, onCompletar, onCancelar, onEliminar }: {
           </button>
         </div>
       )}
-      {/* Acciones */}
-      {(cita.estado === 'confirmada' || cita.estado === 'pendiente' || cita.estado === 'en_proceso') && (
-        <div className="p-4 mt-auto flex gap-2">
-          <button onClick={() => onCancelar(cita.id)}
-            className="flex-1 text-xs font-semibold py-2.5 rounded-xl border-2 border-red-200 text-red-500 hover:bg-red-50 transition-colors">
-            Cancelar
-          </button>
-          <button onClick={() => onCompletar(cita)}
-            className="flex-1 text-xs font-semibold py-2.5 rounded-xl bg-beauty-primary text-white hover:bg-beauty-primary-dark transition-colors">
-            Completar
-          </button>
-        </div>
-      )}
-
-      {/* ── Servicio Extra ────────────────────────────────────────── */}
-      <div className="px-4 pb-2">
-        <button
-          onClick={() => setShowExtra(v => !v)}
-          className="w-full flex items-center justify-center gap-1.5 text-xs text-beauty-secondary border border-beauty-secondary/40 py-2 rounded-xl hover:bg-beauty-rosa-claro transition-colors"
-        >
-          <PlusCircle size={13} />
-          {showExtra ? 'Ocultar servicio extra' : 'Agregar servicio extra'}
-        </button>
-
-        {showExtra && (
-          <div className="mt-3 space-y-3 bg-amber-50 border border-amber-200 rounded-xl p-3">
-            <div className="flex items-center gap-1.5 mb-1">
-              <Scissors size={13} className="text-amber-600" />
-              <p className="text-xs font-semibold text-amber-700">Servicio extra para esta cita</p>
-            </div>
-            <div>
-              <label className="text-[11px] text-gray-500 font-medium mb-1 block">Servicio</label>
-              <select
-                value={extraServicioId}
-                onChange={e => {
-                  setExtraServicioId(e.target.value)
-                  const svc = serviciosLista.find(s => s.id === e.target.value)
-                  if (svc?.precio) setExtraValor(String(svc.precio))
-                }}
-                className="w-full border border-amber-200 rounded-lg px-2 py-1.5 text-xs bg-white focus:outline-none focus:border-amber-400"
-              >
-                <option value="">Selecciona un servicio...</option>
-                {serviciosLista.map(s => (
-                  <option key={s.id} value={s.id}>
-                    {s.nombre}{s.precio ? ` · $${Number(s.precio).toLocaleString('es-CO')}` : ''}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="text-[11px] text-gray-500 font-medium mb-1 block">Valor cobrado</label>
-              <div className="relative">
-                <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs">$</span>
-                <input
-                  type="number"
-                  value={extraValor}
-                  onChange={e => setExtraValor(e.target.value)}
-                  placeholder="0"
-                  className="w-full border border-amber-200 rounded-lg pl-6 pr-3 py-1.5 text-xs bg-white focus:outline-none focus:border-amber-400"
-                />
-              </div>
-            </div>
-            <button
-              onClick={guardarExtra}
-              disabled={savingExtra || !extraServicioId || !extraValor}
-              className="w-full flex items-center justify-center gap-1.5 text-xs font-semibold bg-amber-500 text-white py-2 rounded-lg hover:bg-amber-600 transition-colors disabled:opacity-50"
-            >
-              {savingExtra
-                ? <><Loader2 size={12} className="animate-spin" /> Guardando...</>
-                : <><Check size={12} /> Registrar servicio extra</>
-              }
-            </button>
-          </div>
-        )}
-      </div>
 
       {/* Eliminar permanentemente */}
       <div className="px-4 pb-4">
@@ -881,12 +757,63 @@ export default function AgendaView() {
   const [selectedCita, setSelectedCita] = useState<Cita | null>(null)
   const [citaACompletar, setCitaACompletar] = useState<Cita | null>(null)
   const [loading, setLoading] = useState(true)
-  // Default to 'day' on mobile — detected via initial render
   const [viewMode, setViewMode] = useState<'day' | 'week' | 'month'>('day')
   const [currentDate, setCurrentDate] = useState(new Date())
   const [showNuevaCita, setShowNuevaCita] = useState(false)
-  // Mobile: show list instead of timeline grid
   const [mobileListMode, setMobileListMode] = useState(true)
+  // ── Servicio extra ───────────────────────────────────────────────────────
+  const [showServicioExtra, setShowServicioExtra] = useState(false)
+  const [serviciosLista, setServiciosLista]       = useState<Servicio[]>([])
+  const [extraServicioId, setExtraServicioId]     = useState('')
+  const [extraValor, setExtraValor]               = useState('')
+  const [extraClienteNombre, setExtraClienteNombre] = useState('')
+  const [extraEspecialistaId, setExtraEspecialistaId] = useState('')
+  const [especialistasLista, setEspecialistasLista]   = useState<Especialista[]>([])
+  const [savingExtra, setSavingExtra]             = useState(false)
+
+  useEffect(() => {
+    if (!showServicioExtra) return
+    Promise.all([
+      supabase.from('servicios').select('id,nombre,precio,precio_desde,tipo_precio,duracion_minutos').eq('activo', true).order('nombre'),
+      supabase.from('especialistas').select('id,nombre').eq('activo', true).order('nombre'),
+    ]).then(([s, e]) => {
+      if (s.data) setServiciosLista(s.data as Servicio[])
+      if (e.data) setEspecialistasLista(e.data as Especialista[])
+    })
+  }, [showServicioExtra, supabase])
+
+  async function guardarServicioExtra() {
+    if (!extraServicioId)         { toast.error('Selecciona un servicio'); return }
+    if (!extraClienteNombre.trim()) { toast.error('Ingresa el nombre del cliente'); return }
+    if (!extraEspecialistaId)     { toast.error('Selecciona una especialista'); return }
+    const valor = Number(extraValor)
+    if (!valor || valor <= 0)     { toast.error('Ingresa un valor válido'); return }
+    setSavingExtra(true)
+    try {
+      const fecha = currentDate.toLocaleDateString('en-CA', { timeZone: 'America/Bogota' })
+      const res = await fetch('/api/servicios-extras', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fecha,
+          servicio_id:      extraServicioId,
+          especialista_id:  extraEspecialistaId,
+          cliente_nombre:   extraClienteNombre.trim(),
+          valor_final:      valor,
+          es_nuevo_cliente: true,
+        }),
+      })
+      if (!res.ok) { const e = await res.json(); throw new Error(e.error) }
+      toast.success('✅ Servicio extra registrado')
+      setShowServicioExtra(false)
+      setExtraServicioId(''); setExtraValor(''); setExtraClienteNombre(''); setExtraEspecialistaId('')
+      loadCitas()
+    } catch (e) {
+      toast.error('Error: ' + (e as Error).message)
+    } finally {
+      setSavingExtra(false)
+    }
+  }
 
   const loadCitas = useCallback(async () => {
     const { data, error } = await supabase
@@ -1011,6 +938,12 @@ export default function AgendaView() {
             className="flex items-center gap-1.5 text-xs text-red-500 border border-red-200 px-2.5 py-2 rounded-xl hover:bg-red-50 transition-colors">
             <span className="hidden sm:inline">🗑️ Limpiar</span>
             <span className="sm:hidden">🗑️</span>
+          </button>
+          <button onClick={() => setShowServicioExtra(true)}
+            className="flex items-center gap-1.5 text-xs text-amber-700 border border-amber-300 bg-amber-50 px-2.5 sm:px-3 py-2.5 rounded-xl hover:bg-amber-100 transition-colors font-semibold">
+            <Scissors size={14} />
+            <span className="hidden sm:inline">Servicio Extra</span>
+            <span className="sm:hidden">Extra</span>
           </button>
           <button onClick={() => setShowNuevaCita(true)}
             className="flex items-center gap-1.5 sm:gap-2 bg-beauty-primary text-white text-xs sm:text-sm font-semibold px-3 sm:px-4 py-2.5 rounded-xl hover:bg-beauty-primary-dark transition-colors shadow-sm">
@@ -1316,6 +1249,105 @@ export default function AgendaView() {
           onClose={() => setShowNuevaCita(false)}
           onSaved={loadCitas}
         />
+      )}
+
+      {/* Modal Servicio Extra */}
+      {showServicioExtra && (
+        <div className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center bg-black/50 p-0 sm:p-4"
+          onClick={e => { if (e.target === e.currentTarget) setShowServicioExtra(false) }}
+        >
+          <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl w-full sm:max-w-md animate-slide-up">
+            <div className="p-5 border-b border-gray-100 flex items-center justify-between">
+              <div>
+                <h3 className="font-bold text-gray-800 flex items-center gap-2">
+                  <Scissors size={16} className="text-amber-500" />
+                  Servicio Extra
+                </h3>
+                <p className="text-xs text-gray-400 mt-0.5">Registra un servicio adicional fuera de la agenda</p>
+              </div>
+              <button onClick={() => setShowServicioExtra(false)} className="p-1.5 hover:bg-gray-100 rounded-lg">
+                <X size={18} />
+              </button>
+            </div>
+            <div className="p-5 space-y-4">
+              {/* Cliente */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">Cliente *</label>
+                <input
+                  type="text"
+                  value={extraClienteNombre}
+                  onChange={e => setExtraClienteNombre(e.target.value)}
+                  placeholder="Nombre del cliente"
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-beauty-primary"
+                />
+              </div>
+              {/* Especialista */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">Especialista *</label>
+                <select
+                  value={extraEspecialistaId}
+                  onChange={e => setExtraEspecialistaId(e.target.value)}
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-beauty-primary"
+                >
+                  <option value="">Selecciona una especialista...</option>
+                  {especialistasLista.map(e => (
+                    <option key={e.id} value={e.id}>{e.nombre}</option>
+                  ))}
+                </select>
+              </div>
+              {/* Servicio */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">Servicio *</label>
+                <select
+                  value={extraServicioId}
+                  onChange={e => {
+                    setExtraServicioId(e.target.value)
+                    const svc = serviciosLista.find(s => s.id === e.target.value)
+                    if (svc?.precio) setExtraValor(String(svc.precio))
+                  }}
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-beauty-primary"
+                >
+                  <option value="">Selecciona un servicio...</option>
+                  {serviciosLista.map(s => (
+                    <option key={s.id} value={s.id}>
+                      {s.nombre}{s.precio ? ` · $${Number(s.precio).toLocaleString('es-CO')}` : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              {/* Valor */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">Valor cobrado *</label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
+                  <input
+                    type="number"
+                    value={extraValor}
+                    onChange={e => setExtraValor(e.target.value)}
+                    placeholder="0"
+                    className="w-full border border-gray-200 rounded-xl pl-7 pr-3 py-2.5 text-sm focus:outline-none focus:border-beauty-primary"
+                  />
+                </div>
+              </div>
+              <div className="flex gap-3 pt-1">
+                <button onClick={() => setShowServicioExtra(false)}
+                  className="flex-1 border-2 border-gray-200 py-3 rounded-xl text-sm font-medium hover:bg-gray-50 transition-colors">
+                  Cancelar
+                </button>
+                <button
+                  onClick={guardarServicioExtra}
+                  disabled={savingExtra}
+                  className="flex-1 bg-amber-500 text-white py-3 rounded-xl text-sm font-semibold hover:bg-amber-600 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {savingExtra
+                    ? <><Loader2 size={14} className="animate-spin" /> Guardando...</>
+                    : <><CheckCircle size={14} /> Registrar</>
+                  }
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )
