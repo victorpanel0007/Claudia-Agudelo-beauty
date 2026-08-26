@@ -914,10 +914,14 @@ export default function ComisionesView() {
 
       {/* ── PAGO MODAL ──────────────────────────────────────────────────────── */}
       {showPagoModal && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-beauty-lg w-full max-w-lg max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+          <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-beauty-lg w-full sm:max-w-lg max-h-[90vh] overflow-y-auto">
+            {/* Handle bar móvil */}
+            <div className="flex justify-center pt-3 pb-1 sm:hidden">
+              <div className="w-10 h-1 rounded-full bg-gray-200" />
+            </div>
             {/* Modal header */}
-            <div className="flex items-center justify-between p-5 border-b border-gray-100">
+            <div className="flex items-center justify-between p-5 border-b border-gray-100 sticky top-0 bg-white z-10">
               <h3 className="font-bold text-beauty-text">Registrar Pago a Especialista</h3>
               <button onClick={() => setShowPagoModal(false)} className="text-beauty-text-muted hover:text-beauty-borgona">
                 <X size={20} />
