@@ -303,7 +303,7 @@ function CompletarModal({ cita, onClose, onConfirm }: {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm animate-slide-up p-6">
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-bold text-beauty-text">Completar Cita</h3>
@@ -505,7 +505,7 @@ function NuevaCitaModal({ onClose, onSaved }: { onClose: () => void; onSaved: ()
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg animate-slide-up overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between p-5 border-b border-gray-100">
