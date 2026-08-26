@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/server'
 import { sendWhatsAppMessage, sendAppointmentConfirmation } from '@/lib/evolution-api'
-import { buildWhatsAppMenu, buildCategoryMenu, CATEGORIAS, SERVICIOS_DATA } from '@/lib/services-data'
 import { getAvailableSlots, createAppointment, type AvailableSlot } from '@/lib/scheduling'
 import { parseFlexibleDate } from '@/lib/date-parser'
 import { formatDate, formatCurrency } from '@/lib/utils'
@@ -22,7 +21,71 @@ interface ConvRow {
   slots_json?:     AvailableSlot[] | null
 }
 
+interface CatDB {
+  id:     string
+  nombre: string
+  icono:  string
+  orden:  number
+}
+
+interface SvcDB {
+  id:                  string
+  nombre:              string
+  tipo_precio:         string
+  precio?:             number | null
+  precio_desde?:       number | null
+  duracion_minutos:    number
+  categoria_id:        string
+  requiere_valoracion?: boolean
+}
+
 type Supabase = Awaited<ReturnType<typeof createAdminClient>>
+
+// ── Catálogo desde BD ────────────────────────────────────────────────────────
+// Siempre leemos categorías y servicios desde Supabase para que el bot
+// muestre y procese exactamente los mismos datos que existen en la BD.
+
+async function getCategorias(supabase: Supabase): Promise<CatDB[]> {
+  const { data } = await supabase
+    .from('categorias')
+    .select('id, nombre, icono, orden')
+    .order('orden')
+  return (data ?? []) as CatDB[]
+}
+
+async function getServiciosByCategoria(supabase: Supabase, categoriaId: string): Promise<SvcDB[]> {
+  const { data } = await supabase
+    .from('servicios')
+    .select('id, nombre, tipo_precio, precio, precio_desde, duracion_minutos, categoria_id, requiere_valoracion')
+    .eq('categoria_id', categoriaId)
+    .eq('activo', true)
+    .order('nombre')
+  return (data ?? []) as SvcDB[]
+}
+
+function buildCategoryMenuFromDB(cat: CatDB, servicios: SvcDB[]): string {
+  const lista = servicios.map((s, i) => {
+    let precio = ''
+    if (s.tipo_precio === 'fijo' && s.precio) {
+      precio = ` — $${Number(s.precio).toLocaleString('es-CO')}`
+    } else if (s.tipo_precio === 'desde' && s.precio_desde) {
+      precio = ` desde — $${Number(s.precio_desde).toLocaleString('es-CO')}`
+    }
+    return `${getNumberEmoji(i + 1)} ${s.nombre}${precio}`
+  }).join('\n')
+  return `${cat.icono} *${cat.nombre.toUpperCase()}*\n\n${lista}\n\n✍️ Escribe el número del servicio deseado.`
+}
+
+function getNumberEmoji(n: number): string {
+  const emojis: Record<number, string> = {
+    1: '1️⃣', 2: '2️⃣', 3: '3️⃣', 4: '4️⃣', 5: '5️⃣',
+    6: '6️⃣', 7: '7️⃣', 8: '8️⃣', 9: '9️⃣', 10: '🔟',
+    11: '1️⃣1️⃣', 12: '1️⃣2️⃣', 13: '1️⃣3️⃣', 14: '1️⃣4️⃣',
+    15: '1️⃣5️⃣', 16: '1️⃣6️⃣', 17: '1️⃣7️⃣', 18: '1️⃣8️⃣',
+    19: '1️⃣9️⃣', 20: '2️⃣0️⃣',
+  }
+  return emojis[n] || `${n}.`
+}
 
 // ── Helpers de estado en Supabase ─────────────────────────────────────────────
 
@@ -53,6 +116,11 @@ async function delConv(telefono: string, supabase: Supabase): Promise<void> {
     .from('conversaciones_bot')
     .delete()
     .eq('telefono', telefono)
+}
+
+function buildMainMenu(categorias: CatDB[]): string {
+  const menu = categorias.map((cat, i) => `${getNumberEmoji(i + 1)} ${cat.nombre}`).join('\n')
+  return `🤖 *MENÚ PRINCIPAL*\n\n¡Hola! 👋 Bienvenido(a) a *Claudia Agudelo Beauty* 💖\n\nPor favor responde con el número del servicio que deseas:\n\n${menu}\n\n✍️ Escribe el número de la opción deseada.`
 }
 
 // ── Webhook principal ─────────────────────────────────────────────────────────
@@ -107,7 +175,9 @@ export async function processMessage(telefono: string, text: string) {
   const resetWords = ['hola', 'inicio', 'menu', 'menú', 'hi', 'hello', '0', 'cancelar', 'reiniciar']
   if (resetWords.includes(lowerText)) {
     await delConv(telefono, supabase)
-    await reply(telefono, buildWhatsAppMenu(), supabase)
+    const categorias = await getCategorias(supabase)
+    const menuPrincipal = buildMainMenu(categorias)
+    await reply(telefono, menuPrincipal, supabase)
     await setConv(supabase, { telefono, paso: 'seleccion_categoria' })
     return
   }
@@ -116,7 +186,9 @@ export async function processMessage(telefono: string, text: string) {
 
   // Sin conversación activa → mostrar menú
   if (!conv) {
-    await reply(telefono, buildWhatsAppMenu(), supabase)
+    const categorias = await getCategorias(supabase)
+    const menuPrincipal = buildMainMenu(categorias)
+    await reply(telefono, menuPrincipal, supabase)
     await setConv(supabase, { telefono, paso: 'seleccion_categoria' })
     return
   }
@@ -136,7 +208,8 @@ export async function processMessage(telefono: string, text: string) {
       await handleHorarioSelection(telefono, text, conv, supabase); break
     default:
       await delConv(telefono, supabase)
-      await reply(telefono, buildWhatsAppMenu(), supabase)
+      const cats = await getCategorias(supabase)
+      await reply(telefono, buildMainMenu(cats), supabase)
       await setConv(supabase, { telefono, paso: 'seleccion_categoria' })
   }
 }
@@ -146,59 +219,54 @@ export async function processMessage(telefono: string, text: string) {
 async function handleCategorySelection(
   telefono: string, text: string, conv: ConvRow, supabase: Supabase
 ) {
+  const categorias = await getCategorias(supabase)
   const num = parseInt(text)
-  if (isNaN(num) || num < 1 || num > CATEGORIAS.length) {
-    await reply(telefono, `❌ Opción no válida. Por favor escribe un número del 1 al ${CATEGORIAS.length}.`, supabase)
+  if (isNaN(num) || num < 1 || num > categorias.length) {
+    await reply(telefono, `❌ Opción no válida. Por favor escribe un número del 1 al ${categorias.length}.`, supabase)
     return
   }
-  const cat = CATEGORIAS[num - 1]
+  const cat = categorias[num - 1]
+  const servicios = await getServiciosByCategoria(supabase, cat.id)
   await setConv(supabase, { ...conv, categoria_id: cat.id, paso: 'seleccion_servicio' })
-  await reply(telefono, buildCategoryMenu(cat.id), supabase)
+  await reply(telefono, buildCategoryMenuFromDB(cat, servicios), supabase)
 }
 
 async function handleServiceSelection(
   telefono: string, text: string, conv: ConvRow, supabase: Supabase
 ) {
-  const servicios = SERVICIOS_DATA.filter(s => s.cat === conv.categoria_id)
+  const servicios = await getServiciosByCategoria(supabase, conv.categoria_id ?? '')
   const num = parseInt(text)
   if (isNaN(num) || num < 1 || num > servicios.length) {
     await reply(telefono, `❌ Opción no válida. Por favor escribe un número del 1 al ${servicios.length}.`, supabase)
     return
   }
+  // El servicio viene directamente de la BD — ID y nombre son exactos
   const servicio = servicios[num - 1]
 
   let precio: string
-  if (servicio.tipo === 'fijo' && servicio.precio) {
+  if (servicio.tipo_precio === 'fijo' && servicio.precio) {
     precio = formatCurrency(servicio.precio)
-  } else if (servicio.tipo === 'desde' && servicio.precio_desde) {
+  } else if (servicio.tipo_precio === 'desde' && servicio.precio_desde) {
     precio = `Desde ${formatCurrency(servicio.precio_desde)}`
   } else {
     precio = 'Requiere valoración'
   }
 
-  // Resolver el ID real del servicio en BD aquí, en el momento de la selección.
-  // Esto garantiza que al crear la cita se use exactamente el servicio elegido,
-  // sin depender de una búsqueda tardía que puede fallar o matchear el servicio equivocado.
-  const { data: servicioEnBD } = await supabase
-    .from('servicios')
-    .select('id')
-    .ilike('nombre', servicio.nombre)
-    .maybeSingle()
-
+  // Guardamos el ID real directamente — no se necesita búsqueda posterior
   await setConv(supabase, {
     ...conv,
     servicio_nombre: servicio.nombre,
-    servicio_id:     servicioEnBD?.id ?? null,  // source of truth para la cita
-    duracion:        servicio.duracion,
+    servicio_id:     servicio.id,   // source of truth: ID real de la BD
+    duracion:        servicio.duracion_minutos,
     precio,
     paso:            'solicitar_nombre',
   })
 
   let priceMsg = ''
-  if (servicio.tipo === 'valoracion' || servicio.requiere_valoracion) {
+  if (servicio.tipo_precio === 'valoracion' || servicio.requiere_valoracion) {
     priceMsg = `\n\nℹ️ El precio final dependerá de:\n• Largo del cabello\n• Cantidad de cabello\n• Técnica utilizada\n• Productos necesarios`
   } else {
-    priceMsg = `\n\n💵 Precio: *${precio}*\n⏱️ Duración: *${servicio.duracion} minutos*`
+    priceMsg = `\n\n💵 Precio: *${precio}*\n⏱️ Duración: *${servicio.duracion_minutos} minutos*`
   }
 
   await reply(
