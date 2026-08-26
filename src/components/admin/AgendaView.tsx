@@ -863,6 +863,8 @@ export default function AgendaView() {
   // ── Stats ───────────────────────────────────────────────────────────────
   const today = new Date()
   const citasHoy = citas.filter(c => isSameDayColombia(c.fecha_inicio, today))
+  // Citas del día seleccionado (usado en la vista móvil)
+  const citasDiaActual = citas.filter(c => isSameDayColombia(c.fecha_inicio, currentDate))
   const pendientes = citas.filter(c => c.estado === 'pendiente')
   const confirmadas = citas.filter(c => c.estado === 'confirmada')
   const ingresosDia = citasHoy
@@ -937,14 +939,14 @@ export default function AgendaView() {
             <div className="p-6 space-y-3">
               {[1,2,3].map(i => <div key={i} className="h-16 skeleton rounded-xl" />)}
             </div>
-          ) : citasHoy.length === 0 ? (
+          ) : citasDiaActual.length === 0 ? (
             <div className="p-8 text-center">
               <p className="text-4xl mb-3">📅</p>
-              <p className="text-gray-400 text-sm">Sin citas para hoy</p>
+              <p className="text-gray-400 text-sm">Sin citas para este día</p>
             </div>
           ) : (
             <div className="divide-y divide-gray-50">
-              {citasHoy.map(cita => {
+              {citasDiaActual.map(cita => {
                 const st = STATUS_CONFIG[cita.estado] ?? STATUS_CONFIG.pendiente
                 return (
                   <button key={cita.id} onClick={() => setSelectedCita(cita)}
