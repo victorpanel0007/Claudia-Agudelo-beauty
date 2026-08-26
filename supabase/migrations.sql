@@ -264,6 +264,7 @@ CREATE TABLE IF NOT EXISTS conversaciones_bot (
   -- Datos del flujo
   categoria_id   text,
   servicio_nombre text,
+  servicio_id    text,               -- ID real del servicio en la tabla servicios (source of truth)
   duracion       int,
   precio         text,
   nombre         text,
@@ -275,6 +276,10 @@ CREATE TABLE IF NOT EXISTS conversaciones_bot (
   created_at     timestamptz DEFAULT now(),
   updated_at     timestamptz DEFAULT now()
 );
+
+-- Agregar columna servicio_id si la tabla ya existe (migración incremental)
+ALTER TABLE conversaciones_bot
+  ADD COLUMN IF NOT EXISTS servicio_id text;
 
 -- Auto-actualizar updated_at
 CREATE OR REPLACE FUNCTION update_conversaciones_bot_updated_at()

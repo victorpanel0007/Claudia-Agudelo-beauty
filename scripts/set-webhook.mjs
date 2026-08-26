@@ -4,7 +4,7 @@
  */
 
 const EVOLUTION_URL = 'https://evolution-api-production-c57f.up.railway.app'
-const API_KEY = '144A36EE5B57-4F70-8373-443246DE1D4F'
+const API_KEY = 'D2FE1E38D1A0-4CF0-9568-AA56AC8DB061'
 const INSTANCE = 'claudia-beauty'
 
 const webhookUrl = process.argv[2]
