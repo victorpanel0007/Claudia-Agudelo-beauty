@@ -91,7 +91,7 @@ export async function POST(request: NextRequest) {
 
 // ── Procesador principal ──────────────────────────────────────────────────────
 
-async function processMessage(telefono: string, text: string) {
+export async function processMessage(telefono: string, text: string) {
   const supabase   = await createAdminClient()
   const lowerText  = text.toLowerCase().trim()
 
