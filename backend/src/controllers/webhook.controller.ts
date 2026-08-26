@@ -80,27 +80,20 @@ export function receiveWebhook(req: Request, res: Response): void {
       const value = change.value
 
       webhookLog.info({
-        field: change.field,
-        numMessages: value.messages?.length ?? 0,
-        numStatuses: value.statuses?.length ?? 0,
-        numContacts: value.contacts?.length ?? 0,
-        numEchoes:   (value as Record<string, unknown>).message_echoes
-          ? ((value as Record<string, unknown>).message_echoes as unknown[]).length
-          : 0,
+        field:         change.field,
+        numMessages:   value.messages?.length ?? 0,
+        numStatuses:   value.statuses?.length ?? 0,
+        numContacts:   value.contacts?.length ?? 0,
+        numEchoes:     value.message_echoes?.length ?? 0,
         phoneNumberId: value.metadata?.phone_number_id,
       }, '[Webhook] Procesando change')
 
       // ── Message echoes (smb_message_echoes) ──────────────────────────────
-      // Cuando el humano responde manualmente desde WhatsApp Business,
-      // Meta envía field="smb_message_echoes" con value.message_echoes[].
-      // Cada echo tiene: from (negocio), to (cliente).
-      // Usamos esto para pausar el bot para ese cliente inmediatamente.
+      // Cuando el humano responde desde WhatsApp Business, Meta envía
+      // field="smb_message_echoes" con value.message_echoes[].
+      // echo.from = número del negocio, echo.to = número del cliente.
       if (change.field === 'smb_message_echoes') {
-        const echoes = (value as Record<string, unknown>).message_echoes as Array<{
-          from: string; to: string; id: string; type: string
-        }> | undefined
-
-        for (const echo of echoes ?? []) {
+        for (const echo of value.message_echoes ?? []) {
           const clienteTelefono = echo.to?.replace(/\D/g, '') ?? ''
           if (!clienteTelefono) continue
           webhookLog.info({

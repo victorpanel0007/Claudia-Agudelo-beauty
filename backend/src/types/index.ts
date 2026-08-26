@@ -21,6 +21,18 @@ export interface DualhookValue {
   contacts?:         DualhookContact[]
   messages?:         DualhookMessage[]
   statuses?:         DualhookStatus[]
+  // Mensajes salientes del negocio (cuando el humano responde desde WhatsApp Business)
+  message_echoes?:   DualhookMessageEcho[]
+}
+
+export interface DualhookMessageEcho {
+  from:      string   // número del negocio (quien envió)
+  to:        string   // número del cliente (destinatario)
+  id:        string
+  type:      string
+  timestamp: string
+  text?:     { body: string }
+  to_user_id?: string
 }
 
 export interface DualhookContact {
