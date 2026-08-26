@@ -84,8 +84,34 @@ export function receiveWebhook(req: Request, res: Response): void {
         numMessages: value.messages?.length ?? 0,
         numStatuses: value.statuses?.length ?? 0,
         numContacts: value.contacts?.length ?? 0,
+        numEchoes:   (value as Record<string, unknown>).message_echoes
+          ? ((value as Record<string, unknown>).message_echoes as unknown[]).length
+          : 0,
         phoneNumberId: value.metadata?.phone_number_id,
       }, '[Webhook] Procesando change')
+
+      // ── Message echoes (smb_message_echoes) ──────────────────────────────
+      // Cuando el humano responde manualmente desde WhatsApp Business,
+      // Meta envía field="smb_message_echoes" con value.message_echoes[].
+      // Cada echo tiene: from (negocio), to (cliente).
+      // Usamos esto para pausar el bot para ese cliente inmediatamente.
+      if (change.field === 'smb_message_echoes') {
+        const echoes = (value as Record<string, unknown>).message_echoes as Array<{
+          from: string; to: string; id: string; type: string
+        }> | undefined
+
+        for (const echo of echoes ?? []) {
+          const clienteTelefono = echo.to?.replace(/\D/g, '') ?? ''
+          if (!clienteTelefono) continue
+          webhookLog.info({
+            from: echo.from, to: echo.to, clienteTelefono, type: echo.type,
+          }, '[Webhook] 🙋 Eco de mensaje humano detectado — pausando bot para el cliente')
+          pausarBot(clienteTelefono).catch(err =>
+            webhookLog.error({ err: (err as Error).message }, '[Webhook] Error al pausar bot por echo')
+          )
+        }
+        continue
+      }
 
       // Mensajes entrantes
       for (const msg of value.messages ?? []) {
