@@ -414,6 +414,7 @@ export default function ReportesView() {
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
+    <>
     <div className="space-y-8 animate-fade-in">
 
       {/* Header */}
@@ -815,6 +816,6 @@ export default function ReportesView() {
         </div>
       )}
 
-    </div>
+    </>
   )
 }
