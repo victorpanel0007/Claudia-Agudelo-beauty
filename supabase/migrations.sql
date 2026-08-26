@@ -327,3 +327,35 @@ ORDER BY tabla;
 
 SELECT nombre, horario_inicio, horario_fin, whatsapp, notificaciones
 FROM especialistas ORDER BY nombre;
+
+
+-- ────────────────────────────────────────────────────────────────
+-- 7. BOT PAUSAS — pausa por intervención humana
+--    Cuando el admin responde manualmente a un cliente,
+--    el bot se pausa durante PAUSA_MINUTOS para ese número.
+-- ────────────────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS bot_pausas (
+  telefono       text        PRIMARY KEY,
+  pausado_hasta  timestamptz NOT NULL,
+  pausado_por    text        NOT NULL DEFAULT 'admin',
+  created_at     timestamptz DEFAULT now(),
+  updated_at     timestamptz DEFAULT now()
+);
+
+-- Índice para limpieza de pausas expiradas
+CREATE INDEX IF NOT EXISTS idx_bot_pausas_hasta ON bot_pausas(pausado_hasta);
+
+-- RLS
+ALTER TABLE bot_pausas ENABLE ROW LEVEL SECURITY;
+
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE tablename = 'bot_pausas'
+      AND policyname = 'Full access bot_pausas'
+  ) THEN
+    CREATE POLICY "Full access bot_pausas"
+      ON bot_pausas USING (true) WITH CHECK (true);
+  END IF;
+END $$;

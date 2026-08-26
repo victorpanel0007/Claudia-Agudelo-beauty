@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import {
   MessageSquare, Phone, Send, RefreshCw, CheckCircle,
   Circle, Clock, Users, Zap, Settings, ChevronRight,
+  PauseCircle, PlayCircle,
 } from 'lucide-react'
 import { formatDate, formatTime } from '@/lib/utils'
 import toast from 'react-hot-toast'
@@ -47,6 +48,10 @@ export default function WhatsAppAdminView() {
   const [sending, setSending] = useState(false)
   const [webhookUrl, setWebhookUrl] = useState('')
   const [instanceStatus, setInstanceStatus] = useState<'checking' | 'connected' | 'disconnected'>('checking')
+  // Estado de pausa del bot para la conversación seleccionada
+  const [botPausado, setBotPausado] = useState(false)
+  const [pausaMinutos, setPausaMinutos] = useState(0)
+  const [togglingPausa, setTogglingPausa] = useState(false)
 
   const supabase = createClient()
 
@@ -111,6 +116,40 @@ export default function WhatsAppAdminView() {
       setInstanceStatus(data.connected ? 'connected' : 'disconnected')
     } catch {
       setInstanceStatus('disconnected')
+    }
+  }
+
+  async function checkPausaEstado(telefono: string) {
+    try {
+      const res = await fetch(`/api/whatsapp/pausa?telefono=${encodeURIComponent(telefono)}`)
+      const data = await res.json()
+      setBotPausado(data.pausado ?? false)
+      setPausaMinutos(data.minutos_restantes ?? 0)
+    } catch {
+      setBotPausado(false)
+    }
+  }
+
+  async function togglePausa() {
+    if (!selectedConv) return
+    setTogglingPausa(true)
+    try {
+      const accion = botPausado ? 'reanudar' : 'pausar'
+      const res = await fetch('/api/whatsapp/pausa', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ telefono: selectedConv.telefono, accion, minutos: 10 }),
+      })
+      const data = await res.json()
+      if (data.ok) {
+        setBotPausado(data.pausado)
+        setPausaMinutos(data.minutos ?? 0)
+        toast.success(accion === 'pausar' ? '🔴 Bot pausado 10 min' : '🟢 Bot reactivado')
+      }
+    } catch {
+      toast.error('Error al cambiar estado del bot')
+    } finally {
+      setTogglingPausa(false)
     }
   }
 
@@ -241,7 +280,7 @@ export default function WhatsAppAdminView() {
               ) : conversaciones.map(conv => (
                 <button
                   key={conv.telefono}
-                  onClick={() => setSelectedConv(conv)}
+                  onClick={() => { setSelectedConv(conv); checkPausaEstado(conv.telefono) }}
                   className={`w-full p-3 text-left hover:bg-gray-50 transition-colors ${
                     selectedConv?.telefono === conv.telefono ? 'bg-beauty-rosa-claro border-l-2 border-beauty-secondary' : ''
                   }`}
@@ -285,6 +324,25 @@ export default function WhatsAppAdminView() {
                     <p className="font-semibold text-beauty-text text-sm">{selectedConv.nombre}</p>
                     <p className="text-gray-400 text-xs">{selectedConv.telefono}</p>
                   </div>
+                  {/* Indicador y control de pausa del bot */}
+                  <button
+                    onClick={togglePausa}
+                    disabled={togglingPausa}
+                    title={botPausado ? `Bot pausado — ${pausaMinutos} min restantes. Click para reanudar` : 'Bot activo — click para pausar 10 min'}
+                    className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full transition-colors ${
+                      botPausado
+                        ? 'bg-red-100 text-red-600 hover:bg-red-200'
+                        : 'bg-green-100 text-green-700 hover:bg-green-200'
+                    }`}
+                  >
+                    {togglingPausa ? (
+                      <RefreshCw size={12} className="animate-spin" />
+                    ) : botPausado ? (
+                      <><PauseCircle size={13} /> Pausado {pausaMinutos}m</>
+                    ) : (
+                      <><PlayCircle size={13} /> Bot activo</>
+                    )}
+                  </button>
                   <a
                     href={`https://wa.me/57${selectedConv.telefono}`}
                     target="_blank"

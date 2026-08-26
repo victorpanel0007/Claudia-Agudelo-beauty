@@ -3,7 +3,7 @@ import { env } from '../config/env'
 import { webhookLog } from '../config/logger'
 import { validateWebhookSignature } from '../utils/validate-webhook'
 import { isDuplicate } from '../utils/dedup'
-import { processIncomingMessage, processStatusUpdate } from '../services/message.processor'
+import { processIncomingMessage, processStatusUpdate, pausarBot } from '../services/message.processor'
 import type { DualhookWebhookBody, DualhookMessage } from '../types'
 
 // ── GET — Verificacion del webhook (Meta handshake) ─────────────────────────
@@ -95,32 +95,45 @@ export function receiveWebhook(req: Request, res: Response): void {
           type:    msg.type,
           body:    msg.text?.body ?? '[no texto]',
           timestamp: msg.timestamp,
+          context: msg.context ?? null,
           phoneNumberId: value.metadata?.phone_number_id,
-        }, '[Webhook] 📨 Mensaje entrante detectado')
+        }, '[Webhook] 📨 Mensaje detectado')
 
-        // Detectar si el mensaje es del admin (dueño del spa respondiendo manualmente).
-        // Meta envía mensajes enviados desde el propio número con fromMe implícito
-        // a través del phone_number_id del metadata. Si el remitente coincide con
-        // el display_phone_number del metadata, es el propio negocio respondiendo.
-        const displayPhone = value.metadata?.display_phone_number?.replace(/\D/g, '') ?? ''
-        const fromDigits   = msg.from.replace(/\D/g, '')
-        const esRespuestaAdmin =
-          // El remitente ES el número del negocio (dueño responde desde WA Business)
-          fromDigits === displayPhone ||
-          fromDigits === displayPhone.replace(/^57/, '') ||
-          // O coincide con el phone_number_id configurado (algunos proveedores lo usan)
-          msg.from === env.DUALHOOK_PHONE_NUMBER_ID
+        // ── Detectar si este mensaje es del humano (admin/operador) ──────────
+        // Dualhook envía los mensajes salientes del negocio como webhooks.
+        // El remitente del mensaje coincide con el número/ID del propio negocio.
+        const displayPhone    = value.metadata?.display_phone_number?.replace(/\D/g, '') ?? ''
+        const phoneNumberId   = value.metadata?.phone_number_id ?? ''
+        const fromDigits      = msg.from.replace(/\D/g, '')
 
-        if (esRespuestaAdmin) {
-          webhookLog.info({ from: msg.from, displayPhone }, '[Webhook] 🙋 Respuesta del admin detectada — pausando bot')
-          // Pausar para el número del CLIENTE, no del admin.
-          // El número del cliente viene en el contexto — pero como este mensaje viene del admin,
-          // no podemos saber a quién le respondió sin más contexto.
-          // La pausa se aplica vía el SPA cuando el admin responde desde el panel.
-          // Aquí solo logueamos.
+        const esMensajeDelNegocio =
+          (displayPhone && (fromDigits === displayPhone || fromDigits === displayPhone.replace(/^57/, ''))) ||
+          (phoneNumberId && (msg.from === phoneNumberId || fromDigits === phoneNumberId.replace(/\D/g, ''))) ||
+          msg.type === 'system'
+
+        if (esMensajeDelNegocio) {
+          webhookLog.info({
+            from: msg.from, displayPhone, phoneNumberId, context: msg.context,
+          }, '[Webhook] 📤 Mensaje saliente del negocio detectado')
+
+          // Si el contexto tiene el número del cliente destinatario, pausar el bot para ese cliente.
+          // Cuando el admin responde manualmente desde WhatsApp Business,
+          // el campo context.from contiene el número del cliente al que respondió.
+          const clienteTelefono = msg.context?.from?.replace(/\D/g, '') ?? ''
+          if (clienteTelefono && clienteTelefono !== fromDigits) {
+            webhookLog.info({
+              clienteTelefono, adminTelefono: msg.from,
+            }, '[Webhook] 🙋 Admin respondió manualmente — pausando bot para el cliente')
+            pausarBot(clienteTelefono).catch(err =>
+              webhookLog.error({ err: (err as Error).message }, '[Webhook] Error al pausar bot')
+            )
+          } else {
+            webhookLog.info('[Webhook] Mensaje saliente sin contexto de cliente — no se puede pausar automáticamente')
+          }
           continue
         }
 
+        // ── Mensaje de un cliente ────────────────────────────────────────────
         if (isDuplicate(msg.id)) {
           webhookLog.debug({ msgId: msg.id }, '[Webhook] Mensaje duplicado ignorado')
           continue

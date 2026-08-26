@@ -21,11 +21,6 @@ async function isBotPausado(telefono: string): Promise<boolean> {
   return false
 }
 
-async function reactivarBot(telefono: string): Promise<void> {
-  await getSupabase().from('bot_pausas').delete().eq('telefono', telefono)
-  webhookLog.info({ telefono }, '[Processor] 🟢 Bot reactivado — cliente escribió nuevamente')
-}
-
 async function logMessage(telefono: string, mensaje: string, tipo: 'entrante' | 'saliente' | 'sistema'): Promise<void> {
   try {
     await getSupabase().from('mensajes_whatsapp').insert({ telefono, mensaje, tipo, fecha: new Date().toISOString() })
@@ -47,18 +42,14 @@ export async function processIncomingMessage(msg: DualhookMessage, _contactName:
     webhookLog.warn({ err: (e as Error).message }, '[Processor] No se pudo marcar como leido')
   )
 
-  // Verificar pausa
+  // Verificar pausa — si el bot está pausado, registrar el mensaje y NO responder
   const pausado = await isBotPausado(telefono)
   if (pausado) {
     const text = msg.text?.body ?? ''
     if (text) await logMessage(telefono, text, 'entrante')
-    webhookLog.info({ telefono }, '[Processor] Bot PAUSADO — mensaje registrado')
-
-    // REACTIVACIÓN AUTOMÁTICA: cuando el cliente vuelve a escribir, reactivar el bot
-    // y procesar su mensaje normalmente
-    await reactivarBot(telefono)
-    webhookLog.info({ telefono }, '[Processor] 🔄 Cliente escribió — bot reactivado, procesando mensaje')
-    // Caer al procesamiento normal abajo
+    webhookLog.info({ telefono }, '[Processor] 🔴 Bot PAUSADO — mensaje del cliente registrado, NO se responde')
+    // La pausa expira sola según pausado_hasta. NO reactivar aquí.
+    return
   }
 
   webhookLog.debug({ telefono }, '[Processor] Bot activo — procesando mensaje')

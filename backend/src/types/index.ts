@@ -32,7 +32,7 @@ export interface DualhookMessage {
   from:      string
   id:        string
   timestamp: string
-  type:      'text' | 'audio' | 'image' | 'document' | 'location' | 'interactive' | 'sticker' | 'video'
+  type:      'text' | 'audio' | 'image' | 'document' | 'location' | 'interactive' | 'sticker' | 'video' | 'system'
   text?:     { body: string }
   audio?:    { id: string; mime_type: string }
   image?:    { id: string; mime_type: string; caption?: string }
@@ -42,6 +42,12 @@ export interface DualhookMessage {
     type:         'button_reply' | 'list_reply'
     button_reply?: { id: string; title: string }
     list_reply?:   { id: string; title: string; description?: string }
+  }
+  // Contexto presente cuando el mensaje es una respuesta o mensaje enviado por el negocio
+  context?: {
+    from?:       string
+    id?:         string
+    forwarded?:  boolean
   }
 }
 
