@@ -161,7 +161,7 @@ function DetailPanel({ cita, onClose, onCompletar, onCancelar, onEliminar }: {
   const st = STATUS_CONFIG[cita.estado] ?? STATUS_CONFIG.pendiente
 
   return (
-    <div className="w-72 bg-white border-l border-gray-100 flex flex-col h-full overflow-y-auto shrink-0">
+    <div className="w-full sm:w-72 bg-white sm:border-l sm:border-gray-100 flex flex-col sm:h-full overflow-y-auto shrink-0">
       {/* Header */}
       <div className="p-4 border-b border-gray-100 flex items-center justify-between">
         <p className="font-semibold text-gray-800 text-sm">Detalles de la cita</p>
