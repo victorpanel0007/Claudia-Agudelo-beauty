@@ -1,6 +1,6 @@
 ﻿'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import type { Cita, Cliente, Especialista, Servicio } from '@/types/database'
 import { formatCurrency, formatTime, formatDate } from '@/lib/utils'
@@ -150,7 +150,21 @@ function CitaCard({ cita, onClick }: { cita: Cita; onClick: () => void }) {
   )
 }
 
-// ── DetailPanel ──────────────────────────────────────────────────────────────
+// Paleta de colores para especialistas — se asigna por índice dinámicamente
+const ESPECIALISTA_COLORS = [
+  { bar: 'bg-blue-400',   chip: 'bg-blue-50 text-blue-700',   dot: '💙' },
+  { bar: 'bg-purple-500', chip: 'bg-purple-50 text-purple-700', dot: '💜' },
+  { bar: 'bg-pink-400',   chip: 'bg-pink-50 text-pink-700',   dot: '🩷' },
+  { bar: 'bg-amber-400',  chip: 'bg-amber-50 text-amber-700', dot: '🧡' },
+  { bar: 'bg-green-500',  chip: 'bg-green-50 text-green-700', dot: '💚' },
+  { bar: 'bg-red-400',    chip: 'bg-red-50 text-red-700',     dot: '❤️' },
+]
+
+function getEspColor(espId: string | undefined, espMap: Record<string, number>) {
+  if (!espId) return ESPECIALISTA_COLORS[0]
+  const idx = espMap[espId] ?? 0
+  return ESPECIALISTA_COLORS[idx % ESPECIALISTA_COLORS.length]
+}
 function DetailPanel({ cita, onClose, onCompletar, onCancelar, onEliminar }: {
   cita: Cita
   onClose: () => void
@@ -917,6 +931,18 @@ export default function AgendaView() {
   const citasHoy = citas.filter(c => isSameDayColombia(c.fecha_inicio, today))
   // Citas del día seleccionado (usado en la vista móvil)
   const citasDiaActual = citas.filter(c => isSameDayColombia(c.fecha_inicio, currentDate))
+
+  // Mapa de colores por especialista_id (asignado por orden de aparición)
+  const espColorMap = useMemo(() => {
+    const map: Record<string, number> = {}
+    let idx = 0
+    for (const c of citas) {
+      if (c.especialista_id && !(c.especialista_id in map)) {
+        map[c.especialista_id] = idx++
+      }
+    }
+    return map
+  }, [citas])
   const pendientes = citas.filter(c => c.estado === 'pendiente')
   const confirmadas = citas.filter(c => c.estado === 'confirmada')
   const ingresosDia = citasHoy
@@ -1005,21 +1031,35 @@ export default function AgendaView() {
           ) : (
             <div className="divide-y divide-gray-50">
               {citasDiaActual.map(cita => {
-                const st = STATUS_CONFIG[cita.estado] ?? STATUS_CONFIG.pendiente
+                const st    = STATUS_CONFIG[cita.estado] ?? STATUS_CONFIG.pendiente
+                const color = getEspColor(cita.especialista_id ?? undefined, espColorMap)
                 return (
                   <button key={cita.id} onClick={() => setSelectedCita(cita)}
-                    className="w-full p-3 flex items-center gap-3 hover:bg-gray-50 text-left min-h-[60px] active:bg-gray-100 transition-colors">
-                    <div className="bg-beauty-primary/10 rounded-xl px-2.5 py-2 text-center shrink-0 min-w-[52px]">
-                      <p className="text-beauty-primary font-bold text-xs">{formatTime(cita.fecha_inicio)}</p>
-                      <p className="text-beauty-text-muted text-[10px]">{formatTime(cita.fecha_fin)}</p>
+                    className="w-full flex items-stretch hover:bg-gray-50 text-left active:bg-gray-100 transition-colors">
+                    {/* Barra de color especialista */}
+                    <div className={`w-1 shrink-0 rounded-l-sm ${color.bar}`} />
+                    <div className="flex flex-1 items-center gap-3 p-3 min-h-[68px]">
+                      {/* Hora */}
+                      <div className="bg-beauty-primary/10 rounded-xl px-2.5 py-2 text-center shrink-0 min-w-[52px]">
+                        <p className="text-beauty-primary font-bold text-xs">{formatTime(cita.fecha_inicio)}</p>
+                        <p className="text-beauty-text-muted text-[10px]">{formatTime(cita.fecha_fin)}</p>
+                      </div>
+                      {/* Info */}
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-gray-800 text-sm truncate">{cita.cliente?.nombre}</p>
+                        <p className="text-gray-500 text-xs truncate mb-1">{cita.servicio?.nombre}</p>
+                        {/* Chip especialista */}
+                        {cita.especialista?.nombre && (
+                          <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full ${color.chip}`}>
+                            {color.dot} {cita.especialista.nombre}
+                          </span>
+                        )}
+                      </div>
+                      {/* Estado */}
+                      <span className={`text-[10px] font-semibold px-2 py-1 rounded-full border shrink-0 ${st.bg} ${st.color}`}>
+                        {st.label}
+                      </span>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-gray-800 text-sm truncate">{cita.cliente?.nombre}</p>
-                      <p className="text-gray-500 text-xs truncate">{cita.servicio?.nombre}</p>
-                    </div>
-                    <span className={`text-[10px] font-semibold px-2 py-1 rounded-full border shrink-0 ${st.bg} ${st.color}`}>
-                      {st.label}
-                    </span>
                   </button>
                 )
               })}
