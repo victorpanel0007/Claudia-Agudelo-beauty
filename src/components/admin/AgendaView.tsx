@@ -245,8 +245,8 @@ function DetailPanel({ cita, onClose, onCompletar, onCancelar, onEliminar }: {
         </div>
       )}
 
-      {/* Recordatorios */}
-      <div className="p-4 border-b border-gray-100">
+      {/* Recordatorios — solo desktop */}
+      <div className="hidden sm:block p-4 border-b border-gray-100">
         <p className="text-xs font-semibold text-gray-500 mb-3">Recordatorios</p>
         <div className="space-y-2">
           <ReminderRow
