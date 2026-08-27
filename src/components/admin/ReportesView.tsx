@@ -9,6 +9,7 @@ import {
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { Modal } from '@/components/ui/Modal'
+import HistorialContable from '@/components/admin/HistorialContable'
 // ── Types ──────────────────────────────────────────────────────────────────
 
 type Period = 'hoy' | 'semana' | 'quincena' | 'mes' | 'anio'
@@ -805,6 +806,9 @@ export default function ReportesView() {
             </div>
         </Modal.Footer>
       </Modal>
+
+      {/* ── HISTORIAL CONTABLE — meses anteriores ── */}
+      <HistorialContable supabase={supabase} especialistas={especialistas} />
 
     </>
   )

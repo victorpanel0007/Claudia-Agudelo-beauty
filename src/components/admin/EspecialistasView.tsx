@@ -25,6 +25,9 @@ interface FormState {
   activo: boolean
   whatsapp: string
   notificaciones: boolean
+  // Credenciales de acceso al panel especialista (solo al crear)
+  email: string
+  password: string
 }
 
 interface Descanso {
@@ -77,6 +80,8 @@ const DEFAULT_FORM: FormState = {
   activo: true,
   whatsapp: '',
   notificaciones: true,
+  email: '',
+  password: '',
 }
 
 export default function EspecialistasView() {
@@ -214,8 +219,34 @@ export default function EspecialistasView() {
       if (error) {
         toast.error('Error al crear: ' + error.message)
       } else {
-        if (newEsp?.id) await saveDescansos(newEsp.id)
-        toast.success(`✅ ${form.nombre} creada correctamente`)
+        if (newEsp?.id) {
+          await saveDescansos(newEsp.id)
+          // Crear usuario en Supabase Auth si se proporcionaron credenciales
+          if (form.email.trim() && form.password.trim()) {
+            try {
+              const res = await fetch('/api/especialistas/crear-usuario', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  email:           form.email.trim().toLowerCase(),
+                  password:        form.password.trim(),
+                  nombre:          form.nombre.trim(),
+                  especialista_id: newEsp.id,
+                }),
+              })
+              const result = await res.json()
+              if (!res.ok) {
+                toast.error(`Especialista creada pero error al crear usuario: ${result.error}`)
+              } else {
+                toast.success(`✅ ${form.nombre} creada con acceso al panel`)
+              }
+            } catch {
+              toast.error('Especialista creada pero no se pudo crear el usuario de acceso')
+            }
+          } else {
+            toast.success(`✅ ${form.nombre} creada correctamente`)
+          }
+        }
         closeForm()
         loadData()
       }
@@ -586,6 +617,34 @@ export default function EspecialistasView() {
                   </div>
                 )}
               </div>
+
+              {/* Credenciales de acceso — solo al crear nueva especialista */}
+              {!editingId && (
+                <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 space-y-3">
+                  <p className="text-xs font-semibold text-blue-700">🔑 Acceso al panel de especialista (opcional)</p>
+                  <p className="text-xs text-blue-600">Si completas estos campos, la especialista podrá iniciar sesión en su panel personal.</p>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Correo electrónico</label>
+                    <input
+                      type="email"
+                      value={form.email}
+                      onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
+                      className="input-beauty"
+                      placeholder="especialista@ejemplo.com"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Contraseña</label>
+                    <input
+                      type="password"
+                      value={form.password}
+                      onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
+                      className="input-beauty"
+                      placeholder="Mínimo 6 caracteres"
+                    />
+                  </div>
+                </div>
+              )}
 
               {/* Botones */}
               <div className="flex gap-3 pt-1">
