@@ -299,11 +299,12 @@ function DetailPanel({ cita, onClose, onCompletar, onCancelar, onEliminar }: {
 function CompletarModal({ cita, onClose, onConfirm }: {
   cita: Cita
   onClose: () => void
-  onConfirm: (id: string, valor: number) => Promise<void>
+  onConfirm: (id: string, valor: number, metodoPago: string) => Promise<void>
 }) {
   const [valor, setValor] = useState<string>(
     cita.valor_final?.toString() ?? cita.servicio?.precio?.toString() ?? ''
   )
+  const [metodoPago, setMetodoPago] = useState<string>('efectivo')
   const [loading, setLoading] = useState(false)
 
   async function handleConfirm() {
@@ -312,7 +313,7 @@ function CompletarModal({ cita, onClose, onConfirm }: {
       return
     }
     setLoading(true)
-    await onConfirm(cita.id, Number(valor))
+    await onConfirm(cita.id, Number(valor), metodoPago)
     setLoading(false)
   }
 
@@ -336,14 +337,12 @@ function CompletarModal({ cita, onClose, onConfirm }: {
         </div>
 
         {/* Campo valor */}
-        <div className="mb-5">
+        <div className="mb-4">
           <label className="block text-sm font-semibold text-beauty-text mb-2">
             Valor cobrado <span className="text-red-500">*</span>
           </label>
           <div className="relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-beauty-text-muted text-sm font-medium">
-              $
-            </span>
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-beauty-text-muted text-sm font-medium">$</span>
             <input
               type="number"
               value={valor}
@@ -358,6 +357,34 @@ function CompletarModal({ cita, onClose, onConfirm }: {
               Precio sugerido: ${Number(cita.servicio.precio).toLocaleString('es-CO')}
             </p>
           )}
+        </div>
+
+        {/* Método de pago */}
+        <div className="mb-5">
+          <label className="block text-sm font-semibold text-beauty-text mb-2">Método de pago</label>
+          <div className="grid grid-cols-3 gap-2">
+            {[
+              { value: 'efectivo',      label: '💵 Efectivo' },
+              { value: 'transferencia', label: '📲 Transferencia' },
+              { value: 'nequi',         label: '💜 Nequi' },
+              { value: 'daviplata',     label: '🟡 Daviplata' },
+              { value: 'tarjeta',       label: '💳 Tarjeta' },
+              { value: 'otro',          label: '🔄 Otro' },
+            ].map(m => (
+              <button
+                key={m.value}
+                type="button"
+                onClick={() => setMetodoPago(m.value)}
+                className={`text-xs py-2 px-1 rounded-xl border-2 font-medium transition-all text-center leading-tight ${
+                  metodoPago === m.value
+                    ? 'border-beauty-primary bg-beauty-primary/10 text-beauty-borgona'
+                    : 'border-gray-200 text-gray-500 hover:bg-gray-50'
+                }`}
+              >
+                {m.label}
+              </button>
+            ))}
+          </div>
         </div>
 
         <div className="flex gap-2">
@@ -885,10 +912,10 @@ export default function AgendaView() {
     setCitaACompletar(cita)
   }
 
-  async function completarCita(id: string, valor: number) {
+  async function completarCita(id: string, valor: number, metodoPago?: string) {
     const { error } = await supabase
       .from('citas')
-      .update({ estado: 'completada', valor_final: valor })
+      .update({ estado: 'completada', valor_final: valor, ...(metodoPago ? { metodo_pago: metodoPago } : {}) })
       .eq('id', id)
     if (error) {
       toast.error('Error al completar')
@@ -1262,7 +1289,7 @@ export default function AgendaView() {
         <div className="sm:hidden fixed inset-0 z-[9999] flex items-end justify-center bg-black/60"
           onClick={e => { if (e.target === e.currentTarget) setSelectedCita(null) }}
         >
-          <div className="bg-white rounded-t-3xl w-full max-h-[90vh] overflow-y-auto shadow-2xl animate-slide-up">
+          <div className="bg-white rounded-t-3xl w-full max-h-[82vh] overflow-y-auto shadow-2xl animate-slide-up pb-safe" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
             <DetailPanel
               cita={selectedCita}
               onClose={() => setSelectedCita(null)}
