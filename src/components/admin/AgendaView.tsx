@@ -1289,7 +1289,14 @@ export default function AgendaView() {
         <div className="sm:hidden fixed inset-0 z-[9999] flex items-end justify-center bg-black/60"
           onClick={e => { if (e.target === e.currentTarget) setSelectedCita(null) }}
         >
-          <div className="bg-white rounded-t-3xl w-full max-h-[82vh] overflow-y-auto shadow-2xl animate-slide-up pb-safe" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
+          <div
+            className="bg-white rounded-t-3xl w-full overflow-y-auto shadow-2xl animate-slide-up"
+            style={{ maxHeight: 'calc(100dvh - 64px)' }}
+          >
+            {/* Handle bar */}
+            <div className="flex justify-center pt-3 pb-1">
+              <div className="w-10 h-1 rounded-full bg-gray-200" />
+            </div>
             <DetailPanel
               cita={selectedCita}
               onClose={() => setSelectedCita(null)}
