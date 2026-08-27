@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 
-// Rutas completamente bloqueadas para especialistas — solo admin entra
-
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
@@ -28,16 +26,18 @@ export async function middleware(request: NextRequest) {
     }
   )
 
-  const { data: { user } } = await supabase.auth.getUser()
+  // Usar getSession() en lugar de getUser() — getSession es local (JWT),
+  // no hace llamada de red a Supabase y evita el timeout de Edge Runtime.
+  const { data: { session } } = await supabase.auth.getSession()
 
   // Sin sesión → login
-  if (!user) {
+  if (!session) {
     const loginUrl = new URL('/login', request.url)
     loginUrl.searchParams.set('redirect', pathname)
     return NextResponse.redirect(loginUrl)
   }
 
-  const rol = user.user_metadata?.rol
+  const rol = session.user?.user_metadata?.rol
 
   // Especialista intentando acceder a /admin → redirigir a su panel
   if (rol !== 'admin') {

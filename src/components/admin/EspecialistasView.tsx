@@ -97,6 +97,8 @@ export default function EspecialistasView() {
   // Descansos del especialista que se está editando
   const [descansos, setDescansos] = useState<Descanso[]>([])
   const [savingDescansos, setSavingDescansos] = useState(false)
+  // Mapa de descansos por especialista_id para mostrar en las tarjetas
+  const [descansosMap, setDescansosMap] = useState<Record<string, Descanso[]>>({})
   const supabase = createClient()
 
   useEffect(() => {
@@ -117,8 +119,19 @@ export default function EspecialistasView() {
 
   async function loadData() {
     setLoading(true)
-    const { data } = await supabase.from('especialistas').select('*').order('nombre')
+    const [{ data }, { data: descData }] = await Promise.all([
+      supabase.from('especialistas').select('*').order('nombre'),
+      supabase.from('descansos_especialista').select('especialista_id, hora_inicio, hora_fin').order('hora_inicio'),
+    ])
     setEspecialistas((data as Especialista[]) || [])
+    // Construir mapa especialista_id → descansos
+    const map: Record<string, Descanso[]> = {}
+    for (const d of descData || []) {
+      const key = d.especialista_id as string
+      if (!map[key]) map[key] = []
+      map[key].push({ hora_inicio: d.hora_inicio as string, hora_fin: d.hora_fin as string })
+    }
+    setDescansosMap(map)
     setLoading(false)
   }
 
@@ -414,6 +427,23 @@ export default function EspecialistasView() {
                     {calcSlots(e.horario_inicio, e.horario_fin)} slots de 30 min disponibles en el día
                   </p>
                 </div>
+
+                {/* Descansos configurados */}
+                {descansosMap[e.id]?.length > 0 && (
+                  <div className="bg-amber-50 border border-amber-200 rounded-xl p-3">
+                    <div className="flex items-center gap-1.5 mb-2">
+                      <Coffee size={13} className="text-amber-500" />
+                      <p className="text-xs font-semibold text-amber-700">Descansos</p>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {descansosMap[e.id].map((d, i) => (
+                        <span key={i} className="text-[10px] bg-amber-100 text-amber-700 font-medium px-2 py-0.5 rounded-full">
+                          {formatTime12(d.hora_inicio)} – {formatTime12(d.hora_fin)}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {/* Estado notificaciones WhatsApp */}
                 <div className="bg-gray-50 rounded-xl p-3 flex items-center justify-between gap-3">
