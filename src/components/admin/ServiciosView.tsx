@@ -7,6 +7,7 @@ import { Plus, Edit, Trash2, Search, Clock, X } from 'lucide-react'
 import { formatCurrency } from '@/lib/utils'
 import { useForm } from 'react-hook-form'
 import toast from 'react-hot-toast'
+import { Modal } from '@/components/ui/Modal'
 
 type ServiceForm = {
   nombre: string
@@ -204,26 +205,16 @@ export default function ServiciosView() {
       </div>
 
       {/* Modal formulario */}
-      {showForm && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/50 backdrop-blur-sm">
-          <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl w-full sm:max-w-md max-h-[90vh] overflow-y-auto animate-slide-up">
-
-            {/* Handle bar móvil */}
-            <div className="flex justify-center pt-3 pb-1 sm:hidden">
-              <div className="w-10 h-1 rounded-full bg-gray-200" />
-            </div>
-
-            {/* Header modal */}
-            <div className="p-5 border-b border-gray-100 flex items-center justify-between sticky top-0 bg-white z-10">
-              <h3 className="font-bold text-beauty-text">
-                {editing ? 'Editar Servicio' : 'Nuevo Servicio'}
-              </h3>
-              <button onClick={closeForm} className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors">
-                <X size={18} className="text-gray-500" />
-              </button>
-            </div>
-
-            <form onSubmit={handleSubmit(onSubmit)} className="p-5 space-y-4">
+      <Modal
+        open={showForm}
+        onClose={closeForm}
+        maxWidth="sm:max-w-md"
+      >
+        <Modal.Header
+          title={editing ? 'Editar Servicio' : 'Nuevo Servicio'}
+          onClose={closeForm}
+        />
+        <form onSubmit={handleSubmit(onSubmit)} className="p-5 space-y-4">
 
               {/* Nombre */}
               <div>
@@ -366,9 +357,7 @@ export default function ServiciosView() {
               </div>
 
             </form>
-          </div>
-        </div>
-      )}
+      </Modal>      )}
     </div>
   )
 }

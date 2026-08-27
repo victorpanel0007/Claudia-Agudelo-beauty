@@ -8,7 +8,7 @@ import {
   Plus, Trash2, ChevronDown, ClipboardList,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
-
+import { Modal } from '@/components/ui/Modal'
 // ── Types ──────────────────────────────────────────────────────────────────
 
 type Period = 'hoy' | 'semana' | 'quincena' | 'mes' | 'anio'
@@ -736,22 +736,8 @@ export default function ReportesView() {
       </div>
 
       {/* Modal – Agregar Gasto */}
-      {showGastoModal && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm p-0 sm:p-4">
-          <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-xl w-full sm:max-w-md max-h-[90vh] overflow-y-auto">
-            {/* Handle bar móvil */}
-            <div className="flex justify-center pt-3 pb-1 sm:hidden">
-              <div className="w-10 h-1 rounded-full bg-gray-200" />
-            </div>
-            <div className="p-5 border-b border-gray-100 flex items-center justify-between sticky top-0 bg-white z-10">
-              <h4 className="font-semibold text-[#222222] text-base">Agregar Gasto</h4>
-              <button
-                onClick={() => setShowGastoModal(false)}
-                className="text-gray-400 hover:text-gray-600 text-xl leading-none"
-              >
-                ×
-              </button>
-            </div>
+      <Modal open={showGastoModal} onClose={() => setShowGastoModal(false)}>
+        <Modal.Header title="Agregar Gasto" onClose={() => setShowGastoModal(false)} />
             <div className="p-5 space-y-4">
               {/* Fecha */}
               <div>
@@ -801,7 +787,8 @@ export default function ReportesView() {
                 />
               </div>
             </div>
-            <div className="p-5 border-t border-gray-100 flex gap-3 justify-end">
+        <Modal.Footer>
+          <div className="flex gap-3 justify-end">
               <button
                 onClick={() => setShowGastoModal(false)}
                 className="px-4 py-2 text-sm text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
@@ -816,9 +803,8 @@ export default function ReportesView() {
                 {savingGasto ? 'Guardando...' : 'Guardar Gasto'}
               </button>
             </div>
-          </div>
-        </div>
-      )}
+        </Modal.Footer>
+      </Modal>
 
     </>
   )

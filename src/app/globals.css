@@ -33,7 +33,8 @@ body {
 
 /* ── Mobile First ────────────────────────────────────────────────────────── */
 /* Prevent any element from causing horizontal scroll */
-#__next, main { overflow-x: hidden; max-width: 100vw; }
+#__next { overflow-x: clip; max-width: 100vw; }
+/* overflow-x: clip en lugar de hidden para no crear containing block para fixed */
 
 /* Minimum touch target — botones e íconos de acción */
 button, a, [role="button"] {
@@ -61,10 +62,21 @@ select {
 }
 
 /* ── GPU animations ──────────────────────────────────────────────────────── */
-.animate-fade-in, .animate-slide-up, .animate-float, .animate-bounce-soft {
-  will-change: transform, opacity;
-  transform: translateZ(0);
-  backface-visibility: hidden;
+/*
+ * IMPORTANTE: animate-slide-up NO lleva transform/will-change aquí porque
+ * se usa como inner div de modales. Un transform en un ancestro convierte
+ * ese elemento en el containing block de position:fixed, rompiendo la
+ * posición del overlay en Android.
+ * Las animaciones de entrada se definen en tailwind.config.ts con keyframes.
+ */
+.animate-fade-in {
+  will-change: opacity;
+  animation: fadeIn 0.2s ease-out both;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
 
 /* ── Scrollbar ───────────────────────────────────────────────────────────── */

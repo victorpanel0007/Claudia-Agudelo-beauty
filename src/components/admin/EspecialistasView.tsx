@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Clock, Plus, Edit, Save, X, CheckCircle, XCircle, User, Send, RefreshCw, Wifi, WifiOff, Trash2, Coffee } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { Modal } from '@/components/ui/Modal'
 
 interface Especialista {
   id: string
@@ -417,20 +418,11 @@ export default function EspecialistasView() {
       )}
 
       {/* Modal formulario */}
-      {showForm && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/50">
-          <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl w-full sm:max-w-md max-h-[90vh] overflow-y-auto animate-slide-up">
-
-            {/* Header modal */}
-            <div className="p-5 border-b border-gray-100 flex items-center justify-between sticky top-0 bg-white z-10">
-              <h3 className="font-bold text-beauty-text">
-                {editingId ? `Editar especialista` : 'Nueva Especialista'}
-              </h3>
-              <button onClick={closeForm} className="p-1.5 hover:bg-gray-100 rounded-lg">
-                <X size={18} />
-              </button>
-            </div>
-
+      <Modal open={showForm} onClose={closeForm}>
+        <Modal.Header
+          title={editingId ? 'Editar especialista' : 'Nueva Especialista'}
+          onClose={closeForm}
+        />
             <div className="p-5 space-y-5">
               {/* Nombre */}
               <div>
@@ -614,9 +606,7 @@ export default function EspecialistasView() {
                 </button>
               )}
             </div>
-          </div>
-        </div>
-      )}
+      </Modal>
     </div>
   )
 }

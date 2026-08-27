@@ -8,7 +8,7 @@ import {
   ChevronDown, Pencil, Check,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
-
+import { Modal } from '@/components/ui/Modal'
 // ── Types ──────────────────────────────────────────────────────────────────
 
 type PeriodKey = 'hoy' | 'semana' | 'quincena' | 'mes' | 'anio' | 'personalizado'
@@ -390,49 +390,78 @@ export default function ComisionesView() {
     <div className="space-y-6 animate-fade-in">
 
       {/* ── PRINT AREA (hidden on screen) ────────────────────────────────── */}
-      <div id="print-area" className="hidden print:block text-black text-sm">
-        <div className="text-center mb-6">
-          <h1 className="text-2xl font-bold">Claudia Agudelo Beauty</h1>
-          <h2 className="text-lg">Reporte de Comisiones</h2>
-          {selectedEspId && (
-            <p className="mt-1">Especialista: <strong>{especialistas.find(e => e.id === selectedEspId)?.nombre}</strong></p>
-          )}
-          <p>Período: {periodStart} — {periodEnd}</p>
-          <p className="text-xs text-gray-500">Generado: {new Date().toLocaleDateString('es-CO', { timeZone: 'America/Bogota' })}</p>
+      <div id="print-area" className="hidden print:block text-black text-sm font-sans">
+        <style>{`
+          @media print {
+            @page { size: A4; margin: 18mm 15mm; }
+            body * { visibility: hidden; }
+            #print-area, #print-area * { visibility: visible; }
+            #print-area { position: absolute; left: 0; top: 0; width: 100%; }
+          }
+          /* Estilos del reporte */
+          .pr-header { background: #FFF8EE; padding: 16px 20px; border-radius: 8px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: flex-start; }
+          .pr-title { font-size: 22px; font-weight: 900; color: #8B1E3F; margin: 0 0 4px 0; }
+          .pr-subtitle { font-size: 13px; color: #555; margin: 2px 0; }
+          .pr-date { font-size: 11px; color: #888; text-align: right; }
+          .pr-section-title { font-size: 14px; font-weight: 700; color: #8B1E3F; margin: 18px 0 8px 0; }
+          .pr-table { width: 100%; border-collapse: collapse; margin-bottom: 18px; font-size: 11px; }
+          .pr-table th { background: #8B1E3F; color: #fff; padding: 7px 8px; text-align: left; font-weight: 600; }
+          .pr-table td { padding: 6px 8px; border-bottom: 1px solid #eee; }
+          .pr-table tr:nth-child(even) td { background: #FFF8EE; }
+          .pr-table .total-row td { font-weight: 700; background: #f5f5f5; border-top: 2px solid #8B1E3F; }
+          .pr-table .highlight-row td:last-child { color: #8B1E3F; font-weight: 700; }
+          .pr-footer { margin-top: 24px; border-top: 1px solid #ddd; padding-top: 8px; display: flex; justify-content: space-between; font-size: 10px; color: #999; }
+          .pr-badge-pendiente { color: #b45309; }
+          .pr-badge-pagado { color: #166534; }
+          .text-right { text-align: right; }
+          .text-center { text-align: center; }
+        `}</style>
+
+        {/* Header */}
+        <div className="pr-header">
+          <div>
+            <h1 className="pr-title">Claudia Agudelo Beauty</h1>
+            <p className="pr-subtitle">Reporte de Comisiones</p>
+            {selectedEspId && (
+              <p className="pr-subtitle">Especialista: <strong>{especialistas.find(e => e.id === selectedEspId)?.nombre}</strong></p>
+            )}
+            <p className="pr-subtitle">Período: {periodStart} — {periodEnd}</p>
+          </div>
+          <div className="pr-date">
+            Generado: {new Date().toLocaleString('es-CO', { timeZone: 'America/Bogota', dateStyle: 'short', timeStyle: 'short' })}
+          </div>
         </div>
 
-        {/* Summary table */}
-        <table className="w-full border-collapse border border-gray-300 mb-6 text-xs">
+        {/* Resumen */}
+        <p className="pr-section-title">Resumen del Período</p>
+        <table className="pr-table">
           <thead>
-            <tr className="bg-gray-100">
-              <th className="border border-gray-300 p-2 text-left">Indicador</th>
-              <th className="border border-gray-300 p-2 text-right">Valor</th>
-            </tr>
+            <tr><th>Indicador</th><th className="text-right">Valor</th></tr>
           </thead>
           <tbody>
             {[
-              ['Total Facturado', formatCurrency(summary.totalFacturado)],
+              ['Total Facturado',       formatCurrency(summary.totalFacturado)],
               ['Comisión Especialista', formatCurrency(summary.comisionEspecialista)],
-              ['Ganancia Spa', formatCurrency(summary.gananciaSpa)],
-              ['Citas Realizadas', String(summary.citasRealizadas)],
-              ['Total Pagado', formatCurrency(summary.totalPagado)],
-              ['Saldo Pendiente', formatCurrency(summary.saldoPendiente)],
+              ['Ganancia Spa',          formatCurrency(summary.gananciaSpa)],
+              ['Citas Realizadas',      String(summary.citasRealizadas)],
+              ['Total Pagado',          formatCurrency(summary.totalPagado)],
             ].map(([k, v]) => (
-              <tr key={k}>
-                <td className="border border-gray-300 p-2">{k}</td>
-                <td className="border border-gray-300 p-2 text-right font-medium">{v}</td>
-              </tr>
+              <tr key={k}><td>{k}</td><td className="text-right">{v}</td></tr>
             ))}
+            <tr className="highlight-row">
+              <td><strong>Saldo Pendiente</strong></td>
+              <td className="text-right"><strong>{formatCurrency(summary.saldoPendiente)}</strong></td>
+            </tr>
           </tbody>
         </table>
 
         {/* Citas */}
-        <h3 className="font-bold mb-2">Citas Completadas</h3>
-        <table className="w-full border-collapse border border-gray-300 mb-6 text-xs">
+        <p className="pr-section-title">Citas Completadas ({summary.citasRealizadas})</p>
+        <table className="pr-table">
           <thead>
-            <tr className="bg-gray-100">
-              {['Fecha', 'Hora', 'Servicio', 'Valor', '% Com.', 'Comisión', 'Ganancia Spa', 'Pago'].map(h => (
-                <th key={h} className="border border-gray-300 p-1 text-left">{h}</th>
+            <tr>
+              {['Fecha','Hora','Servicio','Valor','% Com.','Comisión','Ganancia Spa','Pago'].map(h => (
+                <th key={h}>{h}</th>
               ))}
             </tr>
           </thead>
@@ -440,59 +469,72 @@ export default function ComisionesView() {
             {citas.map(c => {
               const pct = c.porcentaje_comision ?? (selectedEspId ? getPct(selectedEspId) : 40)
               const com = c.comision_especialista ?? ((c.valor_final ?? 0) * pct / 100)
-              const gan = c.ganancia_spa ?? ((c.valor_final ?? 0) - com)
+              const gan = c.ganancia_spa          ?? ((c.valor_final ?? 0) - com)
+              const esPagado = c.pago_estado === 'pagado'
               return (
                 <tr key={c.id}>
-                  <td className="border border-gray-300 p-1">{fmtDate(c.fecha_inicio)}</td>
-                  <td className="border border-gray-300 p-1">{fmtTime(c.fecha_inicio)}</td>
-                  <td className="border border-gray-300 p-1">{(c.servicio as { nombre?: string } | null)?.nombre ?? '—'}</td>
-                  <td className="border border-gray-300 p-1 text-right">{formatCurrency(c.valor_final ?? 0)}</td>
-                  <td className="border border-gray-300 p-1 text-center">{pct}%</td>
-                  <td className="border border-gray-300 p-1 text-right">{formatCurrency(com)}</td>
-                  <td className="border border-gray-300 p-1 text-right">{formatCurrency(gan)}</td>
-                  <td className="border border-gray-300 p-1 capitalize">{c.pago_estado ?? 'pendiente'}</td>
+                  <td>{fmtDate(c.fecha_inicio)}</td>
+                  <td>{fmtTime(c.fecha_inicio)}</td>
+                  <td>{(c.servicio as { nombre?: string } | null)?.nombre ?? '—'}</td>
+                  <td className="text-right">{formatCurrency(c.valor_final ?? 0)}</td>
+                  <td className="text-center">{pct}%</td>
+                  <td className="text-right">{formatCurrency(com)}</td>
+                  <td className="text-right">{formatCurrency(gan)}</td>
+                  <td className={esPagado ? 'pr-badge-pagado' : 'pr-badge-pendiente'}>
+                    {c.pago_estado ?? 'pendiente'}
+                  </td>
                 </tr>
               )
             })}
-            <tr className="font-bold bg-gray-50">
-              <td className="border border-gray-300 p-1" colSpan={3}>TOTALES</td>
-              <td className="border border-gray-300 p-1 text-right">{formatCurrency(summary.totalFacturado)}</td>
-              <td className="border border-gray-300 p-1"></td>
-              <td className="border border-gray-300 p-1 text-right">{formatCurrency(summary.comisionEspecialista)}</td>
-              <td className="border border-gray-300 p-1 text-right">{formatCurrency(summary.gananciaSpa)}</td>
-              <td className="border border-gray-300 p-1"></td>
+            <tr className="total-row">
+              <td colSpan={3}><strong>TOTALES</strong></td>
+              <td className="text-right">{formatCurrency(summary.totalFacturado)}</td>
+              <td></td>
+              <td className="text-right">{formatCurrency(summary.comisionEspecialista)}</td>
+              <td className="text-right">{formatCurrency(summary.gananciaSpa)}</td>
+              <td></td>
             </tr>
           </tbody>
         </table>
 
         {/* Pagos */}
-        <h3 className="font-bold mb-2">Historial de Pagos</h3>
-        <table className="w-full border-collapse border border-gray-300 text-xs">
-          <thead>
-            <tr className="bg-gray-100">
-              {['Fecha', 'Período', 'Especialista', 'Valor', 'Método', 'Observaciones'].map(h => (
-                <th key={h} className="border border-gray-300 p-1 text-left">{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {pagos.map(p => (
-              <tr key={p.id}>
-                <td className="border border-gray-300 p-1">{p.fecha}</td>
-                <td className="border border-gray-300 p-1 capitalize">{p.periodo}</td>
-                <td className="border border-gray-300 p-1">{p.especialista_nombre}</td>
-                <td className="border border-gray-300 p-1 text-right">{formatCurrency(p.valor_pagado)}</td>
-                <td className="border border-gray-300 p-1 capitalize">{p.metodo_pago}</td>
-                <td className="border border-gray-300 p-1">{p.observaciones ?? '—'}</td>
-              </tr>
-            ))}
-            <tr className="font-bold bg-gray-50">
-              <td className="border border-gray-300 p-1" colSpan={3}>TOTAL PAGADO</td>
-              <td className="border border-gray-300 p-1 text-right">{formatCurrency(summary.totalPagado)}</td>
-              <td className="border border-gray-300 p-1" colSpan={2}></td>
-            </tr>
-          </tbody>
-        </table>
+        {pagos.length > 0 && (
+          <>
+            <p className="pr-section-title">Historial de Pagos</p>
+            <table className="pr-table">
+              <thead>
+                <tr>
+                  {['Fecha','Período','Especialista','Valor','Método','Observaciones'].map(h => (
+                    <th key={h}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {pagos.map(p => (
+                  <tr key={p.id}>
+                    <td>{p.fecha}</td>
+                    <td style={{ textTransform: 'capitalize' }}>{p.periodo}</td>
+                    <td>{p.especialista_nombre}</td>
+                    <td className="text-right">{formatCurrency(p.valor_pagado)}</td>
+                    <td style={{ textTransform: 'capitalize' }}>{p.metodo_pago}</td>
+                    <td>{p.observaciones ?? '—'}</td>
+                  </tr>
+                ))}
+                <tr className="total-row">
+                  <td colSpan={3}><strong>TOTAL PAGADO</strong></td>
+                  <td className="text-right">{formatCurrency(summary.totalPagado)}</td>
+                  <td colSpan={2}></td>
+                </tr>
+              </tbody>
+            </table>
+          </>
+        )}
+
+        {/* Footer */}
+        <div className="pr-footer">
+          <span>Claudia Agudelo Beauty — Reporte de Comisiones</span>
+          <span>Página 1 de 1</span>
+        </div>
       </div>
 
       {/* ── SCREEN CONTENT ───────────────────────────────────────────────── */}
@@ -913,21 +955,8 @@ export default function ComisionesView() {
       </div>{/* end print:hidden */}
 
       {/* ── PAGO MODAL ──────────────────────────────────────────────────────── */}
-      {showPagoModal && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
-          <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-beauty-lg w-full sm:max-w-lg max-h-[90vh] overflow-y-auto">
-            {/* Handle bar móvil */}
-            <div className="flex justify-center pt-3 pb-1 sm:hidden">
-              <div className="w-10 h-1 rounded-full bg-gray-200" />
-            </div>
-            {/* Modal header */}
-            <div className="flex items-center justify-between p-5 border-b border-gray-100 sticky top-0 bg-white z-10">
-              <h3 className="font-bold text-beauty-text">Registrar Pago a Especialista</h3>
-              <button onClick={() => setShowPagoModal(false)} className="text-beauty-text-muted hover:text-beauty-borgona">
-                <X size={20} />
-              </button>
-            </div>
-
+      <Modal open={showPagoModal} onClose={() => setShowPagoModal(false)} maxWidth="sm:max-w-lg">
+        <Modal.Header title="Registrar Pago a Especialista" onClose={() => setShowPagoModal(false)} />
             {/* Modal body */}
             <div className="p-5 space-y-4">
 
@@ -1047,9 +1076,8 @@ export default function ComisionesView() {
                 />
               </div>
             </div>
-
-            {/* Modal footer */}
-            <div className="flex justify-end gap-3 p-5 border-t border-gray-100">
+        <Modal.Footer>
+          <div className="flex justify-end gap-3">
               <button
                 onClick={() => setShowPagoModal(false)}
                 className="px-4 py-2 text-sm text-beauty-text-muted hover:text-beauty-borgona border border-gray-200 rounded-xl transition-colors"
@@ -1071,9 +1099,8 @@ export default function ComisionesView() {
                 )}
               </button>
             </div>
-          </div>
-        </div>
-      )}
+        </Modal.Footer>
+      </Modal>
 
     </div>
   )
