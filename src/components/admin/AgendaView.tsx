@@ -285,7 +285,7 @@ function DetailPanel({ cita, onClose, onCompletar, onCancelar, onEliminar }: {
       )}
 
       {/* Eliminar permanentemente */}
-      <div className="px-4 pb-4">
+      <div className="px-4 pb-20">
         <button onClick={() => onEliminar(cita.id)}
           className="w-full text-xs text-red-400 hover:text-red-600 hover:bg-red-50 py-2 rounded-xl transition-colors border border-red-100">
           🗑️ Eliminar cita permanentemente
