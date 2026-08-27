@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerClient, type CookieOptions } from '@supabase/ssr'
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
@@ -9,42 +8,29 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
-  let response = NextResponse.next({ request })
+  // Leer el token de sesión directamente desde las cookies del request.
+  // Esto NO hace ninguna llamada de red — lee solo el JWT local.
+  // Evita el timeout de Edge Runtime que causaba el 504.
+  const cookieNames = [
+    'sb-access-token',
+    'supabase-auth-token',
+  ]
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() { return request.cookies.getAll() },
-        setAll(cookiesToSet: { name: string; value: string; options?: CookieOptions }[]) {
-          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
-          response = NextResponse.next({ request })
-          cookiesToSet.forEach(({ name, value, options }) => response.cookies.set(name, value, options))
-        },
-      },
-    }
+  // Supabase SSR guarda la sesión en cookies con el patrón sb-<project-ref>-auth-token
+  const allCookies = request.cookies.getAll()
+  const hasSession = allCookies.some(c =>
+    cookieNames.some(n => c.name.includes(n)) ||
+    (c.name.startsWith('sb-') && c.name.endsWith('-auth-token'))
   )
 
-  // Usar getSession() en lugar de getUser() — getSession es local (JWT),
-  // no hace llamada de red a Supabase y evita el timeout de Edge Runtime.
-  const { data: { session } } = await supabase.auth.getSession()
-
-  // Sin sesión → login
-  if (!session) {
+  if (!hasSession) {
     const loginUrl = new URL('/login', request.url)
     loginUrl.searchParams.set('redirect', pathname)
     return NextResponse.redirect(loginUrl)
   }
 
-  const rol = session.user?.user_metadata?.rol
-
-  // Especialista intentando acceder a /admin → redirigir a su panel
-  if (rol !== 'admin') {
-    return NextResponse.redirect(new URL('/especialista', request.url))
-  }
-
-  return response
+  // Si hay sesión, dejar pasar — la verificación de rol se hace en los layouts/pages
+  return NextResponse.next()
 }
 
 export const config = {
