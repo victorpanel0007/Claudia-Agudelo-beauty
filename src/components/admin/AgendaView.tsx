@@ -272,7 +272,7 @@ function DetailPanel({ cita, onClose, onCompletar, onCancelar, onEliminar }: {
 
       {/* Acciones */}
       {(cita.estado === 'confirmada' || cita.estado === 'pendiente' || cita.estado === 'en_proceso') && (
-        <div className="p-4 mt-auto flex gap-2">
+        <div className="p-4 flex gap-2">
           <button onClick={() => onCancelar(cita.id)}
             className="flex-1 text-xs font-semibold py-2.5 rounded-xl border-2 border-red-200 text-red-500 hover:bg-red-50 transition-colors">
             Cancelar
