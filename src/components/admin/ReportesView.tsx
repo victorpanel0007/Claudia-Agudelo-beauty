@@ -164,6 +164,12 @@ export default function ReportesView() {
   const [espReport, setEspReport] = useState<EspReport | null>(null)
   const [espLoading, setEspLoading] = useState(false)
 
+  const [showIngresoModal, setShowIngresoModal] = useState(false)
+  const [ingresoForm, setIngresoForm] = useState({
+    fecha: todayStr(), descripcion: '', valor: '',
+  })
+  const [savingIngreso, setSavingIngreso] = useState(false)
+
   // Gastos
   const [gastos, setGastos] = useState<Gasto[]>([])
   const [gastosLoading, setGastosLoading] = useState(true)
@@ -380,6 +386,27 @@ export default function ReportesView() {
     loadDashboard()
   }
 
+  async function saveIngreso() {
+    if (!ingresoForm.descripcion.trim()) { toast.error('Ingresa una descripción'); return }
+    const valor = parseFloat(ingresoForm.valor)
+    if (!valor || valor <= 0) { toast.error('Ingresa un valor válido'); return }
+    setSavingIngreso(true)
+    // Los ingresos manuales se registran en gastos con prefijo [INGRESO]
+    const { error } = await supabase.from('gastos').insert({
+      fecha: ingresoForm.fecha,
+      categoria: 'Otros',
+      descripcion: `[INGRESO] ${ingresoForm.descripcion.trim()}`,
+      valor,
+    })
+    if (error) { toast.error('Error guardando ingreso'); setSavingIngreso(false); return }
+    toast.success('✅ Ingreso registrado')
+    setSavingIngreso(false)
+    setShowIngresoModal(false)
+    setIngresoForm({ fecha: todayStr(), descripcion: '', valor: '' })
+    loadGastos()
+    loadDashboard()
+  }
+
   // ── Period labels ─────────────────────────────────────────────────────────
 
   const periodBtns: { key: Period; label: string }[] = [
@@ -442,12 +469,20 @@ export default function ReportesView() {
           </h2>
           <p className="text-gray-500 text-sm mt-0.5">Consulta y analiza el rendimiento financiero de tu spa</p>
         </div>
-        <button
-          onClick={() => setShowGastoModal(true)}
-          className="flex items-center gap-2 bg-[#8B1E3F] text-white text-sm px-4 py-2.5 rounded-xl hover:bg-[#5C0F28] transition-colors shadow-sm font-semibold shrink-0"
-        >
-          <Plus size={16} /> Agregar Gasto
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowIngresoModal(true)}
+            className="flex items-center gap-2 bg-emerald-600 text-white text-sm px-4 py-2.5 rounded-xl hover:bg-emerald-700 transition-colors shadow-sm font-semibold shrink-0"
+          >
+            <Plus size={16} /> Agregar Ingreso
+          </button>
+          <button
+            onClick={() => setShowGastoModal(true)}
+            className="flex items-center gap-2 bg-[#8B1E3F] text-white text-sm px-4 py-2.5 rounded-xl hover:bg-[#5C0F28] transition-colors shadow-sm font-semibold shrink-0"
+          >
+            <Plus size={16} /> Agregar Gasto
+          </button>
+        </div>
       </div>
 
       {/* ── SELECTOR DE PERÍODO ────────────────────────────────────────── */}
@@ -663,7 +698,7 @@ export default function ReportesView() {
         <div className="p-4 border-b border-gray-100 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Receipt size={16} className="text-[#8B1E3F]" />
-            <h3 className="font-semibold text-[#222222] text-sm">Registro de Gastos</h3>
+            <h3 className="font-semibold text-[#222222] text-sm">Ingresos y Gastos</h3>
             <span className="text-[10px] bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">{gastos.length} registros</span>
           </div>
           <button
@@ -681,48 +716,64 @@ export default function ReportesView() {
           <>
             {/* Móvil */}
             <div className="divide-y divide-gray-50 lg:hidden">
-              {gastos.slice(0, 10).map(g => (
-                <div key={g.id} className="p-3 flex items-center gap-3">
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-[#222222] text-sm truncate">{g.descripcion}</p>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      <span className="bg-[#FAD6E0] text-[#8B1E3F] text-[10px] px-2 py-0.5 rounded-full">{g.categoria}</span>
-                      <span className="text-gray-400 text-xs">{g.fecha}</span>
+              {gastos.slice(0, 10).map(g => {
+                const esIngreso = g.descripcion?.startsWith('[INGRESO]')
+                const desc = esIngreso ? g.descripcion.replace('[INGRESO] ', '') : g.descripcion
+                return (
+                  <div key={g.id} className={`p-3 flex items-center gap-3 ${esIngreso ? 'bg-emerald-50/50' : ''}`}>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        {esIngreso && <span className="text-[10px] font-bold bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-full">INGRESO</span>}
+                        <p className={`font-medium text-sm truncate ${esIngreso ? 'text-emerald-800' : 'text-[#222222]'}`}>{desc}</p>
+                      </div>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        {!esIngreso && <span className="bg-[#FAD6E0] text-[#8B1E3F] text-[10px] px-2 py-0.5 rounded-full">{g.categoria}</span>}
+                        <span className="text-gray-400 text-xs">{g.fecha}</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className={`font-bold text-sm ${esIngreso ? 'text-emerald-600' : 'text-[#8B1E3F]'}`}>{fmt(g.valor)}</span>
+                      <button onClick={() => deleteGasto(g.id)} className="p-1.5 text-red-400 hover:text-red-600 rounded-lg">
+                        <Trash2 size={13} />
+                      </button>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <span className="font-bold text-[#8B1E3F] text-sm">{fmt(g.valor)}</span>
-                    <button onClick={() => deleteGasto(g.id)} className="p-1.5 text-red-400 hover:text-red-600 rounded-lg">
-                      <Trash2 size={13} />
-                    </button>
-                  </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
             {/* Desktop */}
             <div className="hidden lg:block overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-gray-100 bg-[#FFF8EE]">
-                    {['Fecha','Categoría','Descripción','Valor',''].map(h => (
+                    {['Tipo','Fecha','Categoría','Descripción','Valor',''].map(h => (
                       <th key={h} className={`py-2 px-4 text-gray-500 font-medium text-xs ${h === 'Valor' ? 'text-right' : 'text-left'}`}>{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
-                  {gastos.map(g => (
-                    <tr key={g.id} className="border-b border-gray-50 hover:bg-[#FFF8EE] transition-colors">
-                      <td className="py-2.5 px-4 text-gray-500 text-xs whitespace-nowrap">{g.fecha}</td>
-                      <td className="py-2.5 px-4"><span className="bg-[#FAD6E0] text-[#8B1E3F] text-xs px-2 py-0.5 rounded-full">{g.categoria}</span></td>
-                      <td className="py-2.5 px-4 text-[#222222]">{g.descripcion}</td>
-                      <td className="py-2.5 px-4 text-right font-semibold text-[#8B1E3F]">{fmt(g.valor)}</td>
-                      <td className="py-2.5 px-4 text-right">
-                        <button onClick={() => deleteGasto(g.id)} className="text-red-400 hover:text-red-600 transition-colors">
-                          <Trash2 size={14} />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
+                  {gastos.map(g => {
+                    const esIngreso = g.descripcion?.startsWith('[INGRESO]')
+                    const desc = esIngreso ? g.descripcion.replace('[INGRESO] ', '') : g.descripcion
+                    return (
+                      <tr key={g.id} className={`border-b border-gray-50 transition-colors ${esIngreso ? 'bg-emerald-50/40 hover:bg-emerald-50' : 'hover:bg-[#FFF8EE]'}`}>
+                        <td className="py-2.5 px-4">
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${esIngreso ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-600'}`}>
+                            {esIngreso ? 'INGRESO' : 'GASTO'}
+                          </span>
+                        </td>
+                        <td className="py-2.5 px-4 text-gray-500 text-xs whitespace-nowrap">{g.fecha}</td>
+                        <td className="py-2.5 px-4">{!esIngreso && <span className="bg-[#FAD6E0] text-[#8B1E3F] text-xs px-2 py-0.5 rounded-full">{g.categoria}</span>}</td>
+                        <td className={`py-2.5 px-4 font-medium ${esIngreso ? 'text-emerald-800' : 'text-[#222222]'}`}>{desc}</td>
+                        <td className={`py-2.5 px-4 text-right font-semibold ${esIngreso ? 'text-emerald-600' : 'text-[#8B1E3F]'}`}>{fmt(g.valor)}</td>
+                        <td className="py-2.5 px-4 text-right">
+                          <button onClick={() => deleteGasto(g.id)} className="text-red-400 hover:text-red-600 transition-colors">
+                            <Trash2 size={14} />
+                          </button>
+                        </td>
+                      </tr>
+                    )
+                  })}
                 </tbody>
               </table>
             </div>
@@ -787,6 +838,51 @@ export default function ReportesView() {
       <HistorialContable supabase={supabase} especialistas={especialistas} />
 
     </div>
+
+    {/* ── MODAL AGREGAR INGRESO ───────────────────────────────────────── */}
+    <Modal open={showIngresoModal} onClose={() => setShowIngresoModal(false)}>
+      <Modal.Header title="Registrar Ingreso Manual" onClose={() => setShowIngresoModal(false)} />
+      <div className="p-5 space-y-4">
+        <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-xs text-emerald-700">
+          💡 Usa este formulario para registrar ingresos que no provienen de citas (ej: venta de productos, abonos, otros pagos).
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-600 mb-1">Fecha</label>
+          <input type="date" value={ingresoForm.fecha}
+            onChange={e => setIngresoForm(f => ({ ...f, fecha: e.target.value }))}
+            className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-emerald-400 text-[#222222]" />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-600 mb-1">Descripción *</label>
+          <input type="text" placeholder="Ej: Venta de productos, abono cliente..."
+            value={ingresoForm.descripcion}
+            onChange={e => setIngresoForm(f => ({ ...f, descripcion: e.target.value }))}
+            className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-emerald-400 text-[#222222]" />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-600 mb-1">Valor (COP) *</label>
+          <div className="relative">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
+            <input type="number" placeholder="0" min="0"
+              value={ingresoForm.valor}
+              onChange={e => setIngresoForm(f => ({ ...f, valor: e.target.value }))}
+              className="w-full border border-gray-200 rounded-xl pl-7 pr-3 py-2.5 text-sm focus:outline-none focus:border-emerald-400 text-[#222222]" />
+          </div>
+        </div>
+      </div>
+      <Modal.Footer>
+        <div className="flex gap-3 justify-end">
+          <button onClick={() => setShowIngresoModal(false)}
+            className="px-4 py-2.5 text-sm text-gray-600 bg-gray-100 rounded-xl hover:bg-gray-200 transition-colors">
+            Cancelar
+          </button>
+          <button onClick={saveIngreso} disabled={savingIngreso}
+            className="px-4 py-2.5 text-sm text-white bg-emerald-600 rounded-xl hover:bg-emerald-700 transition-colors disabled:opacity-60 font-semibold">
+            {savingIngreso ? 'Guardando...' : '✓ Registrar Ingreso'}
+          </button>
+        </div>
+      </Modal.Footer>
+    </Modal>
 
     {/* ── MODAL AGREGAR GASTO ─────────────────────────────────────────── */}
     <Modal open={showGastoModal} onClose={() => setShowGastoModal(false)}>
