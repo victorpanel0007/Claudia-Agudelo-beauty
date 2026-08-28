@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
@@ -414,26 +414,52 @@ export default function ReportesView() {
 
   // ── Render ────────────────────────────────────────────────────────────────
 
+  // Valor del período seleccionado para mostrar en el KPI principal
+  const ingresosDelPeriodo =
+    period === 'hoy'      ? dash.ingresosHoy     :
+    period === 'semana'   ? dash.ingresosSemana  :
+    period === 'quincena' ? dash.ingresos15dias  :
+    period === 'mes'      ? dash.ingresosMes     :
+    dash.ingresosMes
+
+  const periodLabel =
+    period === 'hoy'      ? 'Hoy'          :
+    period === 'semana'   ? 'Esta semana'  :
+    period === 'quincena' ? 'Últimos 15 días' :
+    period === 'mes'      ? 'Este mes'     :
+    'Este año'
+
   return (
     <>
-    <div className="space-y-8 animate-fade-in">
+    <div className="space-y-5 animate-fade-in">
 
-      {/* Header */}
-      <div>
-        <h2 className="text-xl font-bold text-[#222222]">Reportes Financieros</h2>
-        <p className="text-gray-500 text-sm">Análisis de ingresos, gastos y comisiones</p>
+      {/* ── ENCABEZADO ─────────────────────────────────────────────────── */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+          <h2 className="text-xl font-bold text-[#222222] flex items-center gap-2">
+            <TrendingUp size={22} className="text-[#8B1E3F]" />
+            Reportes Financieros
+          </h2>
+          <p className="text-gray-500 text-sm mt-0.5">Consulta y analiza el rendimiento financiero de tu spa</p>
+        </div>
+        <button
+          onClick={() => setShowGastoModal(true)}
+          className="flex items-center gap-2 bg-[#8B1E3F] text-white text-sm px-4 py-2.5 rounded-xl hover:bg-[#5C0F28] transition-colors shadow-sm font-semibold shrink-0"
+        >
+          <Plus size={16} /> Agregar Gasto
+        </button>
       </div>
 
-      {/* Section 1 – Period filter */}
-      <div className="flex flex-wrap gap-2">
+      {/* ── SELECTOR DE PERÍODO ────────────────────────────────────────── */}
+      <div className="bg-white border border-[#EFA1B5]/20 rounded-2xl p-1.5 flex flex-wrap gap-1 shadow-sm">
         {periodBtns.map(b => (
           <button
             key={b.key}
             onClick={() => setPeriod(b.key)}
-            className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+            className={`flex-1 min-w-[60px] px-3 py-2 rounded-xl text-xs font-semibold transition-all ${
               period === b.key
-                ? 'bg-[#EFA1B5] text-white shadow-sm'
-                : 'bg-white border border-[#EFA1B5]/30 text-[#222222] hover:border-[#EFA1B5]'
+                ? 'bg-[#8B1E3F] text-white shadow-sm'
+                : 'text-gray-500 hover:bg-[#FFF8EE] hover:text-[#8B1E3F]'
             }`}
           >
             {b.label}
@@ -441,192 +467,258 @@ export default function ReportesView() {
         ))}
       </div>
 
-      {/* Section 2 – Dashboard cards — 2 cols móvil, 4 desktop */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        {dashCards.map(c => (
-          <div
-            key={c.label}
-            className="bg-white border border-[#EFA1B5]/20 rounded-2xl p-4 shadow-sm"
-          >
-            <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-3 ${c.color}`}>
-              <c.icon size={20} />
+      {/* ── KPIs PRINCIPALES — 2×2 móvil, 4×1 desktop ─────────────────── */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        {/* Ingresos del período */}
+        <div className="bg-white border border-[#EFA1B5]/20 rounded-2xl p-4 shadow-sm">
+          <div className="flex items-center justify-between mb-3">
+            <div className="w-9 h-9 rounded-xl bg-emerald-100 flex items-center justify-center">
+              <TrendingUp size={18} className="text-emerald-600" />
             </div>
-            <p className="text-lg font-bold text-[#222222] leading-tight">
-              {dashLoading ? '—' : c.isCnt ? c.value : fmt(c.value as number)}
-            </p>
-            <p className="text-xs font-semibold text-[#222222] mt-0.5">{c.label}</p>
-            <p className="text-[11px] text-gray-400 mt-0.5">{c.sub}</p>
+            <span className="text-[10px] font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">{periodLabel}</span>
+          </div>
+          <p className="text-lg font-bold text-[#222222] leading-tight">
+            {dashLoading ? '—' : fmt(ingresosDelPeriodo)}
+          </p>
+          <p className="text-xs font-medium text-gray-500 mt-1">Ingresos totales</p>
+        </div>
+
+        {/* Gastos del mes */}
+        <div className="bg-white border border-[#EFA1B5]/20 rounded-2xl p-4 shadow-sm">
+          <div className="flex items-center justify-between mb-3">
+            <div className="w-9 h-9 rounded-xl bg-red-100 flex items-center justify-center">
+              <Receipt size={18} className="text-red-600" />
+            </div>
+            <span className="text-[10px] font-semibold text-red-600 bg-red-50 px-2 py-0.5 rounded-full">Este mes</span>
+          </div>
+          <p className="text-lg font-bold text-[#222222] leading-tight">
+            {dashLoading ? '—' : fmt(dash.gastosMes)}
+          </p>
+          <p className="text-xs font-medium text-gray-500 mt-1">Gastos registrados</p>
+        </div>
+
+        {/* Utilidad neta */}
+        <div className={`rounded-2xl p-4 shadow-sm border ${dash.utilidadNeta >= 0 ? 'bg-white border-[#EFA1B5]/20' : 'bg-red-50 border-red-200'}`}>
+          <div className="flex items-center justify-between mb-3">
+            <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${dash.utilidadNeta >= 0 ? 'bg-teal-100' : 'bg-red-100'}`}>
+              <Wallet size={18} className={dash.utilidadNeta >= 0 ? 'text-teal-600' : 'text-red-600'} />
+            </div>
+            <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${dash.utilidadNeta >= 0 ? 'text-teal-600 bg-teal-50' : 'text-red-600 bg-red-100'}`}>
+              {dash.utilidadNeta >= 0 ? 'Ganancia' : 'Pérdida'}
+            </span>
+          </div>
+          <p className={`text-lg font-bold leading-tight ${dash.utilidadNeta >= 0 ? 'text-[#222222]' : 'text-red-700'}`}>
+            {dashLoading ? '—' : fmt(dash.utilidadNeta)}
+          </p>
+          <p className="text-xs font-medium text-gray-500 mt-1">Utilidad neta (mes)</p>
+        </div>
+
+        {/* Servicios realizados */}
+        <div className="bg-white border border-[#EFA1B5]/20 rounded-2xl p-4 shadow-sm">
+          <div className="flex items-center justify-between mb-3">
+            <div className="w-9 h-9 rounded-xl bg-[#FAD6E0] flex items-center justify-center">
+              <Scissors size={18} className="text-[#8B1E3F]" />
+            </div>
+            <span className="text-[10px] font-semibold text-[#8B1E3F] bg-[#FAD6E0] px-2 py-0.5 rounded-full">Este mes</span>
+          </div>
+          <p className="text-lg font-bold text-[#222222] leading-tight">
+            {dashLoading ? '—' : dash.serviciosRealizados}
+          </p>
+          <p className="text-xs font-medium text-gray-500 mt-1">Servicios realizados</p>
+        </div>
+      </div>
+
+      {/* ── FILA SECUNDARIA DE KPIs ─────────────────────────────────────── */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {[
+          { label: 'Ingresos Hoy',       value: dash.ingresosHoy,          icon: DollarSign,   color: 'bg-blue-50 text-blue-600' },
+          { label: 'Ingresos Semana',     value: dash.ingresosSemana,       icon: Calendar,     color: 'bg-violet-50 text-violet-600' },
+          { label: 'Ingresos 15 Días',    value: dash.ingresos15dias,       icon: CalendarDays, color: 'bg-pink-50 text-pink-600' },
+          { label: 'Comisiones Pend.',   value: dash.comisionesPendientes,  icon: Users,        color: 'bg-amber-50 text-amber-600' },
+        ].map(c => (
+          <div key={c.label} className="bg-white border border-[#EFA1B5]/20 rounded-2xl p-3 shadow-sm flex items-center gap-3">
+            <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${c.color}`}>
+              <c.icon size={16} />
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-bold text-[#222222] truncate">{dashLoading ? '—' : fmt(c.value)}</p>
+              <p className="text-[10px] text-gray-400 truncate">{c.label}</p>
+            </div>
           </div>
         ))}
       </div>
 
-      {/* Section 3 – Reporte por especialista */}
-      <div className="bg-white border border-[#EFA1B5]/20 rounded-2xl shadow-sm overflow-hidden">
-        <div className="p-4 border-b border-gray-100 flex items-center gap-2">
-          <Users size={18} className="text-[#8B1E3F]" />
-          <h3 className="font-semibold text-[#222222]">Reporte por Especialista</h3>
+      {/* ── DOS COLUMNAS: Top Servicios + Reporte Especialista ──────────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+
+        {/* Top Servicios */}
+        <div className="bg-white border border-[#EFA1B5]/20 rounded-2xl shadow-sm overflow-hidden">
+          <div className="p-4 border-b border-gray-100 flex items-center gap-2">
+            <Scissors size={16} className="text-[#8B1E3F]" />
+            <h3 className="font-semibold text-[#222222] text-sm">Top Servicios</h3>
+            <span className="text-[10px] text-gray-400 ml-1 bg-gray-100 px-2 py-0.5 rounded-full">{periodLabel}</span>
+          </div>
+          {topLoading ? (
+            <div className="p-4 space-y-2">{[1,2,3,4].map(i => <div key={i} className="h-8 bg-gray-100 rounded-xl animate-pulse" />)}</div>
+          ) : topServicios.length === 0 ? (
+            <p className="text-gray-400 text-sm text-center py-8">Sin datos para el período</p>
+          ) : (
+            <div className="p-3 space-y-2">
+              {topServicios.slice(0, 6).map((s, i) => {
+                const maxTotal = topServicios[0]?.total ?? 1
+                const pct = (s.total / maxTotal) * 100
+                return (
+                  <div key={i}>
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-[#D4AF37] font-bold text-xs w-4 shrink-0">{i + 1}</span>
+                      <span className="flex-1 text-xs text-[#222222] font-medium truncate">{s.nombre}</span>
+                      <span className="text-[10px] text-gray-400 shrink-0">{s.cantidad}x</span>
+                      <span className="font-bold text-[#8B1E3F] text-xs shrink-0">{fmt(s.total)}</span>
+                    </div>
+                    <div className="ml-6 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                      <div className="h-full bg-[#EFA1B5] rounded-full transition-all" style={{ width: `${pct}%` }} />
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
         </div>
-        <div className="p-4 space-y-4">
-          {/* Controls */}
-          <div className="flex flex-wrap gap-3 items-center">
-            <div className="relative">
-              <select
-                value={selEsp}
-                onChange={e => setSelEsp(e.target.value)}
-                className="appearance-none bg-[#FFF8EE] border border-[#EFA1B5]/30 text-[#222222] text-sm rounded-lg px-3 py-2 pr-8 focus:outline-none focus:border-[#EFA1B5]"
-              >
-                <option value="">— Seleccionar especialista —</option>
-                {especialistas.map(e => (
-                  <option key={e.id} value={e.id}>{e.nombre}</option>
-                ))}
-              </select>
-              <ChevronDown size={14} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+
+        {/* Reporte por Especialista */}
+        <div className="bg-white border border-[#EFA1B5]/20 rounded-2xl shadow-sm overflow-hidden">
+          <div className="p-4 border-b border-gray-100 flex items-center gap-2">
+            <Users size={16} className="text-[#8B1E3F]" />
+            <h3 className="font-semibold text-[#222222] text-sm">Reporte por Especialista</h3>
+          </div>
+          <div className="p-4 space-y-3">
+            <div className="flex flex-col sm:flex-row gap-2">
+              <div className="relative flex-1">
+                <select
+                  value={selEsp}
+                  onChange={e => setSelEsp(e.target.value)}
+                  className="w-full appearance-none bg-[#FFF8EE] border border-[#EFA1B5]/30 text-[#222222] text-sm rounded-xl px-3 py-2.5 pr-8 focus:outline-none focus:border-[#EFA1B5]"
+                >
+                  <option value="">— Seleccionar especialista —</option>
+                  {especialistas.map(e => (
+                    <option key={e.id} value={e.id}>{e.nombre}</option>
+                  ))}
+                </select>
+                <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+              </div>
             </div>
             <div className="flex flex-wrap gap-1">
               {espPeriodBtns.map(b => (
                 <button
                   key={b.key}
                   onClick={() => setEspPeriod(b.key)}
-                  className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                  className={`px-2.5 py-1 rounded-lg text-[10px] font-semibold transition-colors ${
                     espPeriod === b.key
                       ? 'bg-[#EFA1B5] text-white'
-                      : 'bg-gray-100 text-gray-600 hover:bg-[#FAD6E0]'
+                      : 'bg-gray-100 text-gray-500 hover:bg-[#FAD6E0]'
                   }`}
                 >
                   {b.label}
                 </button>
               ))}
             </div>
-          </div>
-
-          {/* Report results */}
-          {!selEsp ? (
-            <p className="text-gray-400 text-sm text-center py-6">Selecciona un especialista</p>
-          ) : espLoading ? (
-            <p className="text-gray-400 text-sm text-center py-6">Cargando...</p>
-          ) : espReport ? (
-            <div className="space-y-4">
-              {/* KPIs */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                {[
-                  { label: 'Total Facturado',   value: fmt(espReport.totalFacturado) },
-                  { label: 'Citas Realizadas',  value: String(espReport.citasRealizadas) },
-                  { label: 'Ticket Promedio',   value: fmt(espReport.ticketPromedio) },
-                  { label: `Comisión (${espReport.porcentajeComision}%)`, value: fmt(espReport.comision) },
-                ].map(k => (
-                  <div key={k.label} className="bg-[#FFF8EE] rounded-xl p-3 text-center">
-                    <p className="text-base font-bold text-[#8B1E3F]">{k.value}</p>
-                    <p className="text-xs text-gray-500 mt-0.5">{k.label}</p>
-                  </div>
-                ))}
-              </div>
-          {/* Services table — cards en móvil */}
-              {espReport.servicios.length > 0 && (
-                <>
-                  {/* Móvil */}
-                  <div className="space-y-2 lg:hidden">
-                    {espReport.servicios.map((s, i) => (
-                      <div key={i} className="bg-[#FFF8EE] rounded-xl p-3 flex items-center justify-between">
-                        <span className="text-[#222222] text-sm font-medium flex-1 truncate">{s.nombre}</span>
-                        <div className="flex items-center gap-3 shrink-0 ml-2">
-                          <span className="text-gray-600 text-xs">{s.cantidad}x</span>
-                          <span className="font-bold text-[#8B1E3F] text-sm">{fmt(s.total)}</span>
-                        </div>
+            {!selEsp ? (
+              <p className="text-gray-400 text-sm text-center py-4">Selecciona una especialista</p>
+            ) : espLoading ? (
+              <div className="space-y-2">{[1,2].map(i => <div key={i} className="h-12 bg-gray-100 rounded-xl animate-pulse" />)}</div>
+            ) : espReport ? (
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { label: 'Facturado',    value: fmt(espReport.totalFacturado) },
+                    { label: 'Citas',        value: String(espReport.citasRealizadas) },
+                    { label: 'Ticket prom.', value: fmt(espReport.ticketPromedio) },
+                    { label: `Comisión ${espReport.porcentajeComision}%`, value: fmt(espReport.comision) },
+                  ].map(k => (
+                    <div key={k.label} className="bg-[#FFF8EE] rounded-xl p-3">
+                      <p className="text-sm font-bold text-[#8B1E3F]">{k.value}</p>
+                      <p className="text-[10px] text-gray-500 mt-0.5">{k.label}</p>
+                    </div>
+                  ))}
+                </div>
+                {espReport.servicios.length > 0 && (
+                  <div className="divide-y divide-gray-50 border border-gray-100 rounded-xl overflow-hidden">
+                    {espReport.servicios.slice(0, 5).map((s, i) => (
+                      <div key={i} className="flex items-center gap-2 px-3 py-2">
+                        <span className="flex-1 text-xs text-[#222222] truncate">{s.nombre}</span>
+                        <span className="text-[10px] text-gray-400">{s.cantidad}x</span>
+                        <span className="text-xs font-bold text-[#8B1E3F]">{fmt(s.total)}</span>
                       </div>
                     ))}
                   </div>
-                  {/* Desktop */}
-                  <div className="hidden lg:block overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="border-b border-gray-100">
-                          <th className="text-left py-2 px-3 text-gray-500 font-medium text-xs">Servicio</th>
-                          <th className="text-right py-2 px-3 text-gray-500 font-medium text-xs">Cantidad</th>
-                          <th className="text-right py-2 px-3 text-gray-500 font-medium text-xs">Total</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {espReport.servicios.map((s, i) => (
-                          <tr key={i} className="border-b border-gray-50 hover:bg-[#FFF8EE]">
-                            <td className="py-2 px-3 text-[#222222]">{s.nombre}</td>
-                            <td className="py-2 px-3 text-right text-gray-600">{s.cantidad}</td>
-                            <td className="py-2 px-3 text-right font-medium text-[#8B1E3F]">{fmt(s.total)}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </>
-              )}
-            </div>
-          ) : null}
+                )}
+              </div>
+            ) : null}
+          </div>
         </div>
       </div>
 
-      {/* Section 4 – Registro de gastos */}
+      {/* ── REGISTRO DE GASTOS ───────────────────────────────────────────── */}
       <div className="bg-white border border-[#EFA1B5]/20 rounded-2xl shadow-sm overflow-hidden">
         <div className="p-4 border-b border-gray-100 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Receipt size={18} className="text-[#8B1E3F]" />
-            <h3 className="font-semibold text-[#222222]">Registro de Gastos</h3>
+            <Receipt size={16} className="text-[#8B1E3F]" />
+            <h3 className="font-semibold text-[#222222] text-sm">Registro de Gastos</h3>
+            <span className="text-[10px] bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">{gastos.length} registros</span>
           </div>
           <button
             onClick={() => setShowGastoModal(true)}
-            className="flex items-center gap-1.5 bg-[#8B1E3F] text-white text-sm px-3 py-2 rounded-lg hover:bg-[#5C0F28] transition-colors min-h-[44px]"
+            className="flex items-center gap-1.5 bg-[#8B1E3F] text-white text-xs px-3 py-2 rounded-xl hover:bg-[#5C0F28] transition-colors font-semibold"
           >
-            <Plus size={15} /> <span className="hidden sm:inline">Agregar </span>Gasto
+            <Plus size={14} /> Agregar
           </button>
         </div>
-
         {gastosLoading ? (
-          <p className="text-gray-400 text-sm text-center py-8">Cargando...</p>
+          <div className="p-4 space-y-2">{[1,2,3].map(i => <div key={i} className="h-12 bg-gray-100 rounded-xl animate-pulse" />)}</div>
         ) : gastos.length === 0 ? (
           <p className="text-gray-400 text-sm text-center py-8">No hay gastos registrados</p>
         ) : (
           <>
-            {/* Móvil: cards */}
+            {/* Móvil */}
             <div className="divide-y divide-gray-50 lg:hidden">
-              {gastos.map(g => (
-                <div key={g.id} className="p-3 flex items-center gap-3 min-h-[56px]">
+              {gastos.slice(0, 10).map(g => (
+                <div key={g.id} className="p-3 flex items-center gap-3">
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-[#222222] text-sm truncate">{g.descripcion}</p>
-                    <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                    <div className="flex items-center gap-2 mt-0.5">
                       <span className="bg-[#FAD6E0] text-[#8B1E3F] text-[10px] px-2 py-0.5 rounded-full">{g.categoria}</span>
-                      <span className="text-gray-500 text-xs">{g.fecha}</span>
+                      <span className="text-gray-400 text-xs">{g.fecha}</span>
                     </div>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     <span className="font-bold text-[#8B1E3F] text-sm">{fmt(g.valor)}</span>
-                    <button onClick={() => deleteGasto(g.id)}
-                      className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg min-h-[36px] min-w-[36px] flex items-center justify-center">
-                      <Trash2 size={14} />
+                    <button onClick={() => deleteGasto(g.id)} className="p-1.5 text-red-400 hover:text-red-600 rounded-lg">
+                      <Trash2 size={13} />
                     </button>
                   </div>
                 </div>
               ))}
             </div>
-            {/* Desktop: tabla */}
+            {/* Desktop */}
             <div className="hidden lg:block overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-gray-100 bg-[#FFF8EE]">
-                    <th className="text-left py-2 px-4 text-gray-500 font-medium text-xs">Fecha</th>
-                    <th className="text-left py-2 px-4 text-gray-500 font-medium text-xs">Categoría</th>
-                    <th className="text-left py-2 px-4 text-gray-500 font-medium text-xs">Descripción</th>
-                    <th className="text-right py-2 px-4 text-gray-500 font-medium text-xs">Valor</th>
-                    <th className="py-2 px-4"></th>
+                    {['Fecha','Categoría','Descripción','Valor',''].map(h => (
+                      <th key={h} className={`py-2 px-4 text-gray-500 font-medium text-xs ${h === 'Valor' ? 'text-right' : 'text-left'}`}>{h}</th>
+                    ))}
                   </tr>
                 </thead>
                 <tbody>
                   {gastos.map(g => (
-                    <tr key={g.id} className="border-b border-gray-50 hover:bg-[#FFF8EE]">
-                      <td className="py-2 px-4 text-gray-600">{g.fecha}</td>
-                      <td className="py-2 px-4"><span className="bg-[#FAD6E0] text-[#8B1E3F] text-xs px-2 py-0.5 rounded-full">{g.categoria}</span></td>
-                      <td className="py-2 px-4 text-[#222222]">{g.descripcion}</td>
-                      <td className="py-2 px-4 text-right font-medium text-[#8B1E3F]">{fmt(g.valor)}</td>
-                      <td className="py-2 px-4 text-right">
-                        <button onClick={() => deleteGasto(g.id)} className="text-red-400 hover:text-red-600 transition-colors" title="Eliminar">
-                          <Trash2 size={15} />
+                    <tr key={g.id} className="border-b border-gray-50 hover:bg-[#FFF8EE] transition-colors">
+                      <td className="py-2.5 px-4 text-gray-500 text-xs whitespace-nowrap">{g.fecha}</td>
+                      <td className="py-2.5 px-4"><span className="bg-[#FAD6E0] text-[#8B1E3F] text-xs px-2 py-0.5 rounded-full">{g.categoria}</span></td>
+                      <td className="py-2.5 px-4 text-[#222222]">{g.descripcion}</td>
+                      <td className="py-2.5 px-4 text-right font-semibold text-[#8B1E3F]">{fmt(g.valor)}</td>
+                      <td className="py-2.5 px-4 text-right">
+                        <button onClick={() => deleteGasto(g.id)} className="text-red-400 hover:text-red-600 transition-colors">
+                          <Trash2 size={14} />
                         </button>
                       </td>
                     </tr>
@@ -638,177 +730,113 @@ export default function ReportesView() {
         )}
       </div>
 
-      {/* Section 5 – Top servicios */}
+      {/* ── HISTORIAL RECIENTE ───────────────────────────────────────────── */}
       <div className="bg-white border border-[#EFA1B5]/20 rounded-2xl shadow-sm overflow-hidden">
         <div className="p-4 border-b border-gray-100 flex items-center gap-2">
-          <Scissors size={18} className="text-[#8B1E3F]" />
-          <h3 className="font-semibold text-[#222222]">Top Servicios</h3>
-          <span className="text-xs text-gray-400 ml-1">— período seleccionado</span>
+          <ClipboardList size={16} className="text-[#8B1E3F]" />
+          <h3 className="font-semibold text-[#222222] text-sm">Movimientos recientes</h3>
+          <span className="text-[10px] text-gray-400 ml-1 bg-gray-100 px-2 py-0.5 rounded-full">{periodLabel} · últimas 50 citas</span>
         </div>
-        {/* Top servicios — cards móvil, tabla desktop */}
-          {topLoading ? (
-            <p className="text-gray-400 text-sm text-center py-8">Cargando...</p>
-          ) : topServicios.length === 0 ? (
-            <p className="text-gray-400 text-sm text-center py-8">Sin datos para el período</p>
-          ) : (
-            <>
-              <div className="divide-y divide-gray-50 lg:hidden">
-                {topServicios.map((s, i) => (
-                  <div key={i} className="p-3 flex items-center gap-3 min-h-[52px]">
-                    <span className="text-[#D4AF37] font-bold text-lg w-7 text-center shrink-0">{i + 1}</span>
-                    <span className="flex-1 text-[#222222] text-sm font-medium truncate">{s.nombre}</span>
-                    <span className="text-gray-500 text-xs shrink-0">{s.cantidad}x</span>
-                    <span className="font-bold text-[#8B1E3F] text-sm shrink-0">{fmt(s.total)}</span>
+        {histLoading ? (
+          <div className="p-4 space-y-2">{[1,2,3].map(i => <div key={i} className="h-12 bg-gray-100 rounded-xl animate-pulse" />)}</div>
+        ) : historial.length === 0 ? (
+          <p className="text-gray-400 text-sm text-center py-8">Sin citas en el período</p>
+        ) : (
+          <>
+            {/* Móvil */}
+            <div className="divide-y divide-gray-50 lg:hidden">
+              {historial.map(h => (
+                <div key={h.id} className="p-3">
+                  <div className="flex items-center justify-between">
+                    <p className="font-medium text-[#222222] text-sm truncate flex-1">{h.cliente}</p>
+                    <p className="font-bold text-[#8B1E3F] text-sm shrink-0 ml-2">{fmt(h.valor)}</p>
                   </div>
-                ))}
-              </div>
-              <div className="hidden lg:block overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead><tr className="border-b border-gray-100 bg-[#FFF8EE]">
-                    <th className="text-left py-2 px-4 text-gray-500 font-medium text-xs">#</th>
-                    <th className="text-left py-2 px-4 text-gray-500 font-medium text-xs">Servicio</th>
-                    <th className="text-right py-2 px-4 text-gray-500 font-medium text-xs">Cantidad</th>
-                    <th className="text-right py-2 px-4 text-gray-500 font-medium text-xs">Total Facturado</th>
-                  </tr></thead>
-                  <tbody>{topServicios.map((s, i) => (
-                    <tr key={i} className="border-b border-gray-50 hover:bg-[#FFF8EE]">
-                      <td className="py-2 px-4 text-[#D4AF37] font-bold">{i + 1}</td>
-                      <td className="py-2 px-4 text-[#222222]">{s.nombre}</td>
-                      <td className="py-2 px-4 text-right text-gray-600">{s.cantidad}</td>
-                      <td className="py-2 px-4 text-right font-medium text-[#8B1E3F]">{fmt(s.total)}</td>
-                    </tr>
-                  ))}</tbody>
-                </table>
-              </div>
-            </>
-          )}
-      </div>
-
-      {/* Section 6 – Historial simple */}
-      <div className="bg-white border border-[#EFA1B5]/20 rounded-2xl shadow-sm overflow-hidden">
-        <div className="p-4 border-b border-gray-100 flex items-center gap-2">
-          <ClipboardList size={18} className="text-[#8B1E3F]" />
-          <h3 className="font-semibold text-[#222222]">Historial Reciente</h3>
-          <span className="text-xs text-gray-400 ml-1">— últimas 50 citas completadas</span>
-        </div>
-          {histLoading ? (
-            <p className="text-gray-400 text-sm text-center py-8">Cargando...</p>
-          ) : historial.length === 0 ? (
-            <p className="text-gray-400 text-sm text-center py-8">Sin citas en el período</p>
-          ) : (
-            <>
-              {/* Móvil */}
-              <div className="divide-y divide-gray-50 lg:hidden">
-                {historial.map(h => (
-                  <div key={h.id} className="p-3 min-h-[56px]">
-                    <div className="flex items-center justify-between">
-                      <p className="font-medium text-[#222222] text-sm truncate flex-1">{h.cliente}</p>
-                      <p className="font-bold text-[#8B1E3F] text-sm shrink-0 ml-2">{fmt(h.valor)}</p>
-                    </div>
-                    <p className="text-gray-500 text-xs truncate">{h.servicio} · {h.especialista}</p>
-                    <p className="text-gray-400 text-xs">{new Date(h.fecha).toLocaleDateString('es-CO', { timeZone: 'America/Bogota', day: '2-digit', month: 'short', year: 'numeric' })}</p>
-                  </div>
-                ))}
-              </div>
-              {/* Desktop */}
-              <div className="hidden lg:block overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead><tr className="border-b border-gray-100 bg-[#FFF8EE]">
-                    <th className="text-left py-2 px-4 text-gray-500 font-medium text-xs">Fecha</th>
-                    <th className="text-left py-2 px-4 text-gray-500 font-medium text-xs">Cliente</th>
-                    <th className="text-left py-2 px-4 text-gray-500 font-medium text-xs">Servicio</th>
-                    <th className="text-left py-2 px-4 text-gray-500 font-medium text-xs">Especialista</th>
-                    <th className="text-right py-2 px-4 text-gray-500 font-medium text-xs">Valor</th>
-                  </tr></thead>
-                  <tbody>{historial.map(h => (
-                    <tr key={h.id} className="border-b border-gray-50 hover:bg-[#FFF8EE]">
-                      <td className="py-2 px-4 text-gray-500 text-xs whitespace-nowrap">{new Date(h.fecha).toLocaleDateString('es-CO', { timeZone: 'America/Bogota', day: '2-digit', month: 'short', year: 'numeric' })}</td>
-                      <td className="py-2 px-4 text-[#222222]">{h.cliente}</td>
-                      <td className="py-2 px-4 text-gray-600">{h.servicio}</td>
-                      <td className="py-2 px-4 text-gray-600">{h.especialista}</td>
-                      <td className="py-2 px-4 text-right font-medium text-[#8B1E3F]">{fmt(h.valor)}</td>
-                    </tr>
-                  ))}</tbody>
-                </table>
-              </div>
-            </>
-          )}
-        </div>
-      </div>
-
-      {/* Modal – Agregar Gasto */}
-      <Modal open={showGastoModal} onClose={() => setShowGastoModal(false)}>
-        <Modal.Header title="Agregar Gasto" onClose={() => setShowGastoModal(false)} />
-            <div className="p-5 space-y-4">
-              {/* Fecha */}
-              <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Fecha</label>
-                <input
-                  type="date"
-                  value={gastoForm.fecha}
-                  onChange={e => setGastoForm(f => ({ ...f, fecha: e.target.value }))}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#EFA1B5] text-[#222222]"
-                />
-              </div>
-              {/* Categoría */}
-              <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Categoría</label>
-                <div className="relative">
-                  <select
-                    value={gastoForm.categoria}
-                    onChange={e => setGastoForm(f => ({ ...f, categoria: e.target.value as GastoCategoria }))}
-                    className="w-full appearance-none border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#EFA1B5] text-[#222222] bg-white pr-8"
-                  >
-                    {GASTO_CATEGORIAS.map(c => <option key={c} value={c}>{c}</option>)}
-                  </select>
-                  <ChevronDown size={14} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                  <p className="text-gray-500 text-xs truncate">{h.servicio} · {h.especialista}</p>
+                  <p className="text-gray-400 text-xs">{new Date(h.fecha).toLocaleDateString('es-CO', { timeZone: 'America/Bogota', day: '2-digit', month: 'short', year: 'numeric' })}</p>
                 </div>
-              </div>
-              {/* Descripción */}
-              <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Descripción</label>
-                <input
-                  type="text"
-                  placeholder="Ej: Compra de productos capilares"
-                  value={gastoForm.descripcion}
-                  onChange={e => setGastoForm(f => ({ ...f, descripcion: e.target.value }))}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#EFA1B5] text-[#222222]"
-                />
-              </div>
-              {/* Valor */}
-              <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Valor (COP)</label>
-                <input
-                  type="number"
-                  placeholder="0"
-                  min="0"
-                  value={gastoForm.valor}
-                  onChange={e => setGastoForm(f => ({ ...f, valor: e.target.value }))}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#EFA1B5] text-[#222222]"
-                />
-              </div>
+              ))}
             </div>
-        <Modal.Footer>
-          <div className="flex gap-3 justify-end">
-              <button
-                onClick={() => setShowGastoModal(false)}
-                className="px-4 py-2 text-sm text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={saveGasto}
-                disabled={savingGasto}
-                className="px-4 py-2 text-sm text-white bg-[#8B1E3F] rounded-lg hover:bg-[#5C0F28] transition-colors disabled:opacity-60"
-              >
-                {savingGasto ? 'Guardando...' : 'Guardar Gasto'}
-              </button>
+            {/* Desktop */}
+            <div className="hidden lg:block overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-gray-100 bg-[#FFF8EE]">
+                    {['Fecha','Cliente','Servicio','Especialista','Valor'].map(h => (
+                      <th key={h} className={`py-2 px-4 text-gray-500 font-medium text-xs ${h === 'Valor' ? 'text-right' : 'text-left'}`}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {historial.map(h => (
+                    <tr key={h.id} className="border-b border-gray-50 hover:bg-[#FFF8EE] transition-colors">
+                      <td className="py-2.5 px-4 text-gray-500 text-xs whitespace-nowrap">{new Date(h.fecha).toLocaleDateString('es-CO', { timeZone: 'America/Bogota', day: '2-digit', month: 'short', year: 'numeric' })}</td>
+                      <td className="py-2.5 px-4 text-[#222222] font-medium">{h.cliente}</td>
+                      <td className="py-2.5 px-4 text-gray-600 max-w-[180px] truncate">{h.servicio}</td>
+                      <td className="py-2.5 px-4 text-gray-600">{h.especialista}</td>
+                      <td className="py-2.5 px-4 text-right font-semibold text-[#8B1E3F]">{fmt(h.valor)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
-        </Modal.Footer>
-      </Modal>
+          </>
+        )}
+      </div>
 
-      {/* ── HISTORIAL CONTABLE — meses anteriores ── */}
+      {/* ── HISTORIAL CONTABLE (meses anteriores) ──────────────────────── */}
       <HistorialContable supabase={supabase} especialistas={especialistas} />
+
+    </div>
+
+    {/* ── MODAL AGREGAR GASTO ─────────────────────────────────────────── */}
+    <Modal open={showGastoModal} onClose={() => setShowGastoModal(false)}>
+      <Modal.Header title="Agregar Gasto" onClose={() => setShowGastoModal(false)} />
+      <div className="p-5 space-y-4">
+        <div>
+          <label className="block text-xs font-medium text-gray-600 mb-1">Fecha</label>
+          <input type="date" value={gastoForm.fecha}
+            onChange={e => setGastoForm(f => ({ ...f, fecha: e.target.value }))}
+            className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#EFA1B5] text-[#222222]" />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-600 mb-1">Categoría</label>
+          <div className="relative">
+            <select value={gastoForm.categoria}
+              onChange={e => setGastoForm(f => ({ ...f, categoria: e.target.value as GastoCategoria }))}
+              className="w-full appearance-none border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#EFA1B5] text-[#222222] bg-white pr-8">
+              {GASTO_CATEGORIAS.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
+            <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+          </div>
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-600 mb-1">Descripción</label>
+          <input type="text" placeholder="Ej: Compra de productos capilares"
+            value={gastoForm.descripcion}
+            onChange={e => setGastoForm(f => ({ ...f, descripcion: e.target.value }))}
+            className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#EFA1B5] text-[#222222]" />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-600 mb-1">Valor (COP)</label>
+          <input type="number" placeholder="0" min="0"
+            value={gastoForm.valor}
+            onChange={e => setGastoForm(f => ({ ...f, valor: e.target.value }))}
+            className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#EFA1B5] text-[#222222]" />
+        </div>
+      </div>
+      <Modal.Footer>
+        <div className="flex gap-3 justify-end">
+          <button onClick={() => setShowGastoModal(false)}
+            className="px-4 py-2.5 text-sm text-gray-600 bg-gray-100 rounded-xl hover:bg-gray-200 transition-colors">
+            Cancelar
+          </button>
+          <button onClick={saveGasto} disabled={savingGasto}
+            className="px-4 py-2.5 text-sm text-white bg-[#8B1E3F] rounded-xl hover:bg-[#5C0F28] transition-colors disabled:opacity-60 font-semibold">
+            {savingGasto ? 'Guardando...' : 'Guardar Gasto'}
+          </button>
+        </div>
+      </Modal.Footer>
+    </Modal>
 
     </>
   )
