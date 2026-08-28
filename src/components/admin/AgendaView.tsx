@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { useEffect, useState, useCallback, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
@@ -8,7 +8,7 @@ import { SERVICIOS_DATA } from '@/lib/services-data'
 import {
   Plus, X, Clock, ChevronLeft, ChevronRight,
   MessageCircle, Phone, Mail, Check, AlertCircle,
-  Search, Loader2, CheckCircle, PlusCircle, Scissors,
+  Search, Loader2, CheckCircle, PlusCircle, Scissors, Edit,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import {
@@ -173,6 +173,30 @@ function DetailPanel({ cita, onClose, onCompletar, onCancelar, onEliminar }: {
   onEliminar: (id: string) => void
 }) {
   const st = STATUS_CONFIG[cita.estado] ?? STATUS_CONFIG.pendiente
+  const supabase = createClient()
+  const [editandoServicio, setEditandoServicio] = useState(false)
+  const [servicioSearch, setServicioSearch] = useState('')
+  const [serviciosList, setServiciosList] = useState<Servicio[]>([])
+  const [savingServicio, setSavingServicio] = useState(false)
+
+  async function cargarServicios() {
+    if (serviciosList.length > 0) return
+    const { data } = await supabase.from('servicios').select('id,nombre,duracion_minutos,precio').eq('activo', true).order('nombre')
+    if (data) setServiciosList(data as Servicio[])
+  }
+
+  async function guardarServicio(servicioId: string, servicioNombre: string) {
+    setSavingServicio(true)
+    const { error } = await supabase.from('citas').update({ servicio_id: servicioId }).eq('id', cita.id)
+    if (error) {
+      toast.error('Error al actualizar servicio')
+    } else {
+      toast.success(`Servicio cambiado a: ${servicioNombre}`)
+      setEditandoServicio(false)
+      setServicioSearch('')
+    }
+    setSavingServicio(false)
+  }
 
   return (
     <div className="w-full sm:w-72 bg-white sm:border-l sm:border-gray-100 flex flex-col sm:h-full overflow-y-auto shrink-0">
@@ -224,7 +248,56 @@ function DetailPanel({ cita, onClose, onCompletar, onCancelar, onEliminar }: {
 
       {/* Info servicio */}
       <div className="p-4 border-b border-gray-100 space-y-3">
-        <InfoRow icon="✂️" label={cita.servicio?.nombre ?? '—'} />
+        {/* Servicio — con opción de editar */}
+        <div className="flex items-center gap-2">
+          <span className="text-sm">✂️</span>
+          {editandoServicio ? (
+            <div className="flex-1">
+              <div className="relative">
+                <input
+                  type="text"
+                  value={servicioSearch}
+                  onChange={e => setServicioSearch(e.target.value)}
+                  onFocus={cargarServicios}
+                  placeholder="Buscar servicio..."
+                  className="w-full border border-beauty-primary rounded-lg px-2.5 py-1.5 text-xs focus:outline-none"
+                  autoFocus
+                />
+                {servicioSearch && (
+                  <div className="absolute top-full left-0 right-0 bg-white border border-gray-200 rounded-xl shadow-lg z-20 mt-1 max-h-40 overflow-y-auto">
+                    {serviciosList
+                      .filter(s => s.nombre.toLowerCase().includes(servicioSearch.toLowerCase()))
+                      .slice(0, 8)
+                      .map(s => (
+                        <button key={s.id} type="button"
+                          onClick={() => guardarServicio(s.id, s.nombre)}
+                          disabled={savingServicio}
+                          className="w-full text-left px-3 py-2 hover:bg-beauty-bg text-xs border-b border-gray-50 last:border-0 flex justify-between items-center"
+                        >
+                          <span className="font-medium truncate flex-1">{s.nombre}</span>
+                          <span className="text-gray-400 shrink-0 ml-2">{s.duracion_minutos}min</span>
+                        </button>
+                      ))}
+                  </div>
+                )}
+              </div>
+              <button onClick={() => { setEditandoServicio(false); setServicioSearch('') }}
+                className="mt-1 text-[10px] text-gray-400 hover:text-gray-600">
+                Cancelar
+              </button>
+            </div>
+          ) : (
+            <>
+              <span className="text-xs text-gray-600 flex-1">{cita.servicio?.nombre ?? '—'}</span>
+              {(cita.estado === 'confirmada' || cita.estado === 'pendiente') && (
+                <button onClick={() => { setEditandoServicio(true); cargarServicios() }}
+                  className="p-1 hover:bg-gray-100 rounded-lg shrink-0" title="Editar servicio">
+                  <Edit size={13} className="text-gray-400" />
+                </button>
+              )}
+            </>
+          )}
+        </div>
         <InfoRow icon="⏱️" label={`${cita.servicio?.duracion_minutos ?? 0} min`} />
         <InfoRow icon="👩" label={cita.especialista?.nombre ?? '—'} />
         <InfoRow icon="📅" label={formatDate(cita.fecha_inicio)} />
@@ -424,6 +497,8 @@ function NuevaCitaModal({ onClose, onSaved }: { onClose: () => void; onSaved: ()
   const [servicios, setServicios] = useState<Servicio[]>([])
   const [slots, setSlots] = useState<SlotOption[]>([])
   const [clienteSearch, setClienteSearch] = useState('')
+  const [servicioSearch, setServicioSearch] = useState('')
+  const [showServicioDropdown, setShowServicioDropdown] = useState(false)
   const [loading, setLoading] = useState(false)
   const [loadingSlots, setLoadingSlots] = useState(false)
   const [step, setStep] = useState(1)
@@ -547,7 +622,7 @@ function NuevaCitaModal({ onClose, onSaved }: { onClose: () => void; onSaved: ()
 
   return (
     <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg animate-slide-up overflow-hidden">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg animate-slide-up">
         {/* Header */}
         <div className="flex items-center justify-between p-5 border-b border-gray-100">
           <div>
@@ -565,7 +640,7 @@ function NuevaCitaModal({ onClose, onSaved }: { onClose: () => void; onSaved: ()
           <div className={`h-1 flex-1 transition-all ${step >= 2 ? 'bg-beauty-primary' : 'bg-gray-100'}`} />
         </div>
 
-        <div className="p-5 overflow-y-auto max-h-[70vh] space-y-4">
+        <div className="p-5 overflow-y-auto max-h-[70vh] space-y-4" onClick={() => setShowServicioDropdown(false)}>
           {step === 1 && (
             <>
               {/* Cliente */}
@@ -651,22 +726,60 @@ function NuevaCitaModal({ onClose, onSaved }: { onClose: () => void; onSaved: ()
                 )}
               </div>
 
-              {/* Servicio */}
-              <div>
+              {/* Servicio — búsqueda con filtro */}
+              <div onClick={e => e.stopPropagation()}>
                 <label className="block text-xs font-semibold text-gray-600 mb-2">Servicio *</label>
-                <select
-                  value={form.servicio_id}
-                  onChange={e => setForm(f => ({ ...f, servicio_id: e.target.value }))}
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:border-beauty-primary focus:ring-2 focus:ring-beauty-primary/20"
-                >
-                  <option value="">Selecciona un servicio...</option>
-                  {serviciosDisponibles.map(s => (
-                    <option key={s.id} value={s.id}>
-                      {s.nombre} — {s.duracion_minutos} min
-                      {s.precio ? ` · $${Number(s.precio).toLocaleString('es-CO')}` : ''}
-                    </option>
-                  ))}
-                </select>
+                <div className="relative">
+                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                  <input
+                    type="text"
+                    value={servicioSearch}
+                    onChange={e => {
+                      setServicioSearch(e.target.value)
+                      setShowServicioDropdown(true)
+                      if (!e.target.value) setForm(f => ({ ...f, servicio_id: '' }))
+                    }}
+                    onFocus={() => setShowServicioDropdown(true)}
+                    placeholder="Buscar servicio..."
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 pl-8 text-xs focus:outline-none focus:border-beauty-primary focus:ring-2 focus:ring-beauty-primary/20"
+                  />
+                  {/* Servicio seleccionado */}
+                  {form.servicio_id && !showServicioDropdown && (
+                    <div className="mt-1.5 flex items-center gap-2 bg-beauty-primary/10 border border-beauty-primary/30 rounded-xl px-3 py-2">
+                      <Check size={13} className="text-beauty-primary" />
+                      <span className="text-xs text-beauty-primary font-medium flex-1 truncate">{servicioSeleccionado?.nombre}</span>
+                      <button type="button" onClick={() => { setForm(f => ({ ...f, servicio_id: '' })); setServicioSearch('') }}
+                        className="text-beauty-primary/60 hover:text-beauty-primary">
+                        <X size={12} />
+                      </button>
+                    </div>
+                  )}
+                  {/* Dropdown de resultados */}
+                  {showServicioDropdown && (
+                    <div className="absolute top-full left-0 right-0 bg-white border border-gray-200 rounded-xl shadow-lg z-50 mt-1 max-h-48 overflow-y-auto">
+                      {serviciosDisponibles
+                        .filter(s => !servicioSearch || s.nombre.toLowerCase().includes(servicioSearch.toLowerCase()))
+                        .slice(0, 12)
+                        .map(s => (
+                          <button key={s.id} type="button"
+                            onMouseDown={e => e.preventDefault()}
+                            onClick={() => {
+                              setForm(f => ({ ...f, servicio_id: s.id }))
+                              setServicioSearch(s.nombre)
+                              setShowServicioDropdown(false)
+                            }}
+                            className="w-full text-left px-3 py-2.5 hover:bg-beauty-bg text-xs flex justify-between items-center border-b border-gray-50 last:border-0"
+                          >
+                            <span className="font-medium text-gray-700 truncate flex-1">{s.nombre}</span>
+                            <span className="text-gray-400 shrink-0 ml-2">{s.duracion_minutos}min{s.precio ? ` · $${Number(s.precio).toLocaleString('es-CO')}` : ''}</span>
+                          </button>
+                        ))}
+                      {serviciosDisponibles.filter(s => !servicioSearch || s.nombre.toLowerCase().includes(servicioSearch.toLowerCase())).length === 0 && (
+                        <div className="px-3 py-4 text-xs text-gray-400 text-center">Sin resultados</div>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* Especialista */}
@@ -1063,8 +1176,8 @@ export default function AgendaView() {
                 return (
                   <button key={cita.id} onClick={() => setSelectedCita(cita)}
                     className="w-full flex items-stretch hover:bg-gray-50 text-left active:bg-gray-100 transition-colors">
-                    {/* Barra de color especialista */}
-                    <div className={`w-1 shrink-0 rounded-l-sm ${color.bar}`} />
+                    {/* Barra lateral — color del ESTADO de la cita */}
+                    <div className={`w-1 shrink-0 rounded-l-sm ${st.dot}`} />
                     <div className="flex flex-1 items-center gap-3 p-3 min-h-[68px]">
                       {/* Hora */}
                       <div className="bg-beauty-primary/10 rounded-xl px-2.5 py-2 text-center shrink-0 min-w-[52px]">
@@ -1426,3 +1539,4 @@ export default function AgendaView() {
     </div>
   )
 }
+

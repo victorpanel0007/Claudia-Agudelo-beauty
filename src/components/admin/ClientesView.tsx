@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import type { Cliente } from '@/types/database'
-import { Search, User, Phone, Calendar, TrendingUp, Edit, Save, X } from 'lucide-react'
+import { Search, User, Phone, Calendar, TrendingUp, Edit, Save, X, Plus } from 'lucide-react'
 import { formatCurrency, formatDate, getInitials } from '@/lib/utils'
 import { Modal } from '@/components/ui/Modal'
 import toast from 'react-hot-toast'
@@ -24,6 +24,11 @@ export default function ClientesView() {
   const [editNombre, setEditNombre]   = useState('')
   const [editTelefono, setEditTelefono] = useState('')
   const [saving, setSaving]           = useState(false)
+  // Nuevo cliente
+  const [showNuevo, setShowNuevo]     = useState(false)
+  const [nuevoNombre, setNuevoNombre] = useState('')
+  const [nuevoTelefono, setNuevoTelefono] = useState('')
+  const [savingNuevo, setSavingNuevo] = useState(false)
   const supabase = createClient()
 
   const loadClientes = useCallback(async () => {
@@ -86,6 +91,26 @@ export default function ClientesView() {
     setEditando(false)
     setEditNombre('')
     setEditTelefono('')
+  }
+
+  async function crearCliente() {
+    if (!nuevoNombre.trim()) { toast.error('El nombre es requerido'); return }
+    setSavingNuevo(true)
+    try {
+      const res = await fetch('/api/clientes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nombre: nuevoNombre.trim(), telefono: nuevoTelefono.trim() }),
+      })
+      if (!res.ok) { const e = await res.json(); throw new Error(e.error) }
+      toast.success('✅ Cliente creado')
+      setShowNuevo(false); setNuevoNombre(''); setNuevoTelefono('')
+      await loadClientes()
+    } catch (e) {
+      toast.error((e as Error).message)
+    } finally {
+      setSavingNuevo(false)
+    }
   }
 
   async function guardarEdicion() {
