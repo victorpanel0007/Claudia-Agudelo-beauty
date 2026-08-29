@@ -61,7 +61,7 @@ export default function EspecialistaPanel({
   const [refreshing, setRefreshing] = useState(false)
 
   // ── Tabs ────────────────────────────────────────────────────────────────
-  type Tab = 'hoy' | 'proximas' | 'anteriores' | 'contabilidad' | 'extras'
+  type Tab = 'hoy' | 'proximas' | 'anteriores' | 'contabilidad'
   const [tab, setTab] = useState<Tab>('hoy')
 
   // ── Completar cita ──────────────────────────────────────────────────────
@@ -284,7 +284,7 @@ export default function EspecialistaPanel({
         fecha_inicio:    slotInicio,
         fecha_fin:       slotFin,
         estado:          'confirmada',
-        canal:           'especialista',
+        canal:           'admin',
       }),
     })
     if (res.ok) {
@@ -373,10 +373,6 @@ export default function EspecialistaPanel({
               className="p-2 rounded-xl hover:bg-beauty-bg transition-colors text-beauty-text-muted">
               <RefreshCw size={15} className={refreshing ? 'animate-spin' : ''} />
             </button>
-            <button onClick={() => setShowNuevaCita(true)}
-              className="flex items-center gap-1 text-xs font-semibold bg-beauty-primary text-white px-3 py-2 rounded-xl hover:bg-beauty-primary-dark transition-colors">
-              <Plus size={14} /> Nueva cita
-            </button>
             <button onClick={handleLogout}
               className="p-2 rounded-xl hover:bg-red-50 text-red-400 transition-colors">
               <LogOut size={15} />
@@ -414,7 +410,6 @@ export default function EspecialistaPanel({
             { key: 'proximas',    label: '🕐 Próximas',     icon: null },
             { key: 'anteriores',  label: '📋 Anteriores',   icon: null },
             { key: 'contabilidad',label: '💰 Contabilidad', icon: null },
-            { key: 'extras',      label: '✂️ Extras',       icon: null },
           ] as { key: Tab; label: string; icon: null }[]).map(t => (
             <button key={t.key} onClick={() => setTab(t.key)}
               className={`flex-1 whitespace-nowrap text-[11px] font-semibold py-1.5 px-2 rounded-lg transition-all ${
@@ -435,11 +430,7 @@ export default function EspecialistaPanel({
             <div className="bg-white rounded-2xl border border-beauty-primary/20 p-10 text-center shadow-sm">
               <p className="text-4xl mb-3">🌸</p>
               <p className="font-semibold text-beauty-text-dark">No hay citas {tab === 'hoy' ? 'hoy' : 'próximas'}</p>
-              <p className="text-beauty-text-muted text-sm mt-1">¿Quieres crear una nueva?</p>
-              <button onClick={() => setShowNuevaCita(true)}
-                className="mt-3 flex items-center gap-1.5 mx-auto text-xs font-semibold bg-beauty-primary text-white px-4 py-2 rounded-xl">
-                <Plus size={13} /> Nueva cita
-              </button>
+              <p className="text-beauty-text-muted text-sm mt-1">Cuando lleguen nuevas citas aparecerán aquí</p>
             </div>
           ) : (
             <div className="space-y-5">
