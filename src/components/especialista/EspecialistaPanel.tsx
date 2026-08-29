@@ -603,20 +603,6 @@ export default function EspecialistaPanel({
           </div>
         )}
 
-        {/* ── TAB: SERVICIOS EXTRA ─────────────────────────────────────────── */}
-        {tab === 'extras' && (
-          <div>
-            <button onClick={() => setShowExtra(true)}
-              className="w-full flex items-center justify-center gap-2 bg-amber-500 text-white py-3 rounded-2xl text-sm font-semibold hover:bg-amber-600 transition-colors shadow-sm mb-4">
-              <Plus size={16} /> Registrar Servicio Extra
-            </button>
-            <div className="bg-white rounded-2xl border border-beauty-primary/20 p-8 text-center shadow-sm">
-              <Scissors size={28} className="mx-auto text-gray-300 mb-2" />
-              <p className="text-gray-400 text-sm">Registra servicios adicionales realizados fuera de la agenda normal</p>
-            </div>
-          </div>
-        )}
-
       </div>
 
       {/* ── MODAL: COMPLETAR CITA ──────────────────────────────────────────── */}
