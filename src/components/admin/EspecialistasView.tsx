@@ -198,6 +198,15 @@ export default function EspecialistasView() {
     if (!form.nombre.trim()) { toast.error('El nombre es requerido'); return }
     if (diasSelected.length === 0) { toast.error('Selecciona al menos un día'); return }
 
+    // Validar credenciales si se están creando (no editando)
+    if (!editingId) {
+      if (!form.email.trim()) { toast.error('El correo es requerido para crear una especialista'); return }
+      if (!form.password.trim()) { toast.error('La contraseña es requerida para crear una especialista'); return }
+      if (form.password.trim().length < 6) { toast.error('La contraseña debe tener al menos 6 caracteres'); return }
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+      if (!emailRegex.test(form.email.trim())) { toast.error('El correo no tiene un formato válido'); return }
+    }
+
     setSaving(true)
     const payload = {
       nombre:          form.nombre.trim(),
@@ -210,6 +219,7 @@ export default function EspecialistasView() {
     }
 
     if (editingId) {
+      // ── EDITAR especialista existente ───────────────────────────────────
       const { error, data } = await supabase
         .from('especialistas')
         .update(payload)
@@ -226,45 +236,70 @@ export default function EspecialistasView() {
         loadData()
       }
     } else {
-      const { error, data: newEsp } = await supabase
+      // ── CREAR nueva especialista ────────────────────────────────────────
+      // PASO 1: Crear usuario en Supabase Auth PRIMERO (operación reversible)
+      let authUserId: string | null = null
+      try {
+        const authRes = await fetch('/api/especialistas/crear-usuario-temp', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email:    form.email.trim().toLowerCase(),
+            password: form.password.trim(),
+            nombre:   form.nombre.trim(),
+          }),
+        })
+        const authResult = await authRes.json()
+        if (!authRes.ok) {
+          toast.error(`Error al crear acceso: ${authResult.error}`)
+          setSaving(false)
+          return
+        }
+        authUserId = authResult.userId
+      } catch {
+        toast.error('Error de conexión al crear el acceso de la especialista')
+        setSaving(false)
+        return
+      }
+
+      // PASO 2: Crear registro en tabla especialistas con el ID del usuario Auth
+      const { error: espError, data: newEsp } = await supabase
         .from('especialistas')
-        .insert(payload)
+        .insert({ ...payload, id: authUserId ?? undefined })
         .select('id')
         .single()
-      if (error) {
-        toast.error('Error al crear: ' + error.message)
-      } else {
-        if (newEsp?.id) {
-          await saveDescansos(newEsp.id)
-          // Crear usuario en Supabase Auth si se proporcionaron credenciales
-          if (form.email.trim() && form.password.trim()) {
-            try {
-              const res = await fetch('/api/especialistas/crear-usuario', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  email:           form.email.trim().toLowerCase(),
-                  password:        form.password.trim(),
-                  nombre:          form.nombre.trim(),
-                  especialista_id: newEsp.id,
-                }),
-              })
-              const result = await res.json()
-              if (!res.ok) {
-                toast.error(`Especialista creada pero error al crear usuario: ${result.error}`)
-              } else {
-                toast.success(`✅ ${form.nombre} creada con acceso al panel`)
-              }
-            } catch {
-              toast.error('Especialista creada pero no se pudo crear el usuario de acceso')
-            }
-          } else {
-            toast.success(`✅ ${form.nombre} creada correctamente`)
-          }
-        }
-        closeForm()
-        loadData()
+
+      if (espError || !newEsp?.id) {
+        // Si falla, eliminar el usuario Auth para no dejar cuentas huérfanas
+        await fetch('/api/especialistas/eliminar-usuario', {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: authUserId }),
+        }).catch(() => {})
+        toast.error('Error al crear la especialista en la base de datos. El acceso fue revertido.')
+        setSaving(false)
+        return
       }
+
+      // PASO 3: Actualizar el especialista_id en los metadatos del usuario Auth
+      await fetch('/api/especialistas/crear-usuario', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email:           form.email.trim().toLowerCase(),
+          password:        form.password.trim(),
+          nombre:          form.nombre.trim(),
+          especialista_id: newEsp.id,
+          existing_user_id: authUserId,
+        }),
+      }).catch(() => {})
+
+      // PASO 4: Guardar descansos
+      await saveDescansos(newEsp.id)
+
+      toast.success(`✅ ${form.nombre} creada con acceso al Panel de Especialista`)
+      closeForm()
+      loadData()
     }
     setSaving(false)
   }

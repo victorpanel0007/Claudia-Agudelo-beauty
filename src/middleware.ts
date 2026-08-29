@@ -1,38 +1,84 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { createServerClient } from '@supabase/ssr'
 
+/**
+ * Middleware de protección de rutas.
+ *
+ * /admin/* → requiere sesión + rol = 'admin'
+ *            - Sin sesión → redirige a /login
+ *            - Con sesión pero rol ≠ 'admin' → redirige a /especialista
+ *
+ * /especialista/* → requiere sesión + rol = 'especialista'
+ *            - Sin sesión → redirige a /especialista/login
+ *            - Con sesión pero rol = 'admin' → redirige a /admin
+ *
+ * Usa getSession() (lectura local del JWT, sin llamada de red)
+ * para evitar el timeout de Vercel Edge Runtime.
+ */
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
-  // Solo corre en rutas /admin
-  if (!pathname.startsWith('/admin')) {
+  const isAdminRoute      = pathname.startsWith('/admin')
+  const isEspecialistaRoute = pathname.startsWith('/especialista') &&
+                               !pathname.startsWith('/especialista/login')
+
+  if (!isAdminRoute && !isEspecialistaRoute) {
     return NextResponse.next()
   }
 
-  // Leer el token de sesión directamente desde las cookies del request.
-  // Esto NO hace ninguna llamada de red — lee solo el JWT local.
-  // Evita el timeout de Edge Runtime que causaba el 504.
-  const cookieNames = [
-    'sb-access-token',
-    'supabase-auth-token',
-  ]
+  let response = NextResponse.next({ request })
 
-  // Supabase SSR guarda la sesión en cookies con el patrón sb-<project-ref>-auth-token
-  const allCookies = request.cookies.getAll()
-  const hasSession = allCookies.some(c =>
-    cookieNames.some(n => c.name.includes(n)) ||
-    (c.name.startsWith('sb-') && c.name.endsWith('-auth-token'))
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll: () => request.cookies.getAll(),
+        setAll: (cookiesToSet) => {
+          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
+          response = NextResponse.next({ request })
+          cookiesToSet.forEach(({ name, value, options }) =>
+            response.cookies.set(name, value, options)
+          )
+        },
+      },
+    }
   )
 
-  if (!hasSession) {
-    const loginUrl = new URL('/login', request.url)
-    loginUrl.searchParams.set('redirect', pathname)
-    return NextResponse.redirect(loginUrl)
+  // getSession: lectura local del JWT, sin red → no genera timeout en Edge
+  const { data: { session } } = await supabase.auth.getSession()
+  const rol = session?.user?.user_metadata?.rol ?? null
+
+  // ── Proteger /admin ──────────────────────────────────────────────────────
+  if (isAdminRoute) {
+    if (!session) {
+      const url = new URL('/login', request.url)
+      url.searchParams.set('redirect', pathname)
+      return NextResponse.redirect(url)
+    }
+    if (rol !== 'admin') {
+      // Especialista intentando entrar al panel admin → su panel
+      return NextResponse.redirect(new URL('/especialista', request.url))
+    }
   }
 
-  // Si hay sesión, dejar pasar — la verificación de rol se hace en los layouts/pages
-  return NextResponse.next()
+  // ── Proteger /especialista (rutas autenticadas, no login) ────────────────
+  if (isEspecialistaRoute) {
+    if (!session) {
+      return NextResponse.redirect(new URL('/especialista/login', request.url))
+    }
+    if (rol === 'admin') {
+      // Admin intentando entrar al panel de especialista → panel admin
+      return NextResponse.redirect(new URL('/admin', request.url))
+    }
+    if (rol !== 'especialista') {
+      return NextResponse.redirect(new URL('/especialista/login', request.url))
+    }
+  }
+
+  return response
 }
 
 export const config = {
-  matcher: ['/admin/:path*'],
+  matcher: ['/admin/:path*', '/especialista/:path*'],
 }

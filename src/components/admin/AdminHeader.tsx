@@ -7,7 +7,7 @@ export default function AdminHeader({ userEmail }: { userEmail: string }) {
   })
 
   return (
-    <header className="bg-white border-b border-beauty-primary/20 px-4 sm:px-6 py-3 flex items-center justify-between gap-3 sticky top-0 z-30">
+    <header className="bg-white border-b border-beauty-primary/20 px-4 sm:px-6 py-3 flex items-center justify-between gap-3 sticky top-0 z-20">
       {/* Left: title — on mobile leave room for the hamburger button (ml-14) */}
       <div className="ml-14 lg:ml-0 min-w-0">
         <p className="text-[11px] text-beauty-text-muted capitalize truncate hidden sm:block">{today}</p>

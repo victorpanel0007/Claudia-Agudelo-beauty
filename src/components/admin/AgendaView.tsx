@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback, useMemo } from 'react'
+import { createPortal } from 'react-dom'
 import { createClient } from '@/lib/supabase/client'
 import type { Cita, Cliente, Especialista, Servicio } from '@/types/database'
 import { formatCurrency, formatTime, formatDate } from '@/lib/utils'
@@ -915,52 +916,84 @@ export default function AgendaView() {
   const [currentDate, setCurrentDate] = useState(new Date())
   const [showNuevaCita, setShowNuevaCita] = useState(false)
   const [mobileListMode, setMobileListMode] = useState(true)
+  // ── Filtro por especialista ──────────────────────────────────────────────
+  const [filtroEspId, setFiltroEspId] = useState<string | null>(null) // null = Todas
+  const [especialistasFiltro, setEspecialistasFiltro] = useState<Especialista[]>([])
   // ── Servicio extra ───────────────────────────────────────────────────────
   const [showServicioExtra, setShowServicioExtra] = useState(false)
   const [serviciosLista, setServiciosLista]       = useState<Servicio[]>([])
   const [extraServicioId, setExtraServicioId]     = useState('')
+  const [extraServicioSearch, setExtraServicioSearch] = useState('')
+  const [extraServicioDropdown, setExtraServicioDropdown] = useState(false)
   const [extraValor, setExtraValor]               = useState('')
+  const [extraMetodoPago, setExtraMetodoPago]     = useState('efectivo')
+  const [extraFecha, setExtraFecha]               = useState('')
+  // Cliente extra: buscar existente o crear nuevo
   const [extraClienteNombre, setExtraClienteNombre] = useState('')
+  const [extraClienteId, setExtraClienteId]       = useState('')
+  const [extraClienteSearch, setExtraClienteSearch] = useState('')
+  const [extraClienteDropdown, setExtraClienteDropdown] = useState(false)
+  const [extraClientesLista, setExtraClientesLista] = useState<Cliente[]>([])
+  const [extraEsNuevoCliente, setExtraEsNuevoCliente] = useState(false)
+  const [extraClienteTelefono, setExtraClienteTelefono] = useState('')
   const [extraEspecialistaId, setExtraEspecialistaId] = useState('')
   const [especialistasLista, setEspecialistasLista]   = useState<Especialista[]>([])
   const [savingExtra, setSavingExtra]             = useState(false)
 
   useEffect(() => {
     if (!showServicioExtra) return
+    const hoy = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Bogota' })
+    if (!extraFecha) setExtraFecha(hoy)
     Promise.all([
       supabase.from('servicios').select('id,nombre,precio,precio_desde,tipo_precio,duracion_minutos').eq('activo', true).order('nombre'),
       supabase.from('especialistas').select('id,nombre').eq('activo', true).order('nombre'),
-    ]).then(([s, e]) => {
+      supabase.from('clientes').select('id,nombre,telefono').order('nombre').limit(200),
+    ]).then(([s, e, c]) => {
       if (s.data) setServiciosLista(s.data as Servicio[])
       if (e.data) setEspecialistasLista(e.data as Especialista[])
+      if (c.data) setExtraClientesLista(c.data as Cliente[])
     })
   }, [showServicioExtra, supabase])
 
   async function guardarServicioExtra() {
     if (!extraServicioId)         { toast.error('Selecciona un servicio'); return }
-    if (!extraClienteNombre.trim()) { toast.error('Ingresa el nombre del cliente'); return }
+    if (!extraEsNuevoCliente && !extraClienteId) { toast.error('Selecciona un cliente'); return }
+    if (extraEsNuevoCliente && !extraClienteNombre.trim()) { toast.error('Ingresa el nombre del cliente'); return }
     if (!extraEspecialistaId)     { toast.error('Selecciona una especialista'); return }
     const valor = Number(extraValor)
     if (!valor || valor <= 0)     { toast.error('Ingresa un valor válido'); return }
+    const fecha = extraFecha || new Date().toLocaleDateString('en-CA', { timeZone: 'America/Bogota' })
     setSavingExtra(true)
     try {
-      const fecha = currentDate.toLocaleDateString('en-CA', { timeZone: 'America/Bogota' })
+      const body: Record<string, unknown> = {
+        fecha,
+        servicio_id:      extraServicioId,
+        especialista_id:  extraEspecialistaId,
+        valor_final:      valor,
+        metodo_pago:      extraMetodoPago,
+        es_nuevo_cliente: extraEsNuevoCliente,
+      }
+      if (extraEsNuevoCliente) {
+        body.cliente_nombre    = extraClienteNombre.trim()
+        body.cliente_telefono  = extraClienteTelefono.trim()
+      } else {
+        body.cliente_id    = extraClienteId
+        body.cliente_nombre = extraClientesLista.find(c => c.id === extraClienteId)?.nombre ?? ''
+      }
       const res = await fetch('/api/servicios-extras', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          fecha,
-          servicio_id:      extraServicioId,
-          especialista_id:  extraEspecialistaId,
-          cliente_nombre:   extraClienteNombre.trim(),
-          valor_final:      valor,
-          es_nuevo_cliente: true,
-        }),
+        body: JSON.stringify(body),
       })
       if (!res.ok) { const e = await res.json(); throw new Error(e.error) }
       toast.success('✅ Servicio extra registrado')
       setShowServicioExtra(false)
-      setExtraServicioId(''); setExtraValor(''); setExtraClienteNombre(''); setExtraEspecialistaId('')
+      // Reset
+      setExtraServicioId(''); setExtraServicioSearch(''); setExtraValor('')
+      setExtraMetodoPago('efectivo'); setExtraFecha('')
+      setExtraClienteNombre(''); setExtraClienteId(''); setExtraClienteSearch('')
+      setExtraClienteTelefono(''); setExtraEsNuevoCliente(false)
+      setExtraEspecialistaId('')
       loadCitas()
     } catch (e) {
       toast.error('Error: ' + (e as Error).message)
@@ -986,6 +1019,9 @@ export default function AgendaView() {
 
   useEffect(() => {
     loadCitas()
+    // Cargar especialistas activas para el filtro
+    supabase.from('especialistas').select('id,nombre').eq('activo', true).order('nombre')
+      .then(({ data }) => setEspecialistasFiltro((data as Especialista[]) || []))
     const ch = supabase
       .channel('agenda-rt-' + Date.now())
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'citas' }, () => loadCitas())
@@ -1069,8 +1105,10 @@ export default function AgendaView() {
   // ── Stats ───────────────────────────────────────────────────────────────
   const today = new Date()
   const citasHoy = citas.filter(c => isSameDayColombia(c.fecha_inicio, today))
-  // Citas del día seleccionado (usado en la vista móvil)
-  const citasDiaActual = citas.filter(c => isSameDayColombia(c.fecha_inicio, currentDate))
+  // Citas del día seleccionado — con filtro de especialista
+  const citasDiaActual = citas
+    .filter(c => isSameDayColombia(c.fecha_inicio, currentDate))
+    .filter(c => !filtroEspId || c.especialista_id === filtroEspId)
 
   // Mapa de colores por especialista_id (asignado por orden de aparición)
   const espColorMap = useMemo(() => {
@@ -1128,6 +1166,39 @@ export default function AgendaView() {
         <StatCard icon={<span className="text-lg">💵</span>} label="Ingresos" value={formatCurrency(ingresosDia)} sub="del día" iconBg="bg-blue-50" />
         <StatCard icon={<span className="text-lg">👩</span>} label="Profesionales" value="2/2" sub="disponibles" iconBg="bg-purple-50" />
       </div>
+
+      {/* ── FILTRO ESPECIALISTAS (móvil + desktop) ─────────────────── */}
+      {especialistasFiltro.length > 1 && (
+        <div className="flex gap-2 flex-wrap">
+          <button
+            onClick={() => setFiltroEspId(null)}
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition-all ${
+              !filtroEspId
+                ? 'bg-gray-800 text-white shadow-sm'
+                : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
+            }`}
+          >
+            👥 Todas
+          </button>
+          {especialistasFiltro.map((esp, i) => {
+            const color = ESPECIALISTA_COLORS[i % ESPECIALISTA_COLORS.length]
+            const isActive = filtroEspId === esp.id
+            return (
+              <button
+                key={esp.id}
+                onClick={() => setFiltroEspId(isActive ? null : esp.id)}
+                className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition-all ${
+                  isActive
+                    ? `${color.chip} border border-current shadow-sm`
+                    : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
+                }`}
+              >
+                <span>{color.dot}</span> {esp.nombre}
+              </button>
+            )
+          })}
+        </div>
+      )}
 
       {/* ── MOBILE LIST VIEW ───────────────────────────────────────── */}
       <div className="sm:hidden flex flex-col flex-1 bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden min-h-0">
@@ -1276,7 +1347,7 @@ export default function AgendaView() {
                   <div key={`empty-${i}`} className="h-20 rounded-xl bg-gray-50/50" />
                 ))}
                 {monthDays.map(day => {
-                  const citasDia = citas.filter(c => isSameDayColombia(c.fecha_inicio, day))
+                  const citasDia = citas.filter(c => isSameDayColombia(c.fecha_inicio, day) && (!filtroEspId || c.especialista_id === filtroEspId))
                   const isHoy = isToday(day)
                   return (
                     <div
@@ -1330,7 +1401,7 @@ export default function AgendaView() {
 
               {/* Day columns */}
               {visibleDays.map(day => {
-                const citasDia = citas.filter(c => isSameDayColombia(c.fecha_inicio, day))
+                const citasDia = citas.filter(c => isSameDayColombia(c.fecha_inicio, day) && (!filtroEspId || c.especialista_id === filtroEspId))
                 const dayIsToday = isToday(day)
                 return (
                   <div
@@ -1438,103 +1509,191 @@ export default function AgendaView() {
         />
       )}
 
-      {/* Modal Servicio Extra */}
-      {showServicioExtra && (
-        <div className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center bg-black/50 p-0 sm:p-4"
+      {/* Modal Servicio Extra — createPortal para cubrir header y sidebar */}
+      {showServicioExtra && typeof document !== 'undefined' && createPortal(
+        <div className="fixed inset-0 z-[99999] flex items-end justify-center bg-black/60"
           onClick={e => { if (e.target === e.currentTarget) setShowServicioExtra(false) }}
         >
-          <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl w-full sm:max-w-md max-h-[90vh] overflow-y-auto animate-slide-up">
-            <div className="p-5 border-b border-gray-100 flex items-center justify-between">
+          <div className="bg-white rounded-t-2xl w-full max-w-lg overflow-y-auto shadow-2xl animate-slide-up"
+            style={{ maxHeight: 'calc(100dvh - 56px)' }}>
+            {/* Handle bar */}
+            <div className="flex justify-center pt-2.5 pb-1">
+              <div className="w-8 h-1 rounded-full bg-gray-200" />
+            </div>
+            {/* Header */}
+            <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
               <div>
-                <h3 className="font-bold text-gray-800 flex items-center gap-2">
-                  <Scissors size={16} className="text-amber-500" />
+                <h3 className="font-bold text-gray-800 text-base flex items-center gap-2">
+                  <Scissors size={15} className="text-amber-500" />
                   Servicio Extra
                 </h3>
-                <p className="text-xs text-gray-400 mt-0.5">Registra un servicio adicional fuera de la agenda</p>
+                <p className="text-xs text-gray-400">Registra un servicio adicional fuera de la agenda</p>
               </div>
               <button onClick={() => setShowServicioExtra(false)} className="p-1.5 hover:bg-gray-100 rounded-lg">
-                <X size={18} />
+                <X size={16} />
               </button>
             </div>
-            <div className="p-5 space-y-4">
+
+            <div className="px-4 py-3 space-y-3">
+
+              {/* Fecha */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">📅 Fecha del servicio</label>
+                <input type="date" value={extraFecha}
+                  max={new Date().toLocaleDateString('en-CA', { timeZone: 'America/Bogota' })}
+                  onChange={e => setExtraFecha(e.target.value)}
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-beauty-primary" />
+                <p className="text-[10px] text-gray-400 mt-0.5">Puedes seleccionar una fecha anterior si olvidaste registrarlo</p>
+              </div>
+
               {/* Cliente */}
               <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1">Cliente *</label>
-                <input
-                  type="text"
-                  value={extraClienteNombre}
-                  onChange={e => setExtraClienteNombre(e.target.value)}
-                  placeholder="Nombre del cliente"
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-beauty-primary"
-                />
+                <label className="block text-xs font-semibold text-gray-600 mb-1">👤 Cliente *</label>
+                <div className="flex gap-1.5 mb-2">
+                  <button type="button"
+                    onClick={() => { setExtraEsNuevoCliente(false); setExtraClienteNombre(''); setExtraClienteId('') }}
+                    className={`flex-1 text-xs py-1.5 rounded-lg border font-medium transition-colors ${!extraEsNuevoCliente ? 'border-beauty-primary bg-beauty-primary/10 text-beauty-primary' : 'border-gray-200 text-gray-500'}`}>
+                    Existente
+                  </button>
+                  <button type="button"
+                    onClick={() => { setExtraEsNuevoCliente(true); setExtraClienteId(''); setExtraClienteSearch('') }}
+                    className={`flex-1 text-xs py-1.5 rounded-lg border font-medium transition-colors ${extraEsNuevoCliente ? 'border-beauty-primary bg-beauty-primary/10 text-beauty-primary' : 'border-gray-200 text-gray-500'}`}>
+                    Nuevo
+                  </button>
+                </div>
+                {!extraEsNuevoCliente ? (
+                  <div className="relative">
+                    <Search size={13} className="absolute left-3 top-2.5 text-gray-400" />
+                    <input type="text" value={extraClienteSearch}
+                      onChange={e => { setExtraClienteSearch(e.target.value); setExtraClienteDropdown(true) }}
+                      onFocus={() => setExtraClienteDropdown(true)}
+                      placeholder="Buscar cliente..."
+                      className="w-full border border-gray-200 rounded-xl px-3 py-2 pl-8 text-sm focus:outline-none focus:border-beauty-primary" />
+                    {extraClienteId && !extraClienteDropdown && (
+                      <div className="mt-1 flex items-center gap-2 bg-beauty-primary/10 border border-beauty-primary/30 rounded-xl px-3 py-1.5">
+                        <Check size={12} className="text-beauty-primary" />
+                        <span className="text-xs text-beauty-primary font-medium flex-1 truncate">
+                          {extraClientesLista.find(c => c.id === extraClienteId)?.nombre}
+                        </span>
+                        <button type="button" onClick={() => { setExtraClienteId(''); setExtraClienteSearch('') }}
+                          className="text-beauty-primary/60"><X size={11} /></button>
+                      </div>
+                    )}
+                    {extraClienteDropdown && extraClienteSearch && (
+                      <div className="absolute top-full left-0 right-0 bg-white border border-gray-200 rounded-xl shadow-lg z-20 mt-0.5 max-h-36 overflow-y-auto">
+                        {extraClientesLista
+                          .filter(c => c.nombre.toLowerCase().includes(extraClienteSearch.toLowerCase()) || c.telefono?.includes(extraClienteSearch))
+                          .slice(0, 6)
+                          .map(c => (
+                            <button key={c.id} type="button"
+                              onMouseDown={e => e.preventDefault()}
+                              onClick={() => { setExtraClienteId(c.id); setExtraClienteSearch(c.nombre); setExtraClienteDropdown(false) }}
+                              className="w-full text-left px-3 py-2 hover:bg-beauty-bg text-sm flex justify-between border-b border-gray-50 last:border-0">
+                              <span className="font-medium text-gray-700">{c.nombre}</span>
+                              <span className="text-gray-400 text-xs">{c.telefono}</span>
+                            </button>
+                          ))}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="space-y-1.5">
+                    <input type="text" value={extraClienteNombre} onChange={e => setExtraClienteNombre(e.target.value)}
+                      placeholder="Nombre completo *"
+                      className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-beauty-primary" />
+                    <input type="tel" value={extraClienteTelefono} onChange={e => setExtraClienteTelefono(e.target.value)}
+                      placeholder="Teléfono"
+                      className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-beauty-primary" />
+                  </div>
+                )}
               </div>
+
               {/* Especialista */}
               <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1">Especialista *</label>
-                <select
-                  value={extraEspecialistaId}
-                  onChange={e => setExtraEspecialistaId(e.target.value)}
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-beauty-primary"
-                >
-                  <option value="">Selecciona una especialista...</option>
-                  {especialistasLista.map(e => (
-                    <option key={e.id} value={e.id}>{e.nombre}</option>
-                  ))}
+                <label className="block text-xs font-semibold text-gray-600 mb-1">👩 Especialista *</label>
+                <select value={extraEspecialistaId} onChange={e => setExtraEspecialistaId(e.target.value)}
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-beauty-primary">
+                  <option value="">Selecciona...</option>
+                  {especialistasLista.map(e => <option key={e.id} value={e.id}>{e.nombre}</option>)}
                 </select>
               </div>
-              {/* Servicio */}
+
+              {/* Servicio buscador */}
               <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1">Servicio *</label>
-                <select
-                  value={extraServicioId}
-                  onChange={e => {
-                    setExtraServicioId(e.target.value)
-                    const svc = serviciosLista.find(s => s.id === e.target.value)
-                    if (svc?.precio) setExtraValor(String(svc.precio))
-                  }}
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-beauty-primary"
-                >
-                  <option value="">Selecciona un servicio...</option>
-                  {serviciosLista.map(s => (
-                    <option key={s.id} value={s.id}>
-                      {s.nombre}{s.precio ? ` · $${Number(s.precio).toLocaleString('es-CO')}` : ''}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              {/* Valor */}
-              <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1">Valor cobrado *</label>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">✂️ Servicio *</label>
                 <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
-                  <input
-                    type="number"
-                    value={extraValor}
-                    onChange={e => setExtraValor(e.target.value)}
-                    placeholder="0"
-                    className="w-full border border-gray-200 rounded-xl pl-7 pr-3 py-2.5 text-sm focus:outline-none focus:border-beauty-primary"
-                  />
+                  <Search size={13} className="absolute left-3 top-2.5 text-gray-400" />
+                  <input type="text" value={extraServicioSearch}
+                    onChange={e => { setExtraServicioSearch(e.target.value); setExtraServicioDropdown(true); if (!e.target.value) setExtraServicioId('') }}
+                    onFocus={() => setExtraServicioDropdown(true)}
+                    placeholder="Buscar servicio..."
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2 pl-8 text-sm focus:outline-none focus:border-beauty-primary" />
+                  {extraServicioId && !extraServicioDropdown && (
+                    <div className="mt-1 flex items-center gap-2 bg-beauty-primary/10 border border-beauty-primary/30 rounded-xl px-3 py-1.5">
+                      <Check size={12} className="text-beauty-primary" />
+                      <span className="text-xs text-beauty-primary font-medium flex-1 truncate">{extraServicioSearch}</span>
+                      <button type="button" onClick={() => { setExtraServicioId(''); setExtraServicioSearch('') }}
+                        className="text-beauty-primary/60"><X size={11} /></button>
+                    </div>
+                  )}
+                  {extraServicioDropdown && (
+                    <div className="absolute top-full left-0 right-0 bg-white border border-gray-200 rounded-xl shadow-lg z-20 mt-0.5 max-h-44 overflow-y-auto">
+                      {serviciosLista
+                        .filter(s => !extraServicioSearch || s.nombre.toLowerCase().includes(extraServicioSearch.toLowerCase()))
+                        .slice(0, 10)
+                        .map(s => (
+                          <button key={s.id} type="button"
+                            onMouseDown={e => e.preventDefault()}
+                            onClick={() => { setExtraServicioId(s.id); setExtraServicioSearch(s.nombre); setExtraServicioDropdown(false); if (s.precio) setExtraValor(String(s.precio)) }}
+                            className="w-full text-left px-3 py-2 hover:bg-beauty-bg text-xs flex justify-between border-b border-gray-50 last:border-0">
+                            <span className="font-medium text-gray-700 truncate flex-1">{s.nombre}</span>
+                            <span className="text-gray-400 shrink-0 ml-2">{s.precio ? `$${Number(s.precio).toLocaleString('es-CO')}` : ''}</span>
+                          </button>
+                        ))}
+                    </div>
+                  )}
                 </div>
               </div>
-              <div className="flex gap-3 pt-1">
+
+              {/* Valor */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">💵 Valor cobrado *</label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
+                  <input type="number" value={extraValor} onChange={e => setExtraValor(e.target.value)}
+                    placeholder="0" className="w-full border border-gray-200 rounded-xl pl-7 pr-3 py-2 text-sm focus:outline-none focus:border-beauty-primary" />
+                </div>
+              </div>
+
+              {/* Método de pago */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">💳 Método de pago</label>
+                <select value={extraMetodoPago} onChange={e => setExtraMetodoPago(e.target.value)}
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-beauty-primary">
+                  <option value="efectivo">💵 Efectivo</option>
+                  <option value="transferencia">📲 Transferencia</option>
+                  <option value="nequi">💜 Nequi</option>
+                  <option value="daviplata">🟡 Daviplata</option>
+                  <option value="tarjeta">💳 Tarjeta</option>
+                  <option value="otro">🔄 Otro</option>
+                </select>
+              </div>
+
+              {/* Botones */}
+              <div className="flex gap-3 pt-1 pb-2">
                 <button onClick={() => setShowServicioExtra(false)}
-                  className="flex-1 border-2 border-gray-200 py-3 rounded-xl text-sm font-medium hover:bg-gray-50 transition-colors">
+                  className="flex-1 border-2 border-gray-200 py-2.5 rounded-xl text-sm font-medium hover:bg-gray-50 transition-colors">
                   Cancelar
                 </button>
-                <button
-                  onClick={guardarServicioExtra}
-                  disabled={savingExtra}
-                  className="flex-1 bg-amber-500 text-white py-3 rounded-xl text-sm font-semibold hover:bg-amber-600 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-                >
-                  {savingExtra
-                    ? <><Loader2 size={14} className="animate-spin" /> Guardando...</>
-                    : <><CheckCircle size={14} /> Registrar</>
-                  }
+                <button onClick={guardarServicioExtra} disabled={savingExtra}
+                  className="flex-1 bg-amber-500 text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-amber-600 transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
+                  {savingExtra ? <><Loader2 size={13} className="animate-spin" /> Guardando...</> : <><CheckCircle size={13} /> Registrar</>}
                 </button>
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   )
