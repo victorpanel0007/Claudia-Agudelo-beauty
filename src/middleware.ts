@@ -1,29 +1,35 @@
 import { NextRequest, NextResponse } from 'next/server'
 
 /**
- * Middleware de protección de rutas.
+ * Middleware de protección de rutas — sin llamadas de red.
  *
- * /admin/* → requiere sesión + rol = 'admin'
- *            - Sin sesión → redirige a /login
- *            - Con sesión pero rol ≠ 'admin' → redirige a /especialista
+ * Lee el JWT directamente desde las cookies de Supabase SSR.
+ * Elimina el MIDDLEWARE_INVOCATION_TIMEOUT causado por refreshes de token.
  *
- * /especialista/* → requiere sesión + rol = 'especialista'
- *            - Sin sesión → redirige a /especialista/login
- *            - Con sesión pero rol = 'admin' → redirige a /admin
- *
- * Lee el JWT directamente desde las cookies — CERO llamadas de red.
- * Elimina el MIDDLEWARE_INVOCATION_TIMEOUT que ocurría cuando
- * @supabase/ssr intentaba refrescar el token haciendo una llamada de red
- * desde Edge Runtime (puede bloquear hasta 25 s).
+ * Supabase SSR (Next.js) guarda la sesión dividida en chunks:
+ *   sb-<ref>-auth-token.0, sb-<ref>-auth-token.1, ...
+ * o en una sola cookie:
+ *   sb-<ref>-auth-token
+ * El valor es un JSON codificado en base64url con { access_token, ... }
  */
 
-function parseJwtPayload(token: string): Record<string, unknown> | null {
+function decodeBase64(str: string): string {
+  // Normalizar base64url a base64 estándar
+  const b64 = str.replace(/-/g, '+').replace(/_/g, '/')
   try {
-    const parts = token.split('.')
+    return atob(b64)
+  } catch {
+    return ''
+  }
+}
+
+function parseJwtPayload(jwt: string): Record<string, unknown> | null {
+  try {
+    const parts = jwt.split('.')
     if (parts.length !== 3) return null
-    // Edge Runtime tiene atob disponible
-    const payload = atob(parts[1].replace(/-/g, '+').replace(/_/g, '/'))
-    return JSON.parse(payload) as Record<string, unknown>
+    const raw = decodeBase64(parts[1])
+    if (!raw) return null
+    return JSON.parse(raw) as Record<string, unknown>
   } catch {
     return null
   }
@@ -33,54 +39,88 @@ function getSessionFromCookies(request: NextRequest): {
   hasSession: boolean
   rol: string | null
 } {
-  // Supabase SSR guarda la sesión en cookies con patrón sb-<ref>-auth-token
-  // También puede estar como sb-access-token en versiones anteriores
   const allCookies = request.cookies.getAll()
 
-  for (const cookie of allCookies) {
-    const name = cookie.name
-    if (
-      (name.startsWith('sb-') && name.endsWith('-auth-token')) ||
-      name === 'sb-access-token'
-    ) {
-      try {
-        // El valor puede ser JSON con access_token, o directamente el JWT
-        let accessToken: string | null = null
-        try {
-          const parsed = JSON.parse(cookie.value) as { access_token?: string }
-          accessToken = parsed?.access_token ?? null
-        } catch {
-          // Si no es JSON, puede ser el JWT directamente
-          accessToken = cookie.value
-        }
+  // Supabase SSR divide el token en chunks: sb-xxx-auth-token.0, .1, ...
+  // Recolectar y ordenar los chunks
+  const chunks: Record<string, string> = {}
+  let hasChunks = false
 
-        if (!accessToken) continue
+  for (const c of allCookies) {
+    const chunkMatch = c.name.match(/^(sb-.+-auth-token)\.(\d+)$/)
+    if (chunkMatch) {
+      chunks[chunkMatch[2]] = c.value
+      hasChunks = true
+    }
+  }
 
-        const payload = parseJwtPayload(accessToken)
-        if (!payload) continue
+  let sessionJson: string | null = null
 
-        // Verificar que el token no esté expirado
-        const exp = payload['exp'] as number | undefined
-        if (exp && exp < Math.floor(Date.now() / 1000)) continue
-
-        // Extraer el rol de user_metadata
-        const userMetadata = payload['user_metadata'] as Record<string, unknown> | undefined
-        const rol = (userMetadata?.['rol'] as string) ?? null
-
-        return { hasSession: true, rol }
-      } catch {
-        continue
+  if (hasChunks) {
+    // Reconstruir de los chunks ordenados
+    const sorted = Object.keys(chunks).sort((a, b) => Number(a) - Number(b))
+    const raw = sorted.map(k => chunks[k]).join('')
+    try {
+      sessionJson = decodeBase64(raw)
+    } catch {
+      sessionJson = raw
+    }
+  } else {
+    // Buscar cookie única
+    for (const c of allCookies) {
+      if (
+        (c.name.startsWith('sb-') && c.name.endsWith('-auth-token')) ||
+        c.name === 'sb-access-token'
+      ) {
+        sessionJson = c.value
+        break
       }
     }
   }
 
-  return { hasSession: false, rol: null }
+  if (!sessionJson) return { hasSession: false, rol: null }
+
+  // Intentar parsear el JSON de sesión
+  let accessToken: string | null = null
+  try {
+    // Puede ser base64 del JSON o JSON directo
+    let parsed: unknown
+    try {
+      parsed = JSON.parse(sessionJson)
+    } catch {
+      const decoded = decodeBase64(sessionJson)
+      parsed = JSON.parse(decoded)
+    }
+    const session = parsed as { access_token?: string }
+    accessToken = session?.access_token ?? null
+  } catch {
+    // Puede ser el JWT directamente
+    if (sessionJson.split('.').length === 3) {
+      accessToken = sessionJson
+    }
+  }
+
+  if (!accessToken) return { hasSession: false, rol: null }
+
+  const payload = parseJwtPayload(accessToken)
+  if (!payload) return { hasSession: false, rol: null }
+
+  // Verificar expiración
+  const exp = payload['exp'] as number | undefined
+  if (exp && exp < Math.floor(Date.now() / 1000)) {
+    return { hasSession: false, rol: null }
+  }
+
+  const userMetadata = payload['user_metadata'] as Record<string, unknown> | undefined
+  const rol = (userMetadata?.['rol'] as string) ?? null
+
+  return { hasSession: true, rol }
 }
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
-  const isAdminRoute       = pathname.startsWith('/admin')
+  const isAdminRoute        = pathname.startsWith('/admin')
   const isEspecialistaRoute = pathname.startsWith('/especialista') &&
                                !pathname.startsWith('/especialista/login')
 
@@ -102,7 +142,7 @@ export function middleware(request: NextRequest) {
     }
   }
 
-  // ── Proteger /especialista (rutas autenticadas, no login) ────────────────
+  // ── Proteger /especialista ───────────────────────────────────────────────
   if (isEspecialistaRoute) {
     if (!hasSession) {
       return NextResponse.redirect(new URL('/especialista/login', request.url))
