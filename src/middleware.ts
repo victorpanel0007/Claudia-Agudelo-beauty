@@ -1,15 +1,116 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerClient, type CookieOptions } from '@supabase/ssr'
 
 /**
- * Middleware de protección de rutas.
+ * Middleware de protección de rutas — SINCRÓNICO, sin llamadas de red.
+ * Elimina el MIDDLEWARE_INVOCATION_TIMEOUT (504) en Vercel Edge Runtime.
  *
- * Usa getSession() con un timeout de 3 segundos.
- * Si Supabase tarda más de 3s (refresh de token) → deja pasar.
- * La verificación real de sesión ocurre en el layout de servidor.
- * Esto elimina el MIDDLEWARE_INVOCATION_TIMEOUT (504) en Vercel Edge.
+ * Lee el JWT de Supabase directamente desde las cookies:
+ *   sb-<ref>-auth-token  → JSON { access_token, refresh_token, ... }
+ *   O en chunks: sb-<ref>-auth-token.0, .1, ...
  */
-export async function middleware(request: NextRequest) {
+
+function base64urlDecode(str: string): string {
+  try {
+    return atob(str.replace(/-/g, '+').replace(/_/g, '/'))
+  } catch {
+    return ''
+  }
+}
+
+function getRolFromJwt(accessToken: string): { valid: boolean; rol: string | null } {
+  const parts = accessToken.split('.')
+  if (parts.length !== 3) return { valid: false, rol: null }
+  const raw = base64urlDecode(parts[1])
+  if (!raw) return { valid: false, rol: null }
+  try {
+    const payload = JSON.parse(raw) as {
+      exp?: number
+      user_metadata?: { rol?: string }
+    }
+    // No rechazar tokens expirados en middleware — el layout los manejará
+    const rol = payload.user_metadata?.rol ?? null
+    return { valid: true, rol }
+  } catch {
+    return { valid: false, rol: null }
+  }
+}
+
+function getSessionFromCookies(request: NextRequest): {
+  hasSession: boolean
+  rol: string | null
+} {
+  const cookies = request.cookies.getAll()
+
+  // --- Intentar cookie única primero ---
+  // Supabase SSR guarda: sb-<project-ref>-auth-token
+  for (const c of cookies) {
+    if (c.name.startsWith('sb-') && c.name.endsWith('-auth-token')) {
+      let rawValue = c.value
+
+      // El valor puede tener prefijo "base64-" seguido de base64 estándar
+      if (rawValue.startsWith('base64-')) {
+        try {
+          rawValue = atob(rawValue.slice(7)) // base64 estándar — no url-safe
+        } catch {
+          rawValue = base64urlDecode(rawValue.slice(7)) // fallback url-safe
+        }
+      }
+
+      let accessToken: string | null = null
+
+      // Intentar JSON
+      try {
+        const parsed = JSON.parse(rawValue) as { access_token?: string }
+        accessToken = parsed.access_token ?? null
+      } catch {
+        // Si no es JSON, puede ser el JWT directamente
+        if (rawValue.split('.').length === 3) {
+          accessToken = rawValue
+        }
+      }
+
+      if (accessToken) {
+        const { valid, rol } = getRolFromJwt(accessToken)
+        if (valid) return { hasSession: true, rol }
+      }
+    }
+  }
+
+  // --- Intentar chunks ---
+  // sb-<ref>-auth-token.0, .1, ...
+  const chunkMap: Record<number, string> = {}
+  for (const c of cookies) {
+    const m = c.name.match(/^sb-.+-auth-token\.(\d+)$/)
+    if (m) chunkMap[parseInt(m[1])] = c.value
+  }
+
+  if (Object.keys(chunkMap).length > 0) {
+    const sorted = Object.keys(chunkMap).map(Number).sort((a, b) => a - b)
+    const combined = sorted.map(i => chunkMap[i]).join('')
+
+    let accessToken: string | null = null
+    try {
+      const parsed = JSON.parse(combined) as { access_token?: string }
+      accessToken = parsed.access_token ?? null
+    } catch {
+      // Puede estar en base64url
+      try {
+        const decoded = base64urlDecode(combined)
+        const parsed = JSON.parse(decoded) as { access_token?: string }
+        accessToken = parsed.access_token ?? null
+      } catch { /* no parseable */ }
+    }
+
+    if (accessToken) {
+      const { valid, rol } = getRolFromJwt(accessToken)
+      if (valid) return { hasSession: true, rol }
+    }
+  }
+
+  return { hasSession: false, rol: null }
+}
+
+export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
   const isAdminRoute        = pathname.startsWith('/admin')
@@ -20,47 +121,11 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
-  let response = NextResponse.next({ request })
-
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() { return request.cookies.getAll() },
-        setAll(cookiesToSet: { name: string; value: string; options?: CookieOptions }[]) {
-          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
-          response = NextResponse.next({ request })
-          cookiesToSet.forEach(({ name, value, options }) =>
-            response.cookies.set(name, value, options)
-          )
-        },
-      },
-    }
-  )
-
-  // Timeout de 3s: si Supabase tarda más (refresh de token en red)
-  // dejamos pasar — el layout de admin hará la verificación real.
-  let session = null
-  try {
-    const result = await Promise.race([
-      supabase.auth.getSession(),
-      new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error('timeout')), 3000)
-      ),
-    ])
-    session = (result as { data: { session: unknown } }).data?.session ?? null
-  } catch {
-    // Timeout o error → dejar pasar, el layout verificará
-    return NextResponse.next()
-  }
-
-  const rol = (session as { user?: { user_metadata?: { rol?: string } } } | null)
-    ?.user?.user_metadata?.rol ?? null
+  const { hasSession, rol } = getSessionFromCookies(request)
 
   // ── Proteger /admin ──────────────────────────────────────────────────────
   if (isAdminRoute) {
-    if (!session) {
+    if (!hasSession) {
       const url = new URL('/login', request.url)
       url.searchParams.set('redirect', pathname)
       return NextResponse.redirect(url)
@@ -72,7 +137,7 @@ export async function middleware(request: NextRequest) {
 
   // ── Proteger /especialista ───────────────────────────────────────────────
   if (isEspecialistaRoute) {
-    if (!session) {
+    if (!hasSession) {
       return NextResponse.redirect(new URL('/especialista/login', request.url))
     }
     if (rol === 'admin') {
@@ -83,7 +148,7 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  return response
+  return NextResponse.next()
 }
 
 export const config = {

@@ -51,6 +51,11 @@ export async function getAvailableSlots(
     .lte('fecha_inicio', dayEnd.toISOString())
     .in('estado', ['confirmada', 'en_proceso'])
 
+  // ── Obtener descansos de todas las especialistas ─────────────────────────
+  const { data: descansos } = await supabase
+    .from('descansos_especialista')
+    .select('especialista_id, hora_inicio, hora_fin')
+
   const slots: AvailableSlot[] = []
 
   for (const esp of especialistas) {
@@ -72,6 +77,12 @@ export async function getAvailableSlots(
       `${fechaStr}T${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}:00-05:00`
     )
 
+    // ── Si el día es HOY en Colombia, el slot debe ser en el futuro ───────
+    // Nunca ofrecer horarios que ya pasaron
+    const ahoraCol = new Date() // hora real del servidor
+    const esHoy = fechaStr === ahoraCol.toLocaleDateString('en-CA', { timeZone: 'America/Bogota' })
+    const inicioEfectivo = esHoy && ahoraCol > workStart ? ahoraCol : workStart
+
     // ── Construir intervalos ocupados para esta especialista ────────────
     const occupied = (citas || [])
       .filter(c => c.especialista_id === esp.id)
@@ -79,6 +90,21 @@ export async function getAvailableSlots(
         inicio: new Date(c.fecha_inicio),
         fin:    new Date(c.fecha_fin),
       }))
+
+    // ── Agregar descansos como intervalos bloqueados ─────────────────────
+    // Los descansos tienen hora_inicio / hora_fin en formato HH:MM o HH:MM:SS
+    const descansosEsp = (descansos || [])
+      .filter(d => d.especialista_id === esp.id)
+      .map(d => {
+        const hi = (d.hora_inicio as string).slice(0, 5) // HH:MM
+        const hf = (d.hora_fin   as string).slice(0, 5)
+        return {
+          inicio: new Date(`${fechaStr}T${hi}:00-05:00`),
+          fin:    new Date(`${fechaStr}T${hf}:00-05:00`),
+        }
+      })
+
+    const allBlocked = [...occupied, ...descansosEsp]
 
     // ── Generar slots ────────────────────────────────────────────────────
     //
@@ -89,7 +115,22 @@ export async function getAvailableSlots(
     //
     const paso = 30 // minutos entre slots — podría venir de config en el futuro
 
+    // Calcular el primer slot: si es hoy, empezar desde el próximo slot
+    // futuro redondeado hacia arriba al siguiente múltiplo de 30 min
     let current = new Date(workStart)
+    if (esHoy && inicioEfectivo > workStart) {
+      // Redondear hacia ARRIBA al próximo múltiplo de 30 min
+      const base = new Date(inicioEfectivo)
+      const mins = base.getMinutes()
+      const secs = base.getSeconds()
+      // Si ya está exactamente en :00 o :30 y no han pasado segundos, usar ese slot
+      // Si hay segundos extra o está entre múltiplos, ir al siguiente
+      if (secs > 0 || (mins !== 0 && mins !== 30)) {
+        const nextMultiple = Math.ceil((mins + (secs > 0 ? 1 : 0)) / 30) * 30
+        base.setMinutes(nextMultiple, 0, 0)
+      }
+      current = base > workStart ? base : workStart
+    }
 
     while (true) {
       const slotEnd = addMinutes(current, duracionMinutos)
@@ -97,8 +138,8 @@ export async function getAvailableSlots(
       // ✅ Condición de corte: el servicio debe terminar al cierre o antes
       if (slotEnd.getTime() > workEnd.getTime()) break
 
-      // ✅ Verificar que no choca con ninguna cita existente
-      const isOccupied = occupied.some(
+      // ✅ Verificar que no choca con ninguna cita ni descanso
+      const isOccupied = allBlocked.some(
         occ => current < occ.fin && slotEnd > occ.inicio
       )
 

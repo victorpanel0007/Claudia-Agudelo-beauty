@@ -214,6 +214,19 @@ async function getAvailableSlots(fecha: Date, duracion: number, espId?: string):
     let cursor = new Date(`${fechaStr}T${inicio}:00-05:00`)
     const endTime = new Date(`${fechaStr}T${String(hf).padStart(2,'0')}:${String(mf).padStart(2,'0')}:00-05:00`)
 
+    // ── Si es HOY en Colombia, saltar los slots que ya pasaron ──────────
+    const ahoraBogota = new Date()
+    const hoyBogota = ahoraBogota.toLocaleDateString('en-CA', { timeZone: 'America/Bogota' })
+    if (fechaStr === hoyBogota && ahoraBogota > cursor) {
+      // Redondear hacia arriba al próximo múltiplo de 30 min
+      const mins = ahoraBogota.getMinutes()
+      const secs = ahoraBogota.getSeconds()
+      const nextMultiple = Math.ceil((mins + (secs > 0 ? 1 : 0)) / 30) * 30
+      const adjusted = new Date(ahoraBogota)
+      adjusted.setMinutes(nextMultiple, 0, 0)
+      if (adjusted > cursor) cursor = adjusted
+    }
+
     while (cursor.getTime() + duracion * 60000 <= endTime.getTime()) {
       const slotFin = new Date(cursor.getTime() + duracion * 60000)
 
