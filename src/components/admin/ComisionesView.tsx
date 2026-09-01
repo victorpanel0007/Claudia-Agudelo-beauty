@@ -313,6 +313,18 @@ export default function ComisionesView() {
       body: JSON.stringify(body),
     })
     if (!res.ok) { toast.error('Error registrando pago'); setSavingPago(false); return }
+
+    // Marcar las citas del período y especialista como pagadas
+    const { start, end } = getPeriodRange(period, custom)
+    await supabase
+      .from('citas')
+      .update({ pago_estado: 'pagado' })
+      .eq('especialista_id', pagoForm.especialista_id)
+      .eq('estado', 'completada')
+      .eq('pago_estado', 'pendiente')
+      .gte('fecha_inicio', start + 'T00:00:00-05:00')
+      .lte('fecha_inicio', end + 'T23:59:59-05:00')
+
     toast.success('Pago registrado exitosamente')
     setSavingPago(false)
     setShowPagoModal(false)
