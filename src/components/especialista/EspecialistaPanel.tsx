@@ -94,9 +94,14 @@ export default function EspecialistaPanel({
   const [periodoAnt,        setPeriodoAnt]        = useState<PeriodoAnt>('mes')
 
   // ── Mi contabilidad ─────────────────────────────────────────────────────
-  const [contab,            setContab]            = useState<{ total: number; citas: number } | null>(null)
+  const [contab,            setContab]            = useState<{
+    total: number; citas: number
+    totalPagado: number; saldoPendiente: number
+    porcentaje: number
+    porDia: { fecha: string; citas: number; total: number; comision: number; pagado: number; pendiente: number }[]
+  } | null>(null)
   const [loadingContab,     setLoadingContab]     = useState(false)
-  type PeriodoContab = 'semana' | 'mes' | 'anio'
+  type PeriodoContab = 'hoy' | 'semana' | 'quincena' | 'mes' | 'anio'
   const [periodoContab,     setPeriodoContab]     = useState<PeriodoContab>('mes')
 
   // ── Servicio extra ──────────────────────────────────────────────────────
@@ -197,8 +202,12 @@ export default function EspecialistaPanel({
     setLoadingContab(true)
     const hoy = todayCol()
     let start = hoy
-    if (periodoContab === 'semana') {
+    if (periodoContab === 'hoy') { start = hoy }
+    else if (periodoContab === 'semana') {
       const d = new Date(); d.setDate(d.getDate() - 6)
+      start = d.toLocaleDateString('en-CA', { timeZone: 'America/Bogota' })
+    } else if (periodoContab === 'quincena') {
+      const d = new Date(); d.setDate(d.getDate() - 14)
       start = d.toLocaleDateString('en-CA', { timeZone: 'America/Bogota' })
     } else if (periodoContab === 'mes') {
       const d = new Date()
@@ -206,15 +215,49 @@ export default function EspecialistaPanel({
     } else {
       start = `${new Date().getFullYear()}-01-01`
     }
-    const { data } = await supabase
-      .from('citas')
-      .select('valor_final')
-      .eq('especialista_id', espId)
-      .eq('estado', 'completada')
-      .gte('fecha_inicio', `${start}T00:00:00-05:00`)
-      .lte('fecha_inicio', `${hoy}T23:59:59-05:00`)
-    const total = (data || []).reduce((a, c) => a + (c.valor_final ?? 0), 0)
-    setContab({ total, citas: (data || []).length })
+
+    // Obtener comisión configurada y citas del período
+    const [{ data: citasData }, { data: comConfig }] = await Promise.all([
+      supabase
+        .from('citas')
+        .select('id, fecha_inicio, valor_final, pago_estado, porcentaje_comision')
+        .eq('especialista_id', espId)
+        .eq('estado', 'completada')
+        .gte('fecha_inicio', `${start}T00:00:00-05:00`)
+        .lte('fecha_inicio', `${hoy}T23:59:59-05:00`)
+        .order('fecha_inicio', { ascending: false }),
+      supabase
+        .from('comisiones_config')
+        .select('porcentaje')
+        .eq('especialista_id', espId)
+        .maybeSingle(),
+    ])
+
+    const porcentaje = (comConfig?.porcentaje as number | null) ?? 50
+    const lista = (citasData || []) as { id: string; fecha_inicio: string; valor_final: number | null; pago_estado: string | null; porcentaje_comision: number | null }[]
+
+    const total = lista.reduce((a, c) => a + (c.valor_final ?? 0), 0)
+    const totalPagado = lista.filter(c => c.pago_estado === 'pagado').reduce((a, c) => a + (c.valor_final ?? 0) * ((c.porcentaje_comision ?? porcentaje) / 100), 0)
+    const comisionTotal = lista.reduce((a, c) => a + (c.valor_final ?? 0) * ((c.porcentaje_comision ?? porcentaje) / 100), 0)
+    const saldoPendiente = comisionTotal - totalPagado
+
+    // Agrupar por día
+    const diaMap: Record<string, { citas: number; total: number; comision: number; pagado: number }> = {}
+    lista.forEach(c => {
+      const dia = c.fecha_inicio.slice(0, 10)
+      if (!diaMap[dia]) diaMap[dia] = { citas: 0, total: 0, comision: 0, pagado: 0 }
+      const val = c.valor_final ?? 0
+      const com = val * ((c.porcentaje_comision ?? porcentaje) / 100)
+      diaMap[dia].citas++
+      diaMap[dia].total += val
+      diaMap[dia].comision += com
+      if (c.pago_estado === 'pagado') diaMap[dia].pagado += com
+    })
+    const porDia = Object.entries(diaMap)
+      .sort(([a], [b]) => b.localeCompare(a))
+      .map(([fecha, v]) => ({ fecha, ...v, pendiente: v.comision - v.pagado }))
+
+    setContab({ total, citas: lista.length, totalPagado, saldoPendiente, porcentaje, porDia })
     setLoadingContab(false)
   }, [espId, periodoContab, supabase])
 
@@ -561,13 +604,13 @@ export default function EspecialistaPanel({
         {/* ── TAB: CONTABILIDAD ────────────────────────────────────────────── */}
         {tab === 'contabilidad' && (
           <div>
-            <div className="flex gap-1.5 mb-4">
-              {(['semana','mes','anio'] as PeriodoContab[]).map(p => (
+            <div className="flex gap-1 flex-wrap mb-4">
+              {(['hoy','semana','quincena','mes','anio'] as PeriodoContab[]).map(p => (
                 <button key={p} onClick={() => setPeriodoContab(p)}
-                  className={`text-xs px-3 py-1.5 rounded-xl font-semibold border transition-colors ${
+                  className={`text-xs px-2.5 py-1.5 rounded-xl font-semibold border transition-colors ${
                     periodoContab === p ? 'bg-beauty-primary text-white border-beauty-primary' : 'bg-white border-gray-200 text-gray-600'
                   }`}>
-                  {p === 'semana' ? '7 días' : p === 'mes' ? 'Este mes' : 'Este año'}
+                  {p === 'hoy' ? 'Hoy' : p === 'semana' ? '7 días' : p === 'quincena' ? '15 días' : p === 'mes' ? 'Este mes' : 'Este año'}
                 </button>
               ))}
             </div>
@@ -575,29 +618,66 @@ export default function EspecialistaPanel({
               <div className="h-40 bg-white rounded-2xl animate-pulse" />
             ) : contab ? (
               <div className="space-y-3">
-                <div className="bg-white rounded-2xl border border-beauty-primary/20 p-5 shadow-sm">
-                  <div className="flex items-center gap-2 mb-4">
-                    <BarChart2 size={18} className="text-beauty-borgona" />
-                    <h3 className="font-bold text-beauty-text-dark">Mi resumen</h3>
+                {/* KPIs */}
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="bg-white rounded-xl border border-beauty-primary/20 p-3 shadow-sm">
+                    <p className="text-[10px] text-gray-400 mb-0.5">📅 Citas realizadas</p>
+                    <p className="text-xl font-bold text-beauty-text-dark">{contab.citas}</p>
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="bg-beauty-bg rounded-xl p-3 text-center">
-                      <p className="text-2xl font-bold text-beauty-text-dark">{contab.citas}</p>
-                      <p className="text-xs text-gray-500 mt-0.5">Citas realizadas</p>
-                    </div>
-                    <div className="bg-emerald-50 rounded-xl p-3 text-center">
-                      <p className="text-lg font-bold text-emerald-700">{formatCurrency(contab.total)}</p>
-                      <p className="text-xs text-gray-500 mt-0.5">Total generado</p>
-                    </div>
-                    <div className="col-span-2 bg-beauty-secondary/10 rounded-xl p-3 text-center">
-                      <p className="text-xl font-bold text-beauty-secondary">{formatCurrency(contab.total * 0.5)}</p>
-                      <p className="text-xs text-gray-500 mt-0.5">Tu comisión (50%)</p>
-                    </div>
+                  <div className="bg-emerald-50 rounded-xl border border-emerald-200 p-3 shadow-sm">
+                    <p className="text-[10px] text-gray-500 mb-0.5">💰 Total facturado</p>
+                    <p className="text-base font-bold text-emerald-700">{formatCurrency(contab.total)}</p>
                   </div>
-                  <p className="text-[10px] text-gray-400 text-center mt-3">
-                    {formatCurrency(contab.total)} × 50% = {formatCurrency(contab.total * 0.5)}
-                  </p>
+                  <div className="bg-beauty-secondary/10 rounded-xl border border-beauty-secondary/20 p-3 shadow-sm">
+                    <p className="text-[10px] text-gray-500 mb-0.5">👩‍💼 Mi comisión ({contab.porcentaje}%)</p>
+                    <p className="text-base font-bold text-beauty-secondary">{formatCurrency(contab.total * contab.porcentaje / 100)}</p>
+                  </div>
+                  <div className="bg-blue-50 rounded-xl border border-blue-200 p-3 shadow-sm">
+                    <p className="text-[10px] text-gray-500 mb-0.5">💵 Total pagado</p>
+                    <p className="text-base font-bold text-blue-700">{formatCurrency(contab.totalPagado)}</p>
+                  </div>
+                  <div className={`col-span-2 rounded-xl border p-3 shadow-sm ${contab.saldoPendiente > 0 ? 'bg-amber-50 border-amber-200' : 'bg-gray-50 border-gray-200'}`}>
+                    <p className="text-[10px] text-gray-500 mb-0.5">⚠️ Saldo pendiente</p>
+                    <p className={`text-lg font-bold ${contab.saldoPendiente > 0 ? 'text-amber-700' : 'text-gray-500'}`}>{formatCurrency(contab.saldoPendiente)}</p>
+                  </div>
                 </div>
+
+                {/* Resumen por día */}
+                {contab.porDia.length > 0 && (
+                  <div className="bg-white rounded-2xl border border-beauty-primary/20 shadow-sm overflow-hidden">
+                    <div className="px-4 py-3 border-b border-gray-100">
+                      <p className="text-xs font-semibold text-beauty-text-dark">Resumen por día</p>
+                    </div>
+                    <div className="divide-y divide-gray-50">
+                      {contab.porDia.map(d => (
+                        <div key={d.fecha} className="px-4 py-3">
+                          <div className="flex items-center justify-between mb-1">
+                            <p className="text-xs font-semibold text-beauty-text-dark">
+                              {new Date(d.fecha + 'T12:00:00-05:00').toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' })}
+                            </p>
+                            <span className="text-[10px] bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">{d.citas} cita{d.citas !== 1 ? 's' : ''}</span>
+                          </div>
+                          <div className="grid grid-cols-3 gap-2 text-center">
+                            <div>
+                              <p className="text-[9px] text-gray-400">Facturado</p>
+                              <p className="text-xs font-semibold text-emerald-700">{formatCurrency(d.total)}</p>
+                            </div>
+                            <div>
+                              <p className="text-[9px] text-gray-400">Comisión</p>
+                              <p className="text-xs font-semibold text-beauty-secondary">{formatCurrency(d.comision)}</p>
+                            </div>
+                            <div>
+                              <p className="text-[9px] text-gray-400">{d.pendiente > 0 ? 'Pendiente' : 'Pagado'}</p>
+                              <p className={`text-xs font-semibold ${d.pendiente > 0 ? 'text-amber-600' : 'text-blue-600'}`}>
+                                {formatCurrency(d.pendiente > 0 ? d.pendiente : d.pagado)}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             ) : null}
           </div>
