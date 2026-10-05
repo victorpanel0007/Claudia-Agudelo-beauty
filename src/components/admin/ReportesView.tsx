@@ -217,7 +217,7 @@ export default function ReportesView() {
         .gte('fecha_inicio', mesStart.toLocaleDateString('en-CA', { timeZone: 'America/Bogota' }) + 'T00:00:00-05:00')
         .lte('fecha_inicio', today + 'T23:59:59-05:00'),
       supabase.from('liquidaciones').select('valor_comision').eq('estado', 'pendiente'),
-      supabase.from('gastos').select('valor')
+      supabase.from('gastos').select('valor, descripcion')
         .gte('fecha', mesStart.toLocaleDateString('en-CA', { timeZone: 'America/Bogota' }))
         .lte('fecha', today),
     ])
@@ -234,11 +234,21 @@ export default function ReportesView() {
     const ingresos15dias = sum(res15.data ?? [])
     const ingresosMes = sum(resMes.data ?? [])
     const comisionesPendientes = sumC(resComisiones.data ?? [])
-    const gastosMes = sumV(resGastos.data ?? [])
-    const utilidadNeta = ingresosMes - comisionesPendientes - gastosMes
+
+    // Separar gastos reales de ingresos manuales ([INGRESO])
+    const gastosRows = (resGastos.data ?? []) as { valor: number; descripcion?: string }[]
+    const gastosMes = gastosRows
+      .filter(g => !g.descripcion?.startsWith('[INGRESO]'))
+      .reduce((a, r) => a + (r.valor ?? 0), 0)
+    const ingresosManualesMes = gastosRows
+      .filter(g => g.descripcion?.startsWith('[INGRESO]'))
+      .reduce((a, r) => a + (r.valor ?? 0), 0)
+
+    const utilidadNeta = (ingresosMes + ingresosManualesMes) - comisionesPendientes - gastosMes
     const serviciosRealizados = resMes.data?.length ?? 0
 
-    setDash({ ingresosHoy, ingresosSemana, ingresos15dias, ingresosMes,
+    setDash({ ingresosHoy, ingresosSemana, ingresos15dias,
+      ingresosMes: ingresosMes + ingresosManualesMes,
       comisionesPendientes, gastosMes, utilidadNeta, serviciosRealizados })
     setDashLoading(false)
   }, [supabase])
