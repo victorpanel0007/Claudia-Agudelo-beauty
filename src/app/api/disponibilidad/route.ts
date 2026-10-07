@@ -6,6 +6,7 @@ export async function GET(request: NextRequest) {
   const fecha = searchParams.get('fecha')
   const duracion = searchParams.get('duracion')
   const especialistaId = searchParams.get('especialista_id') || undefined
+  const excluirCitaId = searchParams.get('excluir_cita_id') || undefined
 
   if (!fecha || !duracion) {
     return NextResponse.json({ error: 'fecha y duracion son requeridos' }, { status: 400 })
@@ -14,7 +15,8 @@ export async function GET(request: NextRequest) {
   const slots = await getAvailableSlots(
     new Date(fecha),
     parseInt(duracion),
-    especialistaId
+    especialistaId,
+    excluirCitaId
   )
 
   return NextResponse.json(slots, {

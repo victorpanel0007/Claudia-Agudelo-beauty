@@ -25,7 +25,8 @@ export interface AvailableSlot {
 export async function getAvailableSlots(
   fecha: Date,
   duracionMinutos: number,
-  especialistaId?: string
+  especialistaId?: string,
+  excluirCitaId?: string
 ): Promise<AvailableSlot[]> {
   const supabase = await createAdminClient()
 
@@ -44,12 +45,19 @@ export async function getAvailableSlots(
   const dayStart = new Date(`${fechaStr}T00:00:00-05:00`)
   const dayEnd   = new Date(`${fechaStr}T23:59:59-05:00`)
 
-  const { data: citas } = await supabase
+  let citasQuery = supabase
     .from('citas')
-    .select('especialista_id, fecha_inicio, fecha_fin')
+    .select('id, especialista_id, fecha_inicio, fecha_fin')
     .gte('fecha_inicio', dayStart.toISOString())
     .lte('fecha_inicio', dayEnd.toISOString())
     .in('estado', ['confirmada', 'en_proceso'])
+
+  // Exclude the appointment being edited so its own slot doesn't block itself
+  if (excluirCitaId) {
+    citasQuery = citasQuery.neq('id', excluirCitaId)
+  }
+
+  const { data: citas } = await citasQuery
 
   // ── Obtener descansos de todas las especialistas ─────────────────────────
   const { data: descansos } = await supabase

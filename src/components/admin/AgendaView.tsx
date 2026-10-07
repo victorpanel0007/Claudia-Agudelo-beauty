@@ -166,12 +166,295 @@ function getEspColor(espId: string | undefined, espMap: Record<string, number>) 
   const idx = espMap[espId] ?? 0
   return ESPECIALISTA_COLORS[idx % ESPECIALISTA_COLORS.length]
 }
-function DetailPanel({ cita, onClose, onCompletar, onCancelar, onEliminar }: {
+// ── EditarCitaModal ──────────────────────────────────────────────────────────
+interface SlotEdit {
+  hora: string
+  fecha_inicio: string
+  fecha_fin: string
+  especialista_id: string
+  especialista_nombre: string
+}
+
+function EditarCitaModal({ cita, onClose, onSaved }: {
+  cita: Cita
+  onClose: () => void
+  onSaved: () => void
+}) {
+  const supabase = createClient()
+  const [especialistas, setEspecialistas] = useState<Especialista[]>([])
+  const [slots, setSlots] = useState<SlotEdit[]>([])
+  const [loading, setLoading] = useState(false)
+  const [loadingSlots, setLoadingSlots] = useState(false)
+
+  // Form state — pre-filled with current appointment data
+  const [espId, setEspId] = useState(cita.especialista_id ?? '')
+  const [fecha, setFecha] = useState(
+    new Date(cita.fecha_inicio).toLocaleDateString('en-CA', { timeZone: 'America/Bogota' })
+  )
+  const [slotInicio, setSlotInicio] = useState(cita.fecha_inicio)
+  const [slotFin, setSlotFin] = useState(cita.fecha_fin)
+  const [valor, setValor] = useState(cita.valor_final?.toString() ?? '')
+
+  // Load specialists on mount
+  useEffect(() => {
+    supabase.from('especialistas').select('id,nombre,activo,horario_inicio,horario_fin,dias_laborales,created_at').eq('activo', true).order('nombre')
+      .then(({ data }) => { if (data) setEspecialistas(data as Especialista[]) })
+  }, [supabase])
+
+  // Fetch available slots whenever specialist or date changes
+  useEffect(() => {
+    if (!fecha || !cita.servicio?.duracion_minutos) return
+    buscarSlots()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [espId, fecha])
+
+  async function buscarSlots() {
+    setLoadingSlots(true)
+    setSlotInicio('')
+    setSlotFin('')
+    const duracion = cita.servicio?.duracion_minutos ?? 60
+    const params = new URLSearchParams({
+      fecha: new Date(fecha + 'T12:00:00-05:00').toISOString(),
+      duracion: duracion.toString(),
+      ...(espId ? { especialista_id: espId } : {}),
+    })
+    try {
+      // Exclude the current appointment from occupied slots by passing its id
+      params.set('excluir_cita_id', cita.id)
+      const res = await fetch(`/api/disponibilidad?${params}`)
+      const data: unknown = await res.json()
+      const fetchedSlots: SlotEdit[] = Array.isArray(data) ? (data as SlotEdit[]) : []
+
+      // If the current slot is the same specialist+date, add it back as an option
+      // so the user can keep the same time
+      const currentFechaStr = new Date(cita.fecha_inicio).toLocaleDateString('en-CA', { timeZone: 'America/Bogota' })
+      const isSameEsp = !espId || espId === cita.especialista_id
+      const isSameFecha = fecha === currentFechaStr
+      if (isSameEsp && isSameFecha) {
+        const currentSlotExists = fetchedSlots.some(s => s.fecha_inicio === cita.fecha_inicio)
+        if (!currentSlotExists) {
+          const currentHora = new Date(cita.fecha_inicio).toLocaleString('en-US', {
+            hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'America/Bogota',
+          })
+          fetchedSlots.unshift({
+            hora: `${currentHora} (actual)`,
+            fecha_inicio: cita.fecha_inicio,
+            fecha_fin: cita.fecha_fin,
+            especialista_id: cita.especialista_id ?? espId,
+            especialista_nombre: cita.especialista?.nombre ?? '',
+          })
+        }
+      }
+      setSlots(fetchedSlots)
+    } catch {
+      setSlots([])
+    }
+    setLoadingSlots(false)
+  }
+
+  async function guardar() {
+    if (!slotInicio || !slotFin) {
+      toast.error('Selecciona un horario')
+      return
+    }
+    setLoading(true)
+    try {
+      // Detect what changed for audit log
+      const cambios: Record<string, { anterior: unknown; nuevo: unknown }> = {}
+      const slotElegido = slots.find(s => s.fecha_inicio === slotInicio)
+      const nuevoEspId = slotElegido?.especialista_id ?? espId
+
+      if (nuevoEspId !== cita.especialista_id) {
+        cambios.especialista = {
+          anterior: cita.especialista?.nombre ?? cita.especialista_id,
+          nuevo: slotElegido?.especialista_nombre ?? nuevoEspId,
+        }
+      }
+      if (slotInicio !== cita.fecha_inicio) {
+        cambios.hora_inicio = { anterior: cita.fecha_inicio, nuevo: slotInicio }
+      }
+      if (slotFin !== cita.fecha_fin) {
+        cambios.hora_fin = { anterior: cita.fecha_fin, nuevo: slotFin }
+      }
+      const nuevoValor = valor ? Number(valor) : null
+      if (nuevoValor !== (cita.valor_final ?? null)) {
+        cambios.valor_final = { anterior: cita.valor_final, nuevo: nuevoValor }
+      }
+
+      const body: Record<string, unknown> = {
+        especialista_id: nuevoEspId || null,
+        fecha_inicio: slotInicio,
+        fecha_fin: slotFin,
+        estado: 'confirmada',
+      }
+      if (valor !== '') body.valor_final = Number(valor)
+
+      // Add audit note to observaciones if there were changes
+      if (Object.keys(cambios).length > 0) {
+        const ahora = new Date().toLocaleString('es-CO', { timeZone: 'America/Bogota', dateStyle: 'short', timeStyle: 'short' })
+        const resumen = Object.entries(cambios).map(([k, v]) => `${k}: ${v.anterior} → ${v.nuevo}`).join(', ')
+        const notaAudit = `[Editada ${ahora}: ${resumen}]`
+        const obsActual = cita.observaciones ?? ''
+        body.observaciones = obsActual ? `${obsActual}\n${notaAudit}` : notaAudit
+      }
+
+      const res = await fetch(`/api/citas/${cita.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+      if (!res.ok) {
+        const err = await res.json()
+        throw new Error(err.error ?? 'Error al guardar')
+      }
+      toast.success('✅ Cita actualizada correctamente')
+      onSaved()
+      onClose()
+    } catch (e) {
+      toast.error('Error: ' + (e as Error).message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const espNombreActual = especialistas.find(e => e.id === espId)?.nombre ?? cita.especialista?.nombre ?? '—'
+
+  return (
+    <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md animate-slide-up flex flex-col max-h-[90vh]">
+        {/* Header */}
+        <div className="flex items-center justify-between p-5 border-b border-gray-100 shrink-0">
+          <div>
+            <h3 className="font-bold text-gray-800">✏️ Editar cita</h3>
+            <p className="text-xs text-gray-400">{cita.cliente?.nombre} · {cita.servicio?.nombre}</p>
+          </div>
+          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-xl transition-colors">
+            <X size={18} />
+          </button>
+        </div>
+
+        <div className="overflow-y-auto flex-1 p-5 space-y-4">
+          {/* Especialista */}
+          <div>
+            <label className="block text-xs font-semibold text-gray-600 mb-1.5">👩 Especialista</label>
+            <select
+              value={espId}
+              onChange={e => setEspId(e.target.value)}
+              className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-beauty-primary focus:ring-2 focus:ring-beauty-primary/20"
+            >
+              <option value="">Cualquier especialista</option>
+              {especialistas.map(e => (
+                <option key={e.id} value={e.id}>{e.nombre}</option>
+              ))}
+            </select>
+            {espId && (
+              <p className="text-[11px] text-gray-400 mt-1">Seleccionada: {espNombreActual}</p>
+            )}
+          </div>
+
+          {/* Fecha */}
+          <div>
+            <label className="block text-xs font-semibold text-gray-600 mb-1.5">📅 Fecha</label>
+            <input
+              type="date"
+              value={fecha}
+              onChange={e => setFecha(e.target.value)}
+              className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-beauty-primary focus:ring-2 focus:ring-beauty-primary/20"
+            />
+          </div>
+
+          {/* Horarios disponibles */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-xs font-semibold text-gray-600">🕐 Horario</label>
+              {loadingSlots && <Loader2 size={13} className="animate-spin text-beauty-primary" />}
+            </div>
+            {loadingSlots ? (
+              <div className="grid grid-cols-3 gap-2">
+                {[1,2,3,4,5,6].map(i => <div key={i} className="h-12 skeleton rounded-xl" />)}
+              </div>
+            ) : slots.length === 0 ? (
+              <div className="text-center py-5 border border-dashed border-gray-200 rounded-xl">
+                <p className="text-xs text-gray-400">Sin disponibilidad para esta fecha</p>
+                <button onClick={buscarSlots} className="mt-2 text-xs text-beauty-primary underline">
+                  Volver a consultar
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-3 gap-2">
+                {slots.map((slot, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => { setSlotInicio(slot.fecha_inicio); setSlotFin(slot.fecha_fin) }}
+                    className={`p-2.5 rounded-xl border-2 text-left transition-all ${
+                      slotInicio === slot.fecha_inicio
+                        ? 'border-beauty-primary bg-beauty-primary/10'
+                        : 'border-gray-200 hover:border-beauty-primary/50 hover:bg-gray-50'
+                    }`}
+                  >
+                    <div className="flex items-center gap-1 text-xs font-bold text-gray-700">
+                      <Clock size={10} /> {slot.hora}
+                    </div>
+                    {slot.especialista_nombre && (
+                      <p className="text-[10px] text-gray-400 mt-0.5 truncate">{slot.especialista_nombre}</p>
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Valor */}
+          <div>
+            <label className="block text-xs font-semibold text-gray-600 mb-1.5">💵 Valor</label>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm font-medium">$</span>
+              <input
+                type="number"
+                value={valor}
+                onChange={e => setValor(e.target.value)}
+                placeholder="Ej: 80000"
+                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 pl-7 text-sm focus:outline-none focus:border-beauty-primary focus:ring-2 focus:ring-beauty-primary/20"
+              />
+            </div>
+            {cita.servicio?.precio && (
+              <p className="text-[11px] text-gray-400 mt-1">
+                Precio sugerido: ${Number(cita.servicio.precio).toLocaleString('es-CO')}
+              </p>
+            )}
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="p-5 border-t border-gray-100 flex gap-2 shrink-0">
+          <button
+            onClick={onClose}
+            className="flex-1 text-sm font-semibold py-2.5 rounded-xl border-2 border-gray-200 text-gray-500 hover:bg-gray-50 transition-colors"
+          >
+            Cancelar
+          </button>
+          <button
+            onClick={guardar}
+            disabled={loading || !slotInicio}
+            className="flex-1 text-sm font-semibold py-2.5 rounded-xl bg-beauty-primary text-white hover:bg-beauty-primary-dark transition-colors disabled:opacity-40 flex items-center justify-center gap-2"
+          >
+            {loading ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle size={14} />}
+            Guardar cambios
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function DetailPanel({ cita, onClose, onCompletar, onCancelar, onEliminar, onEditar }: {
   cita: Cita
   onClose: () => void
   onCompletar: (cita: Cita) => void
   onCancelar: (id: string) => void
   onEliminar: (id: string) => void
+  onEditar: (cita: Cita) => void
 }) {
   const st = STATUS_CONFIG[cita.estado] ?? STATUS_CONFIG.pendiente
   const supabase = createClient()
@@ -343,6 +626,18 @@ function DetailPanel({ cita, onClose, onCompletar, onCancelar, onEliminar }: {
           />
         </div>
       </div>
+
+      {/* Botón editar — solo para confirmada */}
+      {cita.estado === 'confirmada' && (
+        <div className="px-4 pt-4">
+          <button
+            onClick={() => onEditar(cita)}
+            className="w-full flex items-center justify-center gap-2 text-xs font-semibold py-2.5 rounded-xl border-2 border-beauty-primary/40 text-beauty-primary hover:bg-beauty-primary/10 transition-colors"
+          >
+            <Edit size={13} /> Editar cita
+          </button>
+        </div>
+      )}
 
       {/* Acciones */}
       {(cita.estado === 'confirmada' || cita.estado === 'pendiente' || cita.estado === 'en_proceso') && (
@@ -915,6 +1210,7 @@ export default function AgendaView() {
   const [viewMode, setViewMode] = useState<'day' | 'week' | 'month'>('day')
   const [currentDate, setCurrentDate] = useState(new Date())
   const [showNuevaCita, setShowNuevaCita] = useState(false)
+  const [citaAEditar, setCitaAEditar] = useState<Cita | null>(null)
   const [mobileListMode, setMobileListMode] = useState(true)
   // ── Filtro por especialista ──────────────────────────────────────────────
   const [filtroEspId, setFiltroEspId] = useState<string | null>(null) // null = Todas
@@ -1463,6 +1759,7 @@ export default function AgendaView() {
               onCompletar={solicitarCompletar}
               onCancelar={cancelarCita}
               onEliminar={eliminarCita}
+              onEditar={setCitaAEditar}
             />
           </div>
         )}
@@ -1487,9 +1784,19 @@ export default function AgendaView() {
               onCompletar={solicitarCompletar}
               onCancelar={cancelarCita}
               onEliminar={eliminarCita}
+              onEditar={setCitaAEditar}
             />
           </div>
         </div>
+      )}
+
+      {/* Editar cita modal */}
+      {citaAEditar && (
+        <EditarCitaModal
+          cita={citaAEditar}
+          onClose={() => setCitaAEditar(null)}
+          onSaved={() => { setCitaAEditar(null); setSelectedCita(null); loadCitas() }}
+        />
       )}
 
       {/* Completar modal */}
