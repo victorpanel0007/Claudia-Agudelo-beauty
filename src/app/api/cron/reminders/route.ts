@@ -1,7 +1,48 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/server'
-import { sendWhatsAppMessage } from '@/lib/evolution-api'
 import { formatDate, formatTime } from '@/lib/utils'
+
+// ── Envío vía backend de Railway (Meta Cloud API / Dualhook) ─────────────────
+// El backend expone POST /api/messages/send con body { to, text }
+// y usa META_ACCESS_TOKEN + DUALHOOK_PHONE_NUMBER_ID para enviar.
+
+interface SendResult {
+  ok: boolean
+  errorMessage?: string
+}
+
+async function sendWhatsAppViaRailway(to: string, text: string): Promise<SendResult> {
+  const backendUrl = process.env.WHATSAPP_BACKEND_URL
+  if (!backendUrl) {
+    console.error('[Cron] WHATSAPP_BACKEND_URL no configurado')
+    return { ok: false, errorMessage: 'WHATSAPP_BACKEND_URL no configurado en variables de entorno' }
+  }
+
+  // Normalizar teléfono a formato 57XXXXXXXXXX
+  const digits = to.replace(/\D/g, '')
+  const phone = digits.startsWith('57') && digits.length === 12
+    ? digits
+    : digits.length === 10
+      ? `57${digits}`
+      : digits
+
+  try {
+    const res = await fetch(`${backendUrl}/api/messages/send`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ to: phone, text }),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      signal: (AbortSignal as any).timeout(10_000),
+    })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}))
+      return { ok: false, errorMessage: `HTTP ${res.status} — ${JSON.stringify(err)}` }
+    }
+    return { ok: true }
+  } catch (err) {
+    return { ok: false, errorMessage: (err as Error).message }
+  }
+}
 
 // ── Auth del cron ─────────────────────────────────────────────────────────────
 // Vercel llama con GET y el header Authorization: Bearer <CRON_SECRET>
@@ -67,13 +108,13 @@ async function runReminders() {
     for (const cita of citas24h || []) {
       if (cita.cliente?.telefono) {
         const msg = buildMensajeCliente(config, cita, '24h')
-        const res = await sendWhatsAppMessage(cita.cliente.telefono, msg)
+        const res = await sendWhatsAppViaRailway(cita.cliente.telefono, msg)
         resultados.push({ cita_id: cita.id, tipo: 'cliente_24h', ok: res.ok, error: res.errorMessage })
         if (res.ok) console.info(`[Cron] 24h → ${cita.cliente.telefono} (${cita.id})`)
       }
 
       if (config.notificar_especialista && cita.especialista?.whatsapp && cita.especialista?.notificaciones) {
-        await sendWhatsAppMessage(cita.especialista.whatsapp, buildMensajeEspecialista(cita, '24h'))
+        await sendWhatsAppViaRailway(cita.especialista.whatsapp, buildMensajeEspecialista(cita, '24h'))
       }
 
       await supabase.from('citas')
@@ -99,13 +140,13 @@ async function runReminders() {
     for (const cita of citas2h || []) {
       if (cita.cliente?.telefono) {
         const msg = buildMensajeCliente(config, cita, '2h')
-        const res = await sendWhatsAppMessage(cita.cliente.telefono, msg)
+        const res = await sendWhatsAppViaRailway(cita.cliente.telefono, msg)
         resultados.push({ cita_id: cita.id, tipo: 'cliente_2h', ok: res.ok, error: res.errorMessage })
         if (res.ok) console.info(`[Cron] 2h → ${cita.cliente.telefono} (${cita.id})`)
       }
 
       if (config.notificar_especialista && cita.especialista?.whatsapp && cita.especialista?.notificaciones) {
-        await sendWhatsAppMessage(cita.especialista.whatsapp, buildMensajeEspecialista(cita, '2h'))
+        await sendWhatsAppViaRailway(cita.especialista.whatsapp, buildMensajeEspecialista(cita, '2h'))
       }
 
       await supabase.from('citas')
