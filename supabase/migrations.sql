@@ -422,3 +422,44 @@ DO $$ BEGIN
       ON dias_bloqueados_especialista USING (true) WITH CHECK (true);
   END IF;
 END $$;
+
+-- ────────────────────────────────────────────────────────────────
+-- 10. HORARIOS POR DÍA DE LA SEMANA
+--     Permite configurar horarios específicos para cada día.
+--     Si no existen horarios específicos, el sistema usa el
+--     horario global (horario_inicio/horario_fin) como fallback.
+-- ────────────────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS horarios_especialista (
+  id              uuid        PRIMARY KEY DEFAULT uuid_generate_v4(),
+  especialista_id uuid        NOT NULL REFERENCES especialistas(id) ON DELETE CASCADE,
+  dia_semana      int         NOT NULL CHECK (dia_semana >= 0 AND dia_semana <= 6),
+  hora_inicio     time        NOT NULL,
+  hora_fin        time        NOT NULL,
+  activo          boolean     DEFAULT true,
+  created_at      timestamptz DEFAULT now(),
+  CONSTRAINT horario_valido CHECK (hora_fin > hora_inicio),
+  CONSTRAINT horario_unico UNIQUE (especialista_id, dia_semana)
+);
+
+CREATE INDEX IF NOT EXISTS idx_horarios_esp ON horarios_especialista(especialista_id);
+CREATE INDEX IF NOT EXISTS idx_horarios_dia ON horarios_especialista(dia_semana);
+
+ALTER TABLE horarios_especialista ENABLE ROW LEVEL SECURITY;
+
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE tablename = 'horarios_especialista'
+      AND policyname = 'Full access horarios_especialista'
+  ) THEN
+    CREATE POLICY "Full access horarios_especialista"
+      ON horarios_especialista USING (true) WITH CHECK (true);
+  END IF;
+END $$;
+
+-- Comentario sobre migración de datos:
+-- NO migramos automáticamente los horarios globales (horario_inicio/horario_fin)
+-- a horarios_especialista porque el sistema ya tiene un fallback:
+-- si no hay horarios específicos, usa el horario global.
+-- Esto permite que las especialistas existentes sigan funcionando sin cambios.

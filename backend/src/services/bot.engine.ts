@@ -186,17 +186,63 @@ async function getAvailableSlots(fecha: Date, duracion: number, espId?: string):
   const slots: AvailableSlot[] = []
   const espsFiltradas = espId ? esps.filter((e: Record<string, unknown>) => e.id === espId) : esps
 
-  for (const esp of espsFiltradas) {
-    const diasLaborales = (esp.dias_laborales as number[] | null) ?? [1, 2, 3, 4, 5, 6]
-    const diaSemana = new Date(`${fechaStr}T12:00:00-05:00`).getDay() // 0=dom, 1=lun...
+  // ── Obtener día de la semana ───────────────────────────────────────────────
+  const diaSemana = new Date(`${fechaStr}T12:00:00-05:00`).getDay()
 
-    // Si ese día de la semana no es laboral para esta especialista, saltar
-    if (!diasLaborales.includes(diaSemana)) {
-      webhookLog.debug({ esp: esp.nombre, fechaStr, diaSemana, diasLaborales }, '[Bot] Día no laboral para especialista')
+  // ── Verificar días bloqueados específicos para esta fecha ─────────────────
+  const { data: diasBloqueados } = await sb
+    .from('dias_bloqueados_especialista')
+    .select('especialista_id')
+    .eq('fecha', fechaStr)
+  const espsBloqueadas = new Set((diasBloqueados ?? []).map((d: Record<string, unknown>) => d.especialista_id as string))
+
+  // ── Cargar horarios específicos por día para todas las especialistas ──────
+  const { data: horariosEspecificos } = await sb
+    .from('horarios_especialista')
+    .select('especialista_id, dia_semana, hora_inicio, hora_fin, activo')
+  const horariosMap = new Map<string, Map<number, { inicio: string; fin: string; activo: boolean }>>()
+  for (const h of horariosEspecificos ?? []) {
+    const espId_ = h.especialista_id as string
+    if (!horariosMap.has(espId_)) horariosMap.set(espId_, new Map())
+    horariosMap.get(espId_)!.set(h.dia_semana as number, {
+      inicio: h.hora_inicio as string,
+      fin: h.hora_fin as string,
+      activo: h.activo as boolean,
+    })
+  }
+
+  for (const esp of espsFiltradas) {
+    // ── 1. Verificar día bloqueado específicamente ────────────────────────
+    if (espsBloqueadas.has(esp.id as string)) {
+      webhookLog.debug({ esp: esp.nombre, fechaStr }, '[Bot] Día bloqueado para especialista')
       continue
     }
-    const inicio = (esp.horario_inicio as string) ?? '09:00'
-    const fin    = (esp.horario_fin    as string) ?? '19:00'
+
+    // ── 2. Determinar horario: específico del día o global como fallback ──
+    const horarioEspecifico = horariosMap.get(esp.id as string)?.get(diaSemana)
+
+    let inicio: string
+    let fin: string
+
+    if (horarioEspecifico && horarioEspecifico.activo) {
+      // Usar horario específico del día
+      inicio = horarioEspecifico.inicio
+      fin = horarioEspecifico.fin
+    } else if (horarioEspecifico && !horarioEspecifico.activo) {
+      // Día desactivado explícitamente para esta especialista
+      webhookLog.debug({ esp: esp.nombre, fechaStr, diaSemana }, '[Bot] Día desactivado en horario específico')
+      continue
+    } else {
+      // Fallback: usar horario global y verificar dias_laborales
+      const diasLaborales = (esp.dias_laborales as number[] | null) ?? [1, 2, 3, 4, 5, 6]
+      if (!diasLaborales.includes(diaSemana)) {
+        webhookLog.debug({ esp: esp.nombre, fechaStr, diaSemana, diasLaborales }, '[Bot] Día no laboral para especialista')
+        continue
+      }
+      inicio = (esp.horario_inicio as string) ?? '09:00'
+      fin    = (esp.horario_fin    as string) ?? '19:00'
+    }
+
     const [hf, mf] = fin.split(':').map(Number)
 
     const { data: citasOcupadas } = await sb.from('citas').select('fecha_inicio, fecha_fin')
@@ -211,7 +257,7 @@ async function getAvailableSlots(fecha: Date, duracion: number, espId?: string):
 
     const descansosEsp = (descansos ?? []) as { hora_inicio: string; hora_fin: string }[]
 
-    let cursor = new Date(`${fechaStr}T${inicio}:00-05:00`)
+    let cursor = new Date(`${fechaStr}T${inicio.slice(0, 5)}:00-05:00`)
     const endTime = new Date(`${fechaStr}T${String(hf).padStart(2,'0')}:${String(mf).padStart(2,'0')}:00-05:00`)
 
     // ── Si es HOY en Colombia, saltar los slots que ya pasaron ──────────
@@ -238,12 +284,9 @@ async function getAvailableSlots(fecha: Date, duracion: number, espId?: string):
       })
 
       // Verificar si el slot cae dentro de un descanso
-      // hora_inicio/hora_fin están en formato "HH:MM:SS" o "HH:MM"
       const enDescanso = descansosEsp.some(d => {
         const descInicio = new Date(`${fechaStr}T${d.hora_inicio.slice(0, 5)}:00-05:00`).getTime()
         const descFin    = new Date(`${fechaStr}T${d.hora_fin.slice(0, 5)}:00-05:00`).getTime()
-        // El slot se superpone con el descanso si empieza antes de que termine el descanso
-        // y termina después de que empiece el descanso
         return cursor.getTime() < descFin && slotFin.getTime() > descInicio
       })
 

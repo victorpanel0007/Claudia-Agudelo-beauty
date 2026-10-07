@@ -42,6 +42,13 @@ interface DiaBloqueado {
   motivo?: string
 }
 
+interface HorarioDia {
+  dia_semana: number
+  hora_inicio: string
+  hora_fin: string
+  activo: boolean
+}
+
 const DIAS = [
   { num: 0, label: 'Dom', short: 'D' },
   { num: 1, label: 'Lun', short: 'L' },
@@ -114,6 +121,10 @@ export default function EspecialistasView() {
     const hoy = new Date()
     return new Date(hoy.getFullYear(), hoy.getMonth(), 1)
   })
+  // Horarios específicos por día
+  const [horariosPorDia, setHorariosPorDia] = useState<HorarioDia[]>([])
+  // Mapa de horarios por especialista_id para mostrar en tarjetas
+  const [horariosPorDiaMap, setHorariosPorDiaMap] = useState<Record<string, HorarioDia[]>>({})
   const supabase = createClient()
 
   useEffect(() => {
@@ -134,10 +145,11 @@ export default function EspecialistasView() {
 
   async function loadData() {
     setLoading(true)
-    const [{ data }, { data: descData }, { data: diasBlData }] = await Promise.all([
+    const [{ data }, { data: descData }, { data: diasBlData }, { data: horariosData }] = await Promise.all([
       supabase.from('especialistas').select('*').order('nombre'),
       supabase.from('descansos_especialista').select('especialista_id, hora_inicio, hora_fin').order('hora_inicio'),
       supabase.from('dias_bloqueados_especialista').select('especialista_id, fecha, motivo').order('fecha'),
+      supabase.from('horarios_especialista').select('especialista_id, dia_semana, hora_inicio, hora_fin, activo').order('dia_semana'),
     ])
     setEspecialistas((data as Especialista[]) || [])
     // Construir mapa especialista_id → descansos
@@ -156,6 +168,19 @@ export default function EspecialistasView() {
       dbMap[key].push({ fecha: d.fecha as string, motivo: d.motivo as string | undefined })
     }
     setDiasBloqueadosMap(dbMap)
+    // Construir mapa especialista_id → horarios por día
+    const hMap: Record<string, HorarioDia[]> = {}
+    for (const h of horariosData || []) {
+      const key = h.especialista_id as string
+      if (!hMap[key]) hMap[key] = []
+      hMap[key].push({
+        dia_semana: h.dia_semana as number,
+        hora_inicio: h.hora_inicio as string,
+        hora_fin: h.hora_fin as string,
+        activo: h.activo as boolean,
+      })
+    }
+    setHorariosPorDiaMap(hMap)
     setLoading(false)
   }
 
@@ -186,6 +211,13 @@ export default function EspecialistasView() {
       .eq('especialista_id', e.id)
       .order('fecha')
       .then(({ data }) => setDiasBloqueados((data as DiaBloqueado[]) || []))
+    // Cargar horarios por día existentes
+    supabase
+      .from('horarios_especialista')
+      .select('dia_semana, hora_inicio, hora_fin, activo')
+      .eq('especialista_id', e.id)
+      .order('dia_semana')
+      .then(({ data }) => setHorariosPorDia((data as HorarioDia[]) || []))
     // Resetear calendario al mes actual
     const hoy = new Date()
     setCalMes(new Date(hoy.getFullYear(), hoy.getMonth(), 1))
@@ -198,6 +230,7 @@ export default function EspecialistasView() {
     setForm(DEFAULT_FORM)
     setDescansos([])
     setDiasBloqueados([])
+    setHorariosPorDia([])
     const hoy = new Date()
     setCalMes(new Date(hoy.getFullYear(), hoy.getMonth(), 1))
     setShowForm(true)
@@ -209,6 +242,7 @@ export default function EspecialistasView() {
     setForm(DEFAULT_FORM)
     setDescansos([])
     setDiasBloqueados([])
+    setHorariosPorDia([])
   }
 
   function toggleDia(num: number) {
@@ -270,6 +304,7 @@ export default function EspecialistasView() {
       } else {
         await saveDescansos(editingId)
         await saveDiasBloqueados(editingId)
+        await saveHorariosPorDia(editingId)
         toast.success(`✅ ${form.nombre} actualizada correctamente`)
         closeForm()
         loadData()
@@ -336,6 +371,7 @@ export default function EspecialistasView() {
       // PASO 4: Guardar descansos y días bloqueados
       await saveDescansos(newEsp.id)
       await saveDiasBloqueados(newEsp.id)
+      await saveHorariosPorDia(newEsp.id)
 
       toast.success(`✅ ${form.nombre} creada con acceso al Panel de Especialista`)
       closeForm()
@@ -364,6 +400,46 @@ export default function EspecialistasView() {
         motivo: d.motivo ?? null,
       }))
       await supabase.from('dias_bloqueados_especialista').insert(rows)
+    }
+  }
+
+  // ── Horarios por día helpers ──────────────────────────────────────────────
+  function toggleHorarioDia(dia: number) {
+    const existe = horariosPorDia.find(h => h.dia_semana === dia)
+    if (existe) {
+      // Toggle activo/inactivo
+      setHorariosPorDia(prev => prev.map(h =>
+        h.dia_semana === dia ? { ...h, activo: !h.activo } : h
+      ))
+    } else {
+      // Crear nuevo con horario por defecto
+      setHorariosPorDia(prev => [...prev, {
+        dia_semana: dia,
+        hora_inicio: '09:00',
+        hora_fin: '19:00',
+        activo: true,
+      }].sort((a, b) => a.dia_semana - b.dia_semana))
+    }
+  }
+
+  function updateHorarioDia(dia: number, field: 'hora_inicio' | 'hora_fin', value: string) {
+    setHorariosPorDia(prev => prev.map(h =>
+      h.dia_semana === dia ? { ...h, [field]: value } : h
+    ))
+  }
+
+  async function saveHorariosPorDia(especialistaId: string) {
+    // Estrategia: eliminar todos los existentes y re-insertar
+    await supabase.from('horarios_especialista').delete().eq('especialista_id', especialistaId)
+    if (horariosPorDia.length > 0) {
+      const rows = horariosPorDia.map(h => ({
+        especialista_id: especialistaId,
+        dia_semana: h.dia_semana,
+        hora_inicio: h.hora_inicio,
+        hora_fin: h.hora_fin,
+        activo: h.activo,
+      }))
+      await supabase.from('horarios_especialista').insert(rows)
     }
   }
 
@@ -518,15 +594,40 @@ export default function EspecialistasView() {
                   </div>
                 </div>
 
-                <div className="bg-beauty-rosa-claro rounded-xl p-3">
-                  <p className="text-xs font-semibold text-gray-600 mb-1">Horario de atención</p>
-                  <p className="text-beauty-text text-sm font-medium">
-                    {formatTime12(e.horario_inicio)} — {formatTime12(e.horario_fin)}
-                  </p>
-                  <p className="text-gray-400 text-xs mt-0.5">
-                    {calcSlots(e.horario_inicio, e.horario_fin)} slots de 30 min disponibles en el día
-                  </p>
-                </div>
+                {/* Horarios por día — si existen */}
+                {horariosPorDiaMap[e.id]?.filter(h => h.activo).length > 0 ? (
+                  <div className="bg-beauty-primary/5 border border-beauty-primary/20 rounded-xl p-3">
+                    <div className="flex items-center gap-1.5 mb-2">
+                      <Clock size={13} className="text-beauty-primary" />
+                      <p className="text-xs font-semibold text-beauty-primary">Horario por día</p>
+                    </div>
+                    <div className="space-y-1">
+                      {horariosPorDiaMap[e.id]
+                        .filter(h => h.activo)
+                        .sort((a, b) => a.dia_semana - b.dia_semana)
+                        .map((h, i) => {
+                          const dia = DIAS.find(d => d.num === h.dia_semana)
+                          return (
+                            <div key={i} className="flex items-center justify-between text-[11px]">
+                              <span className="font-semibold text-gray-600 w-8">{dia?.short}</span>
+                              <span className="text-gray-500">{formatTime12(h.hora_inicio)} – {formatTime12(h.hora_fin)}</span>
+                              <span className="text-gray-400">{calcSlots(h.hora_inicio, h.hora_fin)} slots</span>
+                            </div>
+                          )
+                        })}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="bg-beauty-rosa-claro rounded-xl p-3">
+                    <p className="text-xs font-semibold text-gray-600 mb-1">Horario de atención</p>
+                    <p className="text-beauty-text text-sm font-medium">
+                      {formatTime12(e.horario_inicio)} — {formatTime12(e.horario_fin)}
+                    </p>
+                    <p className="text-gray-400 text-xs mt-0.5">
+                      {calcSlots(e.horario_inicio, e.horario_fin)} slots de 30 min (horario global)
+                    </p>
+                  </div>
+                )}
 
                 {/* Descansos configurados */}
                 {descansosMap[e.id]?.length > 0 && (
@@ -624,6 +725,109 @@ export default function EspecialistasView() {
                   className="input-beauty"
                   placeholder="Nombre de la especialista"
                 />
+              </div>
+
+              {/* ── Horarios por día (nuevo) + fallback global ──────────────── */}
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <Clock size={14} className="text-beauty-secondary" />
+                  <label className="text-sm font-medium text-gray-700">Horario por día de la semana</label>
+                </div>
+                <p className="text-xs text-gray-400 mb-3">
+                  Configura la apertura y cierre de cada día por separado.
+                  Si no configuras un día específico, usa el horario global de abajo como fallback.
+                </p>
+                <div className="space-y-2">
+                  {DIAS.map(d => {
+                    const horario = horariosPorDia.find(h => h.dia_semana === d.num)
+                    const tieneHorario = !!horario
+                    const estaActivo = horario?.activo ?? false
+
+                    return (
+                      <div key={d.num} className={`rounded-xl border transition-all ${
+                        tieneHorario && estaActivo
+                          ? 'border-beauty-primary/40 bg-beauty-primary/5'
+                          : tieneHorario && !estaActivo
+                            ? 'border-gray-200 bg-gray-50 opacity-60'
+                            : 'border-dashed border-gray-200 bg-white'
+                      }`}>
+                        <div className="flex items-center gap-3 p-3">
+                          {/* Toggle día */}
+                          <button
+                            type="button"
+                            onClick={() => toggleHorarioDia(d.num)}
+                            className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 transition-all ${
+                              tieneHorario && estaActivo
+                                ? 'bg-beauty-secondary text-beauty-text'
+                                : tieneHorario && !estaActivo
+                                  ? 'bg-gray-200 text-gray-400'
+                                  : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
+                            }`}
+                          >
+                            {d.short}
+                          </button>
+
+                          <span className={`text-xs font-semibold w-12 shrink-0 ${
+                            tieneHorario && estaActivo ? 'text-gray-700' : 'text-gray-400'
+                          }`}>
+                            {d.label}
+                          </span>
+
+                          {tieneHorario ? (
+                            <>
+                              <select
+                                value={horario.hora_inicio}
+                                onChange={e => updateHorarioDia(d.num, 'hora_inicio', e.target.value)}
+                                disabled={!estaActivo}
+                                className="flex-1 border border-gray-200 rounded-lg px-2 py-1.5 text-xs bg-white focus:outline-none focus:border-beauty-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                              >
+                                {TIME_OPTIONS.map(t => <option key={t} value={t}>{formatTime12(t)}</option>)}
+                              </select>
+                              <span className="text-xs text-gray-400 shrink-0">–</span>
+                              <select
+                                value={horario.hora_fin}
+                                onChange={e => updateHorarioDia(d.num, 'hora_fin', e.target.value)}
+                                disabled={!estaActivo}
+                                className="flex-1 border border-gray-200 rounded-lg px-2 py-1.5 text-xs bg-white focus:outline-none focus:border-beauty-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                              >
+                                {TIME_OPTIONS.map(t => <option key={t} value={t}>{formatTime12(t)}</option>)}
+                              </select>
+                              {/* Quitar configuración específica */}
+                              <button
+                                type="button"
+                                onClick={() => setHorariosPorDia(prev => prev.filter(h => h.dia_semana !== d.num))}
+                                className="p-1.5 text-gray-300 hover:text-red-400 hover:bg-red-50 rounded-lg transition-colors shrink-0"
+                                title="Usar horario global"
+                              >
+                                <X size={12} />
+                              </button>
+                            </>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => toggleHorarioDia(d.num)}
+                              className="text-xs text-beauty-secondary hover:underline ml-1"
+                            >
+                              + Configurar este día
+                            </button>
+                          )}
+                        </div>
+                        {tieneHorario && estaActivo && (
+                          <div className="px-3 pb-2">
+                            <p className="text-[10px] text-gray-400">
+                              {calcSlots(horario.hora_inicio, horario.hora_fin)} slots de 30 min
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+                {horariosPorDia.length === 0 && (
+                  <p className="text-xs text-gray-400 mt-2 text-center bg-gray-50 rounded-xl p-3">
+                    Sin horarios específicos — se usará el horario global para todos los días laborales
+                  </p>
+                )}
               </div>
 
               {/* Horario */}

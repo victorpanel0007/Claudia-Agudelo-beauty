@@ -74,21 +74,55 @@ export async function getAvailableSlots(
     (diasBloqueados || []).map(d => d.especialista_id as string)
   )
 
+  // ── Obtener horarios específicos por día (si existen) ──────────────────
+  const { data: horariosEspecificos } = await supabase
+    .from('horarios_especialista')
+    .select('especialista_id, dia_semana, hora_inicio, hora_fin, activo')
+
+  // Mapear horarios por especialista_id → día_semana
+  const horariosMap = new Map<string, Map<number, { inicio: string; fin: string; activo: boolean }>>()
+  for (const h of horariosEspecificos || []) {
+    if (!horariosMap.has(h.especialista_id as string)) {
+      horariosMap.set(h.especialista_id as string, new Map())
+    }
+    horariosMap.get(h.especialista_id as string)!.set(h.dia_semana as number, {
+      inicio: h.hora_inicio as string,
+      fin: h.hora_fin as string,
+      activo: h.activo as boolean,
+    })
+  }
+
   const slots: AvailableSlot[] = []
 
   for (const esp of especialistas) {
     // ── Verificar si esta fecha está bloqueada específicamente ────────────
     if (especialistasBloqueados.has(esp.id)) continue
 
-    // ── Horario del especialista (fallback 09:00–19:00) ─────────────────
-    const [startH, startM] = (esp.horario_inicio || '09:00').split(':').map(Number)
-    const [endH, endM]     = (esp.horario_fin    || '19:00').split(':').map(Number)
+    // ── Obtener día de la semana (0=Dom, 1=Lun ... 6=Sáb) ─────────────────
+    const dayOfWeek = new Date(`${fechaStr}T12:00:00-05:00`).getDay()
 
-    // ── Verificar día laboral en Colombia ────────────────────────────────
-    // Usamos T12 para evitar que la conversión de zona cambie el día
-    const dayOfWeek     = new Date(`${fechaStr}T12:00:00-05:00`).getDay()
-    const diasLaborales: number[] = esp.dias_laborales || [1, 2, 3, 4, 5, 6]
-    if (!diasLaborales.includes(dayOfWeek)) continue
+    // ── Verificar si tiene horario específico para este día ───────────────
+    const horarioEspecifico = horariosMap.get(esp.id)?.get(dayOfWeek)
+
+    let startH: number, startM: number, endH: number, endM: number
+
+    if (horarioEspecifico && horarioEspecifico.activo) {
+      // Usar horario específico del día
+      const [sh, sm] = horarioEspecifico.inicio.split(':').map(Number)
+      const [eh, em] = horarioEspecifico.fin.split(':').map(Number)
+      startH = sh; startM = sm; endH = eh; endM = em
+    } else if (horarioEspecifico && !horarioEspecifico.activo) {
+      // Día desactivado específicamente → no trabajar este día
+      continue
+    } else {
+      // Fallback: usar horario global y verificar dias_laborales
+      const diasLaborales: number[] = esp.dias_laborales || [1, 2, 3, 4, 5, 6]
+      if (!diasLaborales.includes(dayOfWeek)) continue
+
+      const [sh, sm] = (esp.horario_inicio || '09:00').split(':').map(Number)
+      const [eh, em] = (esp.horario_fin || '19:00').split(':').map(Number)
+      startH = sh; startM = sm; endH = eh; endM = em
+    }
 
     // ── Construir límites del día laboral ────────────────────────────────
     const workStart = new Date(
