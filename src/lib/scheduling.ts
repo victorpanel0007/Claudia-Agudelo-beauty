@@ -64,9 +64,22 @@ export async function getAvailableSlots(
     .from('descansos_especialista')
     .select('especialista_id, hora_inicio, hora_fin')
 
+  // ── Obtener días bloqueados que coincidan con esta fecha ──────────────
+  const { data: diasBloqueados } = await supabase
+    .from('dias_bloqueados_especialista')
+    .select('especialista_id')
+    .eq('fecha', fechaStr)
+
+  const especialistasBloqueados = new Set(
+    (diasBloqueados || []).map(d => d.especialista_id as string)
+  )
+
   const slots: AvailableSlot[] = []
 
   for (const esp of especialistas) {
+    // ── Verificar si esta fecha está bloqueada específicamente ────────────
+    if (especialistasBloqueados.has(esp.id)) continue
+
     // ── Horario del especialista (fallback 09:00–19:00) ─────────────────
     const [startH, startM] = (esp.horario_inicio || '09:00').split(':').map(Number)
     const [endH, endM]     = (esp.horario_fin    || '19:00').split(':').map(Number)

@@ -390,3 +390,35 @@ DO $$ BEGIN
       ON descansos_especialista USING (true) WITH CHECK (true);
   END IF;
 END $$;
+
+-- ────────────────────────────────────────────────────────────────
+-- 9. DÍAS BLOQUEADOS POR ESPECIALISTA
+--    Fechas específicas en las que una especialista no trabaja,
+--    independientemente de sus días laborales habituales.
+--    Ej: vacaciones, citas médicas, feriados personales.
+-- ────────────────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS dias_bloqueados_especialista (
+  id              uuid        PRIMARY KEY DEFAULT uuid_generate_v4(),
+  especialista_id uuid        NOT NULL REFERENCES especialistas(id) ON DELETE CASCADE,
+  fecha           date        NOT NULL,   -- ej: '2026-10-15'
+  motivo          text,                   -- opcional: 'Vacaciones', 'Cita médica', etc.
+  created_at      timestamptz DEFAULT now(),
+  CONSTRAINT dia_bloqueado_unico UNIQUE (especialista_id, fecha)
+);
+
+CREATE INDEX IF NOT EXISTS idx_dias_bloqueados_esp   ON dias_bloqueados_especialista(especialista_id);
+CREATE INDEX IF NOT EXISTS idx_dias_bloqueados_fecha ON dias_bloqueados_especialista(fecha);
+
+ALTER TABLE dias_bloqueados_especialista ENABLE ROW LEVEL SECURITY;
+
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE tablename = 'dias_bloqueados_especialista'
+      AND policyname = 'Full access dias_bloqueados_especialista'
+  ) THEN
+    CREATE POLICY "Full access dias_bloqueados_especialista"
+      ON dias_bloqueados_especialista USING (true) WITH CHECK (true);
+  END IF;
+END $$;

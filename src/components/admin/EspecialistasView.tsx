@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Clock, Plus, Edit, Save, X, CheckCircle, XCircle, User, Send, RefreshCw, Wifi, WifiOff, Trash2, Coffee } from 'lucide-react'
+import { Clock, Plus, Edit, Save, X, CheckCircle, XCircle, User, Send, RefreshCw, Wifi, WifiOff, Trash2, Coffee, CalendarX, ChevronLeft, ChevronRight } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { Modal } from '@/components/ui/Modal'
 
@@ -34,6 +34,12 @@ interface Descanso {
   id?: string
   hora_inicio: string
   hora_fin: string
+}
+
+interface DiaBloqueado {
+  id?: string
+  fecha: string   // YYYY-MM-DD
+  motivo?: string
 }
 
 const DIAS = [
@@ -99,6 +105,15 @@ export default function EspecialistasView() {
   const [savingDescansos, setSavingDescansos] = useState(false)
   // Mapa de descansos por especialista_id para mostrar en las tarjetas
   const [descansosMap, setDescansosMap] = useState<Record<string, Descanso[]>>({})
+  // Días bloqueados del especialista que se está editando
+  const [diasBloqueados, setDiasBloqueados] = useState<DiaBloqueado[]>([])
+  // Mapa de días bloqueados por especialista_id para mostrar en tarjetas
+  const [diasBloqueadosMap, setDiasBloqueadosMap] = useState<Record<string, DiaBloqueado[]>>({})
+  // Estado del mini-calendario de días bloqueados
+  const [calMes, setCalMes] = useState(() => {
+    const hoy = new Date()
+    return new Date(hoy.getFullYear(), hoy.getMonth(), 1)
+  })
   const supabase = createClient()
 
   useEffect(() => {
@@ -119,9 +134,10 @@ export default function EspecialistasView() {
 
   async function loadData() {
     setLoading(true)
-    const [{ data }, { data: descData }] = await Promise.all([
+    const [{ data }, { data: descData }, { data: diasBlData }] = await Promise.all([
       supabase.from('especialistas').select('*').order('nombre'),
       supabase.from('descansos_especialista').select('especialista_id, hora_inicio, hora_fin').order('hora_inicio'),
+      supabase.from('dias_bloqueados_especialista').select('especialista_id, fecha, motivo').order('fecha'),
     ])
     setEspecialistas((data as Especialista[]) || [])
     // Construir mapa especialista_id → descansos
@@ -132,6 +148,14 @@ export default function EspecialistasView() {
       map[key].push({ hora_inicio: d.hora_inicio as string, hora_fin: d.hora_fin as string })
     }
     setDescansosMap(map)
+    // Construir mapa especialista_id → días bloqueados
+    const dbMap: Record<string, DiaBloqueado[]> = {}
+    for (const d of diasBlData || []) {
+      const key = d.especialista_id as string
+      if (!dbMap[key]) dbMap[key] = []
+      dbMap[key].push({ fecha: d.fecha as string, motivo: d.motivo as string | undefined })
+    }
+    setDiasBloqueadosMap(dbMap)
     setLoading(false)
   }
 
@@ -155,6 +179,16 @@ export default function EspecialistasView() {
       .eq('especialista_id', e.id)
       .order('hora_inicio')
       .then(({ data }) => setDescansos((data as Descanso[]) || []))
+    // Cargar días bloqueados existentes
+    supabase
+      .from('dias_bloqueados_especialista')
+      .select('id, fecha, motivo')
+      .eq('especialista_id', e.id)
+      .order('fecha')
+      .then(({ data }) => setDiasBloqueados((data as DiaBloqueado[]) || []))
+    // Resetear calendario al mes actual
+    const hoy = new Date()
+    setCalMes(new Date(hoy.getFullYear(), hoy.getMonth(), 1))
     setShowForm(true)
   }
 
@@ -163,6 +197,9 @@ export default function EspecialistasView() {
     setDiasSelected([1, 2, 3, 4, 5, 6])
     setForm(DEFAULT_FORM)
     setDescansos([])
+    setDiasBloqueados([])
+    const hoy = new Date()
+    setCalMes(new Date(hoy.getFullYear(), hoy.getMonth(), 1))
     setShowForm(true)
   }
 
@@ -171,6 +208,7 @@ export default function EspecialistasView() {
     setEditingId(null)
     setForm(DEFAULT_FORM)
     setDescansos([])
+    setDiasBloqueados([])
   }
 
   function toggleDia(num: number) {
@@ -231,6 +269,7 @@ export default function EspecialistasView() {
         toast.error('No se encontró la especialista para actualizar')
       } else {
         await saveDescansos(editingId)
+        await saveDiasBloqueados(editingId)
         toast.success(`✅ ${form.nombre} actualizada correctamente`)
         closeForm()
         loadData()
@@ -294,14 +333,38 @@ export default function EspecialistasView() {
         }),
       }).catch(() => {})
 
-      // PASO 4: Guardar descansos
+      // PASO 4: Guardar descansos y días bloqueados
       await saveDescansos(newEsp.id)
+      await saveDiasBloqueados(newEsp.id)
 
       toast.success(`✅ ${form.nombre} creada con acceso al Panel de Especialista`)
       closeForm()
       loadData()
     }
     setSaving(false)
+  }
+
+  // ── Días bloqueados helpers ──────────────────────────────────────────────
+  function toggleDiaBloqueado(fechaStr: string) {
+    const existe = diasBloqueados.some(d => d.fecha === fechaStr)
+    if (existe) {
+      setDiasBloqueados(prev => prev.filter(d => d.fecha !== fechaStr))
+    } else {
+      setDiasBloqueados(prev => [...prev, { fecha: fechaStr }].sort((a, b) => a.fecha.localeCompare(b.fecha)))
+    }
+  }
+
+  async function saveDiasBloqueados(especialistaId: string) {
+    // Estrategia: eliminar todos los existentes y re-insertar
+    await supabase.from('dias_bloqueados_especialista').delete().eq('especialista_id', especialistaId)
+    if (diasBloqueados.length > 0) {
+      const rows = diasBloqueados.map(d => ({
+        especialista_id: especialistaId,
+        fecha: d.fecha,
+        motivo: d.motivo ?? null,
+      }))
+      await supabase.from('dias_bloqueados_especialista').insert(rows)
+    }
   }
 
   // ── Descansos helpers ────────────────────────────────────────────────────
@@ -481,6 +544,35 @@ export default function EspecialistasView() {
                     </div>
                   </div>
                 )}
+
+                {/* Días bloqueados (próximos) */}
+                {diasBloqueadosMap[e.id]?.length > 0 && (() => {
+                  const hoyStr = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Bogota' })
+                  const proximos = diasBloqueadosMap[e.id]
+                    .filter(d => d.fecha >= hoyStr)
+                    .slice(0, 3)
+                  if (!proximos.length) return null
+                  return (
+                    <div className="bg-red-50 border border-red-200 rounded-xl p-3">
+                      <div className="flex items-center gap-1.5 mb-2">
+                        <CalendarX size={13} className="text-red-500" />
+                        <p className="text-xs font-semibold text-red-700">Días no disponibles</p>
+                      </div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {proximos.map((d, i) => (
+                          <span key={i} className="text-[10px] bg-red-100 text-red-700 font-medium px-2 py-0.5 rounded-full">
+                            🔴 {new Date(d.fecha + 'T12:00:00').toLocaleDateString('es-CO', { day: 'numeric', month: 'short' })}
+                          </span>
+                        ))}
+                        {diasBloqueadosMap[e.id].filter(d => d.fecha >= hoyStr).length > 3 && (
+                          <span className="text-[10px] text-red-400 font-medium px-2 py-0.5">
+                            +{diasBloqueadosMap[e.id].filter(d => d.fecha >= hoyStr).length - 3} más
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })()}
 
                 {/* Estado notificaciones WhatsApp */}
                 <div className="bg-gray-50 rounded-xl p-3 flex items-center justify-between gap-3">
@@ -682,6 +774,127 @@ export default function EspecialistasView() {
                       ℹ️ El bot no ofrecerá horarios que se superpongan con estos descansos.
                     </p>
                   </div>
+                )}
+              </div>
+
+              {/* ── Días bloqueados (fechas específicas) ──────────────── */}
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <CalendarX size={14} className="text-red-500" />
+                  <label className="text-sm font-medium text-gray-700">Días no disponibles</label>
+                </div>
+                <p className="text-xs text-gray-400 mb-3">
+                  Selecciona los días en que esta especialista no estará disponible (vacaciones, permisos, etc.).
+                  Estos días se bloquean aunque sean días laborales habituales.
+                </p>
+
+                {/* Mini calendario */}
+                <div className="border border-gray-200 rounded-xl overflow-hidden">
+                  {/* Cabecera del mes */}
+                  <div className="flex items-center justify-between px-3 py-2.5 bg-gray-50 border-b border-gray-200">
+                    <button
+                      type="button"
+                      onClick={() => setCalMes(m => new Date(m.getFullYear(), m.getMonth() - 1, 1))}
+                      className="p-1 hover:bg-gray-200 rounded-lg transition-colors"
+                    >
+                      <ChevronLeft size={14} />
+                    </button>
+                    <span className="text-xs font-semibold text-gray-700 capitalize">
+                      {calMes.toLocaleDateString('es-CO', { month: 'long', year: 'numeric' })}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setCalMes(m => new Date(m.getFullYear(), m.getMonth() + 1, 1))}
+                      className="p-1 hover:bg-gray-200 rounded-lg transition-colors"
+                    >
+                      <ChevronRight size={14} />
+                    </button>
+                  </div>
+
+                  {/* Días de la semana */}
+                  <div className="grid grid-cols-7 bg-gray-50 border-b border-gray-200">
+                    {['Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sá', 'Do'].map(d => (
+                      <div key={d} className="text-center text-[10px] font-semibold text-gray-400 py-1.5">{d}</div>
+                    ))}
+                  </div>
+
+                  {/* Celdas del calendario */}
+                  <div className="grid grid-cols-7 p-1.5 gap-0.5">
+                    {(() => {
+                      const year = calMes.getFullYear()
+                      const month = calMes.getMonth()
+                      const firstDay = new Date(year, month, 1).getDay() // 0=Dom
+                      // Convertir: semana empieza en Lunes (1=Lun … 0=Dom→7)
+                      const offset = firstDay === 0 ? 6 : firstDay - 1
+                      const daysInMonth = new Date(year, month + 1, 0).getDate()
+                      const hoyStr = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Bogota' })
+
+                      const cells: React.ReactNode[] = []
+
+                      // Celdas vacías al inicio
+                      for (let i = 0; i < offset; i++) {
+                        cells.push(<div key={`empty-${i}`} />)
+                      }
+
+                      for (let d = 1; d <= daysInMonth; d++) {
+                        const fechaStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`
+                        const bloqueado = diasBloqueados.some(db => db.fecha === fechaStr)
+                        const esPasado = fechaStr < hoyStr
+
+                        cells.push(
+                          <button
+                            key={fechaStr}
+                            type="button"
+                            onClick={() => !esPasado && toggleDiaBloqueado(fechaStr)}
+                            disabled={esPasado}
+                            className={`
+                              w-full aspect-square rounded-lg text-xs font-medium transition-all flex items-center justify-center
+                              ${bloqueado
+                                ? 'bg-red-500 text-white shadow-sm'
+                                : esPasado
+                                  ? 'text-gray-300 cursor-not-allowed'
+                                  : 'hover:bg-red-50 hover:text-red-600 text-gray-600'
+                              }
+                            `}
+                          >
+                            {d}
+                          </button>
+                        )
+                      }
+
+                      return cells
+                    })()}
+                  </div>
+                </div>
+
+                {/* Lista de días bloqueados */}
+                {diasBloqueados.length > 0 ? (
+                  <div className="mt-3 space-y-1.5">
+                    <p className="text-xs font-semibold text-gray-500 mb-2">Días bloqueados</p>
+                    {diasBloqueados.map(db => (
+                      <div key={db.fecha} className="flex items-center justify-between bg-red-50 border border-red-200 rounded-xl px-3 py-2">
+                        <div className="flex items-center gap-2">
+                          <span className="text-red-500 text-xs">🔴</span>
+                          <span className="text-xs font-medium text-red-700">
+                            {new Date(db.fecha + 'T12:00:00').toLocaleDateString('es-CO', {
+                              weekday: 'short', day: 'numeric', month: 'short', year: 'numeric'
+                            })}
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setDiasBloqueados(prev => prev.filter(d => d.fecha !== db.fecha))}
+                          className="p-1 text-red-400 hover:text-red-600 hover:bg-red-100 rounded-lg transition-colors"
+                        >
+                          <X size={12} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-gray-400 bg-gray-50 rounded-xl p-3 text-center mt-3">
+                    Sin días bloqueados — la especialista trabaja todos sus días laborales normalmente
+                  </p>
                 )}
               </div>
 
