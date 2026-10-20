@@ -471,15 +471,29 @@ function DetailPanel({ cita, onClose, onCompletar, onCancelar, onEliminar, onEdi
 
   async function guardarServicio(servicioId: string, servicioNombre: string) {
     setSavingServicio(true)
-    const { error } = await supabase.from('citas').update({ servicio_id: servicioId }).eq('id', cita.id)
-    if (error) {
-      toast.error('Error al actualizar servicio')
-    } else {
-      toast.success(`Servicio cambiado a: ${servicioNombre}`)
-      setEditandoServicio(false)
-      setServicioSearch('')
+    try {
+      // Recalcular fecha_fin usando la duración del nuevo servicio
+      const servicio = serviciosList.find(s => s.id === servicioId)
+      const duracion = servicio?.duracion_minutos ?? cita.servicio?.duracion_minutos ?? 60
+      const nuevaFechaFin = new Date(
+        new Date(cita.fecha_inicio).getTime() + duracion * 60 * 1000
+      ).toISOString()
+
+      const { error } = await supabase
+        .from('citas')
+        .update({ servicio_id: servicioId, fecha_fin: nuevaFechaFin })
+        .eq('id', cita.id)
+
+      if (error) {
+        toast.error('Error al actualizar servicio')
+      } else {
+        toast.success(`Servicio cambiado a: ${servicioNombre}`)
+        setEditandoServicio(false)
+        setServicioSearch('')
+      }
+    } finally {
+      setSavingServicio(false)
     }
-    setSavingServicio(false)
   }
 
   return (
