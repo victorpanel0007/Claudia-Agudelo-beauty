@@ -28,7 +28,7 @@ export default function TestimonialsSection() {
           <div className="gold-divider w-24 mx-auto mt-4" />
         </div>
 
-        {/* 1 col on mobile, 2 on sm, 3 on lg */}
+        {/* Tarjetas */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
           {testimonials.map((t, i) => (
             <motion.div
@@ -58,6 +58,18 @@ export default function TestimonialsSection() {
               </div>
             </motion.div>
           ))}
+        </div>
+
+        {/* Botón dejar reseña */}
+        <div className="text-center mt-10">
+          <a
+            href="https://maps.app.goo.gl/1gACF2cLcB3wpSU96"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 border-2 border-beauty-secondary text-beauty-secondary font-semibold px-8 py-3.5 rounded-full hover:bg-beauty-secondary hover:text-white transition-all text-sm shadow-sm"
+          >
+            ⭐ Déjanos tu reseña en Google
+          </a>
         </div>
       </div>
     </section>

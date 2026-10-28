@@ -463,3 +463,33 @@ END $$;
 -- a horarios_especialista porque el sistema ya tiene un fallback:
 -- si no hay horarios específicos, usa el horario global.
 -- Esto permite que las especialistas existentes sigan funcionando sin cambios.
+
+
+-- ────────────────────────────────────────────────────────────────
+-- 11. IMÁGENES DE CATEGORÍAS
+--     Tabla auxiliar independiente para asociar una fotografía
+--     a cada categoría de servicios. NO modifica la tabla
+--     categorias existente. Reversible con DROP TABLE.
+-- ────────────────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS categoria_imagenes (
+  id           uuid        PRIMARY KEY DEFAULT uuid_generate_v4(),
+  categoria_id uuid        NOT NULL REFERENCES categorias(id) ON DELETE CASCADE,
+  imagen_url   text        NOT NULL,
+  created_at   timestamptz DEFAULT now(),
+  CONSTRAINT cat_imagen_unica UNIQUE (categoria_id)
+);
+
+ALTER TABLE categoria_imagenes ENABLE ROW LEVEL SECURITY;
+
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE tablename = 'categoria_imagenes'
+      AND policyname = 'Full access categoria_imagenes'
+  ) THEN
+    CREATE POLICY "Full access categoria_imagenes"
+      ON categoria_imagenes
+      USING (true) WITH CHECK (true);
+  END IF;
+END $$;

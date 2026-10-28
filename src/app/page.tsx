@@ -2,16 +2,13 @@ import dynamic from 'next/dynamic'
 import Header from '@/components/website/Header'
 import HeroSection from '@/components/website/HeroSection'
 import WhatsAppFloat from '@/components/website/WhatsAppFloat'
+import { createClient } from '@/lib/supabase/server'
 
 const ServicesSection = dynamic(() => import('@/components/website/ServicesSection'), {
   loading: () => <SectionSkeleton />,
 })
 
 const BookingSection = dynamic(() => import('@/components/website/BookingSection'), {
-  loading: () => <SectionSkeleton />,
-})
-
-const WhatsAppSection = dynamic(() => import('@/components/website/WhatsAppSection'), {
   loading: () => <SectionSkeleton />,
 })
 
@@ -45,15 +42,42 @@ function SectionSkeleton() {
   )
 }
 
-export default function HomePage() {
+export default async function HomePage() {
+  // Consultar categorías y servicios activos directamente de Supabase
+  const supabase = await createClient()
+
+  const [{ data: categorias }, { data: catImagenes }, galeríaResult] = await Promise.all([
+    supabase
+      .from('categorias')
+      .select('id, nombre, icono, orden')
+      .order('orden'),
+    supabase
+      .from('categoria_imagenes')
+      .select('categoria_id, imagen_url'),
+    supabase.storage.from('galeria').list('', { limit: 50, sortBy: { column: 'created_at', order: 'asc' } }),
+  ])
+
+  // Mapa categoriaId → imagen_url para acceso rápido en el componente
+  const imagenesMap: Record<string, string> = {}
+  ;(catImagenes ?? []).forEach((ci: { categoria_id: string; imagen_url: string }) => {
+    imagenesMap[ci.categoria_id] = ci.imagen_url
+  })
+
+  // URLs públicas de las fotos del bucket galeria (raíz, excluyendo carpeta categorias/)
+  const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
+  const galeriaUrls: string[] = (galeríaResult.data ?? [])
+    .filter(f => f.name && !f.name.startsWith('.') && f.metadata)
+    .map(f => `${SUPABASE_URL}/storage/v1/object/public/galeria/${f.name}`)
+
   return (
     <main className="min-h-screen bg-beauty-bg">
       <Header />
       <HeroSection />
-      <ServicesSection />
-      <BookingSection />
-      <WhatsAppSection />
-      <GallerySection />
+      <ServicesSection
+        categorias={categorias ?? []}
+        imagenesMap={imagenesMap}
+      />
+      <GallerySection fotos={galeriaUrls} />
       <TestimonialsSection />
       <ContactSection />
       <Footer />

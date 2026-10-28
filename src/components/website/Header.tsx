@@ -18,7 +18,7 @@ export default function Header() {
   const [scrolled, setScrolled] = useState(false)
 
   useEffect(() => {
-    const handleScroll = () => setScrolled(window.scrollY > 20)
+    const handleScroll = () => setScrolled(window.scrollY > 400)
     window.addEventListener('scroll', handleScroll, { passive: true })
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
@@ -34,14 +34,14 @@ export default function Header() {
     <header className={cn(
       'fixed top-0 left-0 right-0 z-50 transition-all duration-300',
       scrolled
-        ? 'bg-white/95 backdrop-blur-md shadow-sm py-2'
-        : 'bg-white/90 backdrop-blur-sm py-3'
+        ? 'bg-white/90 backdrop-blur-md shadow-sm py-2'
+        : 'bg-transparent py-3'
     )}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 flex items-center justify-between gap-2">
 
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2 shrink-0" onClick={() => setIsOpen(false)}>
-          <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-beauty-primary/30 shadow-sm shrink-0">
+          <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-white/60 shadow-sm shrink-0">
             <Image
               src="/logo.png"
               alt="Claudia Agudelo Beauty"
@@ -54,44 +54,28 @@ export default function Header() {
             />
           </div>
           <div className="hidden xs:block">
-            <p className="font-serif text-beauty-text-dark font-bold text-sm leading-tight">Claudia Agudelo</p>
-            <p className="text-beauty-secondary text-[10px] font-medium tracking-widest uppercase">Beauty</p>
+            <p className={cn("font-serif font-bold text-sm leading-tight", scrolled ? "text-beauty-text-dark" : "text-white drop-shadow")}>Claudia Agudelo</p>
+            <p className={cn("text-[10px] font-medium tracking-widest uppercase", scrolled ? "text-beauty-secondary" : "text-white/80 drop-shadow")}>Beauty</p>
           </div>
         </Link>
 
-        {/* Desktop nav */}
-        <nav className="hidden lg:flex items-center gap-6">
-          {navLinks.map(link => (
-            <a key={link.href} href={link.href}
-              className="text-beauty-text text-xs font-medium hover:text-beauty-primary transition-colors tracking-wide uppercase">
-              {link.label}
-            </a>
-          ))}
-        </nav>
-
-        {/* Desktop CTA */}
+        {/* Desktop: solo Admin oculto pero accesible */}
         <div className="hidden lg:flex items-center gap-3">
-          <a href="#reservar"
-            className="bg-beauty-primary text-white text-sm font-semibold px-5 py-2.5 rounded-full hover:bg-beauty-primary-dark transition-all shadow-sm hover:shadow-beauty min-h-[44px] flex items-center">
-            Agenda tu Cita
-          </a>
           <Link href="/admin"
-            className="flex items-center gap-1.5 border border-beauty-secondary/50 text-beauty-secondary text-xs font-medium px-3 py-2 rounded-full hover:bg-beauty-secondary/10 transition-all min-h-[44px]">
+            className={cn("flex items-center gap-1.5 text-xs font-medium px-3 py-2 rounded-full transition-all min-h-[44px] border",
+              scrolled
+                ? "border-beauty-secondary/50 text-beauty-secondary hover:bg-beauty-secondary/10"
+                : "border-white/50 text-white hover:bg-white/20"
+            )}>
             <LayoutDashboard size={13} />Admin
           </Link>
         </div>
 
-        {/* Mobile right side */}
+        {/* Mobile hamburger only — sin CTA ni Admin visibles */}
         <div className="lg:hidden flex items-center gap-1">
-          {/* Mobile CTA — always visible */}
-          <a href="#reservar" onClick={() => setIsOpen(false)}
-            className="bg-beauty-primary text-white text-xs font-semibold px-3 py-2 rounded-full min-h-[40px] flex items-center">
-            Reservar
-          </a>
-          {/* Hamburger */}
           <button
             onClick={() => setIsOpen(!isOpen)}
-            className="text-beauty-text p-2.5 rounded-xl hover:bg-beauty-bg transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
+            className={cn("p-2.5 rounded-xl transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center", scrolled ? "text-beauty-text hover:bg-beauty-bg" : "text-white hover:bg-white/20")}
             aria-label={isOpen ? 'Cerrar menú' : 'Abrir menú'}
             aria-expanded={isOpen}
           >
@@ -111,7 +95,9 @@ export default function Header() {
               </a>
             ))}
             <div className="border-t border-beauty-primary/20 mt-2 pt-3 flex flex-col gap-2">
-              <a href="#reservar" onClick={() => setIsOpen(false)}
+              <a href="https://api.whatsapp.com/send/?phone=573022197673&text=Hola%21+Me+gustar%C3%ADa+agendar+una+cita+%EF%BF%BD&type=phone_number&app_absent=0"
+                target="_blank" rel="noopener noreferrer"
+                onClick={() => setIsOpen(false)}
                 className="bg-beauty-primary text-white font-semibold py-3.5 rounded-full text-base text-center hover:bg-beauty-primary-dark transition-all min-h-[52px] flex items-center justify-center">
                 💅 Agenda tu Cita
               </a>

@@ -32,7 +32,7 @@ export default function WhatsAppFloat() {
 
       {/* Button */}
       <a
-        href={`https://wa.me/57${waNumber}?text=Hola`}
+        href="https://api.whatsapp.com/send/?phone=573022197673&text=Hola%21+Me+gustar%C3%ADa+agendar+una+cita+%EF%BF%BD&type=phone_number&app_absent=0"
         target="_blank"
         rel="noopener noreferrer"
         className="w-14 h-14 rounded-full bg-green-500 flex items-center justify-center shadow-lg hover:bg-green-600 hover:scale-110 transition-all duration-300 animate-pulse-gold"
