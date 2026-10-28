@@ -32,7 +32,10 @@ interface Props { categorias: Categoria[]; imagenesMap: Record<string, string> }
 
 export default function ServicesSection({ categorias }: Props) {
   return (
-    <section id="servicios" className="py-16 sm:py-24 bg-white">
+    <section
+      id="servicios"
+      className="py-16 sm:py-24 bg-white"
+    >
       <div className="max-w-5xl mx-auto px-4 sm:px-6">
 
         <div className="text-center mb-12">

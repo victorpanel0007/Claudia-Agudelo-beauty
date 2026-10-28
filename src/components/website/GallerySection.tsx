@@ -10,43 +10,43 @@ const TRABAJOS = [
     icon: '💅',
     titulo: 'Manicura',
     desc: 'Uñas perfectas en cada acabado: tradicional, semipermanente o acrílico.',
-    bg: 'from-pink-50 to-rose-100',
-    accent: 'bg-rose-400',
+    bg: 'from-rose-50/90 to-rose-100/80',
+    accent: 'bg-rose-300',
   },
   {
     icon: '💄',
     titulo: 'Maquillaje',
     desc: 'Social, artístico o para novias. Cada look pensado para resaltarte.',
-    bg: 'from-fuchsia-50 to-pink-100',
-    accent: 'bg-fuchsia-400',
+    bg: 'from-amber-50/90 to-orange-100/80',
+    accent: 'bg-amber-300',
   },
   {
     icon: '✂️',
     titulo: 'Peluquería',
     desc: 'Cortes, coloración, mechas y keratina con los mejores productos.',
-    bg: 'from-amber-50 to-yellow-100',
-    accent: 'bg-amber-400',
+    bg: 'from-yellow-50/90 to-amber-100/80',
+    accent: 'bg-yellow-400',
   },
   {
     icon: '👁️',
     titulo: 'Cejas & Pestañas',
     desc: 'Diseño de cejas, laminado, tinte y extensiones de pestañas.',
-    bg: 'from-violet-50 to-purple-100',
-    accent: 'bg-violet-400',
+    bg: 'from-pink-50/90 to-rose-100/80',
+    accent: 'bg-pink-300',
   },
   {
     icon: '💆‍♀️',
     titulo: 'Tratamientos Capilares',
     desc: 'Nutrición, hidratación y peinados que transforman tu cabello.',
-    bg: 'from-emerald-50 to-teal-100',
-    accent: 'bg-emerald-400',
+    bg: 'from-orange-50/90 to-amber-100/80',
+    accent: 'bg-orange-300',
   },
   {
     icon: '✨',
     titulo: 'Depilación',
     desc: 'Cera caliente y fría para una piel suave y libre de vello.',
-    bg: 'from-sky-50 to-blue-100',
-    accent: 'bg-sky-400',
+    bg: 'from-stone-50/90 to-amber-50/80',
+    accent: 'bg-stone-300',
   },
 ]
 
@@ -83,7 +83,11 @@ export default function GallerySection({ fotos = [] }: Props) {
   const activeFoto = lightbox !== null ? fotosConIndice[lightbox] : null
 
   return (
-    <section id="galeria" className="py-16 sm:py-24 bg-beauty-bg">
+    <section
+      id="galeria"
+      className="py-16 sm:py-24 bg-cover bg-center"
+      style={{ backgroundImage: "url('/fondo2.png')" }}
+    >
       <div className="max-w-6xl mx-auto px-4 sm:px-6">
 
         {/* Header */}
@@ -113,7 +117,7 @@ export default function GallerySection({ fotos = [] }: Props) {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, margin: '-60px' }}
                 transition={{ delay: i * 0.07 }}
-                className={`relative bg-gradient-to-br ${item.bg} rounded-3xl border border-white/80 shadow-sm hover:shadow-card transition-all duration-300 group overflow-hidden`}
+                className={`relative bg-gradient-to-br ${item.bg} backdrop-blur-sm rounded-3xl border border-white/60 shadow-sm hover:shadow-card transition-all duration-300 group overflow-hidden`}
               >
                 {/* Círculo decorativo */}
                 <div className={`absolute -top-4 -right-4 w-20 h-20 ${item.accent} opacity-10 rounded-full group-hover:scale-150 transition-transform duration-500`} />
