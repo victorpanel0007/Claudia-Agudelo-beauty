@@ -109,6 +109,8 @@ export default function EspecialistaPanel({
   const [exClienteSearch,   setExClienteSearch]   = useState('')
   const [exClienteDropdown, setExClienteDropdown] = useState(false)
   const [exClienteId,       setExClienteId]       = useState('')
+  const [exClientesLista,   setExClientesLista]   = useState<ClienteMin[]>([])
+  const [exClientesBuscando,setExClientesBuscando]= useState(false)
   const [exServicioSearch,  setExServicioSearch]  = useState('')
   const [exServicioDropdown,setExServicioDropdown]= useState(false)
   const [exServicioId,      setExServicioId]      = useState('')
@@ -156,6 +158,27 @@ export default function EspecialistaPanel({
     if (c.data) setClientes(c.data as ClienteMin[])
     if (s.data) setServicios(s.data as ServicioMin[])
   }, [supabase])
+
+  // Búsqueda de clientes en tiempo real para el servicio extra (server-side, debounce 300ms)
+  useEffect(() => {
+    if (!exClienteSearch.trim()) {
+      setExClientesLista([])
+      return
+    }
+    const timer = setTimeout(async () => {
+      setExClientesBuscando(true)
+      const term = exClienteSearch.trim()
+      const { data } = await supabase
+        .from('clientes')
+        .select('id, nombre')
+        .ilike('nombre', `%${term}%`)
+        .order('nombre')
+        .limit(20)
+      setExClientesLista((data as ClienteMin[]) ?? [])
+      setExClientesBuscando(false)
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [exClienteSearch, supabase])
 
   useEffect(() => { resolveEsp() }, [resolveEsp])
   useEffect(() => {
@@ -351,7 +374,7 @@ export default function EspecialistaPanel({
     const valor = Number(exValor)
     if (!valor || valor <= 0) { toast.error('Ingresa un valor válido'); return }
     setSavingExtra(true)
-    const clienteNombre = clientes.find(c => c.id === exClienteId)?.nombre ?? ''
+    const clienteNombre = exClienteSearch
     const res = await fetch('/api/servicios-extras', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -893,18 +916,24 @@ export default function EspecialistaPanel({
                   {exClienteId && !exClienteDropdown && (
                     <div className="mt-1 flex items-center gap-2 bg-beauty-primary/10 border border-beauty-primary/30 rounded-xl px-3 py-1.5">
                       <CheckCircle size={12} className="text-beauty-primary" />
-                      <span className="text-xs text-beauty-primary font-medium flex-1 truncate">{clientes.find(c => c.id === exClienteId)?.nombre}</span>
+                      <span className="text-xs text-beauty-primary font-medium flex-1 truncate">{exClienteSearch}</span>
                       <button type="button" onClick={() => { setExClienteId(''); setExClienteSearch('') }}><X size={11} className="text-beauty-primary/60" /></button>
                     </div>
                   )}
                   {exClienteDropdown && exClienteSearch && (
                     <div className="absolute top-full left-0 right-0 bg-white border border-gray-200 rounded-xl shadow-lg z-20 mt-0.5 max-h-36 overflow-y-auto">
-                      {clientes.filter(c => c.nombre.toLowerCase().includes(exClienteSearch.toLowerCase())).slice(0, 6).map(c => (
-                        <button key={c.id} type="button"
-                          onMouseDown={e => e.preventDefault()}
-                          onClick={() => { setExClienteId(c.id); setExClienteSearch(c.nombre); setExClienteDropdown(false) }}
-                          className="w-full text-left px-3 py-2 hover:bg-beauty-bg text-sm border-b border-gray-50 last:border-0">{c.nombre}</button>
-                      ))}
+                      {exClientesBuscando ? (
+                        <div className="px-3 py-2 text-xs text-gray-400">Buscando...</div>
+                      ) : exClientesLista.length === 0 ? (
+                        <div className="px-3 py-2 text-xs text-gray-400">Sin resultados</div>
+                      ) : (
+                        exClientesLista.map(c => (
+                          <button key={c.id} type="button"
+                            onMouseDown={e => e.preventDefault()}
+                            onClick={() => { setExClienteId(c.id); setExClienteSearch(c.nombre); setExClienteDropdown(false) }}
+                            className="w-full text-left px-3 py-2 hover:bg-beauty-bg text-sm border-b border-gray-50 last:border-0">{c.nombre}</button>
+                        ))
+                      )}
                     </div>
                   )}
                 </div>

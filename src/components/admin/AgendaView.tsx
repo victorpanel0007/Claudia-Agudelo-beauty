@@ -1216,7 +1216,7 @@ function NuevaCitaModal({ onClose, onSaved }: { onClose: () => void; onSaved: ()
 
 // ── Main AgendaView ──────────────────────────────────────────────────────────
 export default function AgendaView() {
-  const supabase = createClient()
+  const supabase = useMemo(() => createClient(), [])
   const [citas, setCitas] = useState<Cita[]>([])
   const [selectedCita, setSelectedCita] = useState<Cita | null>(null)
   const [citaACompletar, setCitaACompletar] = useState<Cita | null>(null)
@@ -1242,8 +1242,8 @@ export default function AgendaView() {
   const [extraClienteNombre, setExtraClienteNombre] = useState('')
   const [extraClienteId, setExtraClienteId]       = useState('')
   const [extraClienteSearch, setExtraClienteSearch] = useState('')
-  const [extraClienteDropdown, setExtraClienteDropdown] = useState(false)
   const [extraClientesLista, setExtraClientesLista] = useState<Cliente[]>([])
+  const [extraClientesBuscando, setExtraClientesBuscando] = useState(false)
   const [extraEsNuevoCliente, setExtraEsNuevoCliente] = useState(false)
   const [extraClienteTelefono, setExtraClienteTelefono] = useState('')
   const [extraEspecialistaId, setExtraEspecialistaId] = useState('')
@@ -1257,13 +1257,27 @@ export default function AgendaView() {
     Promise.all([
       supabase.from('servicios').select('id,nombre,precio,precio_desde,tipo_precio,duracion_minutos').eq('activo', true).order('nombre'),
       supabase.from('especialistas').select('id,nombre').eq('activo', true).order('nombre'),
-      supabase.from('clientes').select('id,nombre,telefono').order('nombre').limit(200),
-    ]).then(([s, e, c]) => {
+    ]).then(([s, e]) => {
       if (s.data) setServiciosLista(s.data as Servicio[])
       if (e.data) setEspecialistasLista(e.data as Especialista[])
-      if (c.data) setExtraClientesLista(c.data as Cliente[])
     })
   }, [showServicioExtra, supabase])
+
+  // Búsqueda de clientes via API route con debounce — evita problemas de RLS/estado
+  useEffect(() => {
+    if (!showServicioExtra || extraEsNuevoCliente) return
+    if (!extraClienteSearch.trim()) { setExtraClientesLista([]); return }
+    setExtraClientesBuscando(true)
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/clientes?q=${encodeURIComponent(extraClienteSearch.trim())}`)
+        const data = await res.json()
+        setExtraClientesLista(Array.isArray(data) ? data : [])
+      } catch { setExtraClientesLista([]) }
+      setExtraClientesBuscando(false)
+    }, 250)
+    return () => clearTimeout(timer)
+  }, [extraClienteSearch, extraEsNuevoCliente, showServicioExtra])
 
   async function guardarServicioExtra() {
     if (!extraServicioId)         { toast.error('Selecciona un servicio'); return }
@@ -1886,34 +1900,34 @@ export default function AgendaView() {
                   <div className="relative">
                     <Search size={13} className="absolute left-3 top-2.5 text-gray-400" />
                     <input type="text" value={extraClienteSearch}
-                      onChange={e => { setExtraClienteSearch(e.target.value); setExtraClienteDropdown(true) }}
-                      onFocus={() => setExtraClienteDropdown(true)}
-                      placeholder="Buscar cliente..."
+                      onChange={e => { setExtraClienteSearch(e.target.value); if (!e.target.value) setExtraClienteId('') }}
+                      placeholder="Buscar cliente por nombre o teléfono..."
                       className="w-full border border-gray-200 rounded-xl px-3 py-2 pl-8 text-sm focus:outline-none focus:border-beauty-primary" />
-                    {extraClienteId && !extraClienteDropdown && (
-                      <div className="mt-1 flex items-center gap-2 bg-beauty-primary/10 border border-beauty-primary/30 rounded-xl px-3 py-1.5">
-                        <Check size={12} className="text-beauty-primary" />
-                        <span className="text-xs text-beauty-primary font-medium flex-1 truncate">
-                          {extraClientesLista.find(c => c.id === extraClienteId)?.nombre}
-                        </span>
-                        <button type="button" onClick={() => { setExtraClienteId(''); setExtraClienteSearch('') }}
-                          className="text-beauty-primary/60"><X size={11} /></button>
-                      </div>
-                    )}
-                    {extraClienteDropdown && extraClienteSearch && (
-                      <div className="absolute top-full left-0 right-0 bg-white border border-gray-200 rounded-xl shadow-lg z-20 mt-0.5 max-h-36 overflow-y-auto">
-                        {extraClientesLista
-                          .filter(c => c.nombre.toLowerCase().includes(extraClienteSearch.toLowerCase()) || c.telefono?.includes(extraClienteSearch))
-                          .slice(0, 6)
-                          .map(c => (
+                    {extraClienteSearch && !extraClienteId && (
+                      <div className="absolute top-full left-0 right-0 bg-white border border-gray-200 rounded-xl shadow-lg z-20 mt-0.5 max-h-44 overflow-y-auto">
+                        {extraClientesBuscando ? (
+                          <div className="px-3 py-2 text-xs text-gray-400">Buscando...</div>
+                        ) : extraClientesLista.length === 0 ? (
+                          <div className="px-3 py-2 text-xs text-gray-400">Sin resultados</div>
+                        ) : (
+                          extraClientesLista.map(c => (
                             <button key={c.id} type="button"
                               onMouseDown={e => e.preventDefault()}
-                              onClick={() => { setExtraClienteId(c.id); setExtraClienteSearch(c.nombre); setExtraClienteDropdown(false) }}
+                              onClick={() => { setExtraClienteId(c.id); setExtraClienteSearch(c.nombre) }}
                               className="w-full text-left px-3 py-2 hover:bg-beauty-bg text-sm flex justify-between border-b border-gray-50 last:border-0">
                               <span className="font-medium text-gray-700">{c.nombre}</span>
                               <span className="text-gray-400 text-xs">{c.telefono}</span>
                             </button>
-                          ))}
+                          ))
+                        )}
+                      </div>
+                    )}
+                    {extraClienteId && (
+                      <div className="mt-1 flex items-center gap-2 bg-beauty-primary/10 border border-beauty-primary/30 rounded-xl px-3 py-1.5">
+                        <Check size={12} className="text-beauty-primary" />
+                        <span className="text-xs text-beauty-primary font-medium flex-1 truncate">{extraClienteSearch}</span>
+                        <button type="button" onClick={() => { setExtraClienteId(''); setExtraClienteSearch('') }}
+                          className="text-beauty-primary/60"><X size={11} /></button>
                       </div>
                     )}
                   </div>
