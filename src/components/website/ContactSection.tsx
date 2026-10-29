@@ -6,15 +6,15 @@ export default function ContactSection() {
   const waNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || '3022197673'
 
   return (
-    <section id="contacto" className="py-14 sm:py-20 bg-white">
+    <section id="contacto" className="py-14 sm:py-20">
       <div className="max-w-5xl mx-auto px-4 sm:px-6">
 
         {/* Header */}
         <div className="text-center mb-10 sm:mb-12">
-          <p className="text-beauty-secondary text-xs sm:text-sm font-medium tracking-widest uppercase mb-3">
+          <p className="text-white/80 text-xs sm:text-sm font-medium tracking-widest uppercase mb-3 drop-shadow">
             ♥ Contacto
           </p>
-          <h2 className="font-serif text-3xl sm:text-4xl font-bold text-beauty-text-dark mb-2">
+          <h2 className="font-serif text-3xl sm:text-4xl font-bold text-white mb-2 drop-shadow-lg">
             Encuéntranos &{' '}
             <span className="text-beauty-primary">Contáctanos</span>
           </h2>
@@ -31,9 +31,9 @@ export default function ContactSection() {
                 <MapPin className="text-beauty-primary" size={20} />
               </div>
               <div>
-                <h4 className="font-semibold text-beauty-text-dark mb-1">Ubicación</h4>
-                <p className="text-beauty-text text-sm">Colombia</p>
-                <p className="text-beauty-text-muted text-xs mt-0.5">Agenda tu cita y te enviamos la dirección exacta</p>
+                <h4 className="font-semibold text-white mb-1 drop-shadow">Ubicación</h4>
+                <p className="text-white/80 text-sm drop-shadow">Colombia</p>
+                <p className="text-white/60 text-xs mt-0.5">Agenda tu cita y te enviamos la dirección exacta</p>
               </div>
             </div>
 
@@ -43,12 +43,12 @@ export default function ContactSection() {
                 <Phone className="text-beauty-primary" size={20} />
               </div>
               <div>
-                <h4 className="font-semibold text-beauty-text-dark mb-1">WhatsApp</h4>
+                <h4 className="font-semibold text-white mb-1 drop-shadow">WhatsApp</h4>
                 <a href="https://api.whatsapp.com/send/?phone=573022197673&text=Hola%21+Me+gustar%C3%ADa+agendar+una+cita+%EF%BF%BD&type=phone_number&app_absent=0" target="_blank" rel="noopener noreferrer"
-                  className="text-beauty-secondary hover:underline text-sm font-medium inline-block py-1">
+                  className="text-beauty-primary hover:underline text-sm font-medium inline-block py-1 drop-shadow">
                   +57 {waNumber}
                 </a>
-                <p className="text-beauty-text-muted text-xs mt-0.5">Respuesta inmediata</p>
+                <p className="text-white/60 text-xs mt-0.5">Respuesta inmediata</p>
               </div>
             </div>
 
@@ -58,11 +58,11 @@ export default function ContactSection() {
                 <Clock className="text-beauty-primary" size={20} />
               </div>
               <div>
-                <h4 className="font-semibold text-beauty-text-dark mb-1">Horario</h4>
-                <div className="text-sm text-beauty-text space-y-0.5">
+                <h4 className="font-semibold text-white mb-1 drop-shadow">Horario</h4>
+                <div className="text-sm text-white/80 space-y-0.5 drop-shadow">
                   <p>Lunes — Viernes: 9:00 AM — 7:00 PM</p>
                   <p>Sábado: 9:00 AM — 7:00 PM</p>
-                  <p className="text-beauty-text-muted">Domingo: Cerrado</p>
+                  <p className="text-white/60">Domingo: Cerrado</p>
                 </div>
               </div>
             </div>

@@ -70,7 +70,17 @@ export default async function HomePage() {
     .map(f => `${SUPABASE_URL}/storage/v1/object/public/galeria/${f.name}`)
 
   return (
-    <main className="min-h-screen bg-beauty-bg">
+    <main className="min-h-screen relative">
+      {/* Imagen de portada fija — visible mientras el usuario baja */}
+      <div
+        aria-hidden="true"
+        className="fixed inset-0 -z-10"
+        style={{
+          backgroundImage: "url('/fondo.png')",
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+        }}
+      />
       <Header />
       <HeroSection />
       <ServicesSection

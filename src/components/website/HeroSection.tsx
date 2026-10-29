@@ -1,26 +1,55 @@
 'use client'
 
+import { useEffect, useRef } from 'react'
 import { motion } from 'framer-motion'
 import { ChevronDown } from 'lucide-react'
 import Image from 'next/image'
 
 export default function HeroSection() {
+  const textRef = useRef<HTMLDivElement>(null)
+  const rafRef  = useRef<number>(0)
+
+  useEffect(() => {
+    function onScroll() {
+      cancelAnimationFrame(rafRef.current)
+      rafRef.current = requestAnimationFrame(() => {
+        const el = textRef.current
+        if (!el) return
+        const y = window.scrollY
+        el.style.transform = `translateY(${-(y * 0.3)}px)`
+        el.style.opacity   = String(Math.max(0, 1 - y / 400))
+      })
+    }
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => {
+      window.removeEventListener('scroll', onScroll)
+      cancelAnimationFrame(rafRef.current)
+    }
+  }, [])
+
   return (
     <section id="inicio" className="relative min-h-screen flex items-center overflow-hidden pt-16">
-      {/* Imagen de fondo */}
-      <Image
-        src="/fondo.png"
-        alt=""
-        fill
-        className="object-cover object-center"
-        priority
-        sizes="100vw"
-        quality={90}
+
+      {/* Imagen fija — backgroundAttachment:fixed es lo más simple y sin parpadeo */}
+      <div
+        className="absolute inset-0 -z-0"
+        style={{
+          backgroundImage: "url('/fondo.png')",
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          backgroundAttachment: 'fixed',
+        }}
       />
-      {/* Overlay suave para legibilidad del texto */}
+
+      {/* Overlay — igual que antes */}
       <div className="absolute inset-0 bg-black/20" />
 
-      <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 w-full py-10 sm:py-16">
+      {/* Texto — se desliza y desvanece al hacer scroll */}
+      <div
+        ref={textRef}
+        className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 w-full py-10 sm:py-16"
+        style={{ willChange: 'transform, opacity' }}
+      >
         <div className="animate-fade-in text-center lg:text-left max-w-xl">
           <p className="text-white/90 text-xs sm:text-sm font-medium tracking-widest uppercase mb-3 drop-shadow">
             ✦ Salón de Belleza Premium ✦

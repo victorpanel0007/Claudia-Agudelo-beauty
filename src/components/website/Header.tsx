@@ -15,15 +15,8 @@ const navLinks = [
 
 export default function Header() {
   const [isOpen, setIsOpen] = useState(false)
-  const [scrolled, setScrolled] = useState(false)
 
-  useEffect(() => {
-    const handleScroll = () => setScrolled(window.scrollY > 400)
-    window.addEventListener('scroll', handleScroll, { passive: true })
-    return () => window.removeEventListener('scroll', handleScroll)
-  }, [])
-
-  // Close menu on resize to desktop
+  // Cierra menú al redimensionar a desktop
   useEffect(() => {
     const handleResize = () => { if (window.innerWidth >= 1024) setIsOpen(false) }
     window.addEventListener('resize', handleResize, { passive: true })
@@ -31,12 +24,7 @@ export default function Header() {
   }, [])
 
   return (
-    <header className={cn(
-      'fixed top-0 left-0 right-0 z-50 transition-all duration-300',
-      scrolled
-        ? 'bg-white/90 backdrop-blur-md shadow-sm py-2'
-        : 'bg-transparent py-3'
-    )}>
+    <header className="fixed top-0 left-0 right-0 z-50 transition-all duration-300 bg-transparent py-3">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 flex items-center justify-between gap-2">
 
         {/* Logo */}
@@ -54,19 +42,15 @@ export default function Header() {
             />
           </div>
           <div className="hidden xs:block">
-            <p className={cn("font-serif font-bold text-sm leading-tight", scrolled ? "text-beauty-text-dark" : "text-white drop-shadow")}>Claudia Agudelo</p>
-            <p className={cn("text-[10px] font-medium tracking-widest uppercase", scrolled ? "text-beauty-secondary" : "text-white/80 drop-shadow")}>Beauty</p>
+            <p className="font-serif font-bold text-sm leading-tight text-white drop-shadow">Claudia Agudelo</p>
+            <p className="text-[10px] font-medium tracking-widest uppercase text-white/80 drop-shadow">Beauty</p>
           </div>
         </Link>
 
         {/* Desktop: solo Admin oculto pero accesible */}
         <div className="hidden lg:flex items-center gap-3">
           <Link href="/admin"
-            className={cn("flex items-center gap-1.5 text-xs font-medium px-3 py-2 rounded-full transition-all min-h-[44px] border",
-              scrolled
-                ? "border-beauty-secondary/50 text-beauty-secondary hover:bg-beauty-secondary/10"
-                : "border-white/50 text-white hover:bg-white/20"
-            )}>
+            className="flex items-center gap-1.5 text-xs font-medium px-3 py-2 rounded-full transition-all min-h-[44px] border border-white/50 text-white hover:bg-white/20">
             <LayoutDashboard size={13} />Admin
           </Link>
         </div>
@@ -75,7 +59,7 @@ export default function Header() {
         <div className="lg:hidden flex items-center gap-1">
           <button
             onClick={() => setIsOpen(!isOpen)}
-            className={cn("p-2.5 rounded-xl transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center", scrolled ? "text-beauty-text hover:bg-beauty-bg" : "text-white hover:bg-white/20")}
+            className="p-2.5 rounded-xl transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center text-white hover:bg-white/20"
             aria-label={isOpen ? 'Cerrar menú' : 'Abrir menú'}
             aria-expanded={isOpen}
           >

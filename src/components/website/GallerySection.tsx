@@ -1,177 +1,194 @@
 ﻿'use client'
 
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 import Image from 'next/image'
-import { useEffect, useState } from 'react'
-import { X, ChevronLeft, ChevronRight } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { ChevronLeft, ChevronRight, X } from 'lucide-react'
 
 const TRABAJOS = [
-  {
-    icon: '💅',
-    titulo: 'Manicura',
-    desc: 'Uñas perfectas en cada acabado: tradicional, semipermanente o acrílico.',
-    bg: 'from-rose-50/90 to-rose-100/80',
-    accent: 'bg-rose-300',
-  },
-  {
-    icon: '💄',
-    titulo: 'Maquillaje',
-    desc: 'Social, artístico o para novias. Cada look pensado para resaltarte.',
-    bg: 'from-amber-50/90 to-orange-100/80',
-    accent: 'bg-amber-300',
-  },
-  {
-    icon: '✂️',
-    titulo: 'Peluquería',
-    desc: 'Cortes, coloración, mechas y keratina con los mejores productos.',
-    bg: 'from-yellow-50/90 to-amber-100/80',
-    accent: 'bg-yellow-400',
-  },
-  {
-    icon: '👁️',
-    titulo: 'Cejas & Pestañas',
-    desc: 'Diseño de cejas, laminado, tinte y extensiones de pestañas.',
-    bg: 'from-pink-50/90 to-rose-100/80',
-    accent: 'bg-pink-300',
-  },
-  {
-    icon: '💆‍♀️',
-    titulo: 'Tratamientos Capilares',
-    desc: 'Nutrición, hidratación y peinados que transforman tu cabello.',
-    bg: 'from-orange-50/90 to-amber-100/80',
-    accent: 'bg-orange-300',
-  },
-  {
-    icon: '✨',
-    titulo: 'Depilación',
-    desc: 'Cera caliente y fría para una piel suave y libre de vello.',
-    bg: 'from-stone-50/90 to-amber-50/80',
-    accent: 'bg-stone-300',
-  },
+  { categoria: 'Manicura',               trabajo: 'Semipermanente' },
+  { categoria: 'Manicura',               trabajo: 'Acrílico' },
+  { categoria: 'Maquillaje',             trabajo: 'Social' },
+  { categoria: 'Maquillaje',             trabajo: 'Novia' },
+  { categoria: 'Peluquería',             trabajo: 'Coloración' },
+  { categoria: 'Peluquería',             trabajo: 'Keratina' },
+  { categoria: 'Cejas & Pestañas',       trabajo: 'Lifting de Pestañas' },
+  { categoria: 'Cejas & Pestañas',       trabajo: 'Diseño de Cejas' },
+  { categoria: 'Tratamientos Capilares', trabajo: 'Hidratación' },
+  { categoria: 'Depilación',             trabajo: 'Cera Caliente' },
 ]
 
-interface Props {
-  fotos: string[]
-}
+const AUTOPLAY_MS = 3500
+// Ancho de la tarjeta central como % del contenedor visible
+const CARD_W   = 54   // % — la central
+const SIDE_W   = 20   // % — cada lateral visible
+const GAP_PX   = 10   // px entre tarjetas
+
+interface Props { fotos: string[] }
 
 export default function GallerySection({ fotos = [] }: Props) {
-  // Solo las tarjetas que tienen foto real
-  const fotosConIndice = fotos
-    .map((url, i) => ({ url, index: i }))
+  const items = fotos
+    .map((url, i) => ({ url, ...(TRABAJOS[i] ?? { categoria: 'Belleza', trabajo: 'Tratamiento' }) }))
     .filter(f => !!f.url)
 
-  const [lightbox, setLightbox] = useState<number | null>(null) // índice dentro de fotosConIndice
+  const total = items.length
+  const [current, setCurrent]   = useState(0)
+  const [lightbox, setLightbox] = useState<number | null>(null)
+  const timerRef  = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const trackRef  = useRef<HTMLDivElement>(null)
 
-  // Cerrar con Escape, navegar con flechas
+  // Autoplay
+  function resetTimer() {
+    if (timerRef.current) clearTimeout(timerRef.current)
+    if (total < 2) return
+    timerRef.current = setTimeout(() => setCurrent(c => (c + 1) % total), AUTOPLAY_MS)
+  }
+  useEffect(() => {
+    resetTimer()
+    return () => { if (timerRef.current) clearTimeout(timerRef.current) }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [current, total])
+
+  function goTo(idx: number) {
+    setCurrent((idx + total) % total)
+  }
+
+  // Teclado en lightbox
   useEffect(() => {
     if (lightbox === null) return
-    function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape')      setLightbox(null)
-      if (e.key === 'ArrowRight')  setLightbox(prev => prev !== null ? Math.min(prev + 1, fotosConIndice.length - 1) : null)
-      if (e.key === 'ArrowLeft')   setLightbox(prev => prev !== null ? Math.max(prev - 1, 0) : null)
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape')     setLightbox(null)
+      if (e.key === 'ArrowRight') setLightbox(p => p !== null ? (p + 1) % total : null)
+      if (e.key === 'ArrowLeft')  setLightbox(p => p !== null ? (p - 1 + total) % total : null)
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [lightbox, fotosConIndice.length])
+  }, [lightbox, total])
 
-  // Bloquear scroll del body cuando el lightbox está abierto
   useEffect(() => {
     document.body.style.overflow = lightbox !== null ? 'hidden' : ''
     return () => { document.body.style.overflow = '' }
   }, [lightbox])
 
-  const activeFoto = lightbox !== null ? fotosConIndice[lightbox] : null
+  if (total === 0) return null
 
   return (
-    <section
-      id="galeria"
-      className="py-16 sm:py-24 bg-cover bg-center"
-      style={{ backgroundImage: "url('/fondo2.png')" }}
-    >
-      <div className="max-w-6xl mx-auto px-4 sm:px-6">
+    <section id="galeria" className="py-16 sm:py-24">
+      <div className="max-w-xl mx-auto px-4 sm:px-6">
 
         {/* Header */}
-        <div className="text-center mb-12">
-          <p className="text-beauty-secondary text-xs sm:text-sm font-semibold tracking-widest uppercase mb-3">
+        <div className="text-center mb-10">
+          <p className="text-white/80 text-xs sm:text-sm font-semibold tracking-widest uppercase mb-3 drop-shadow">
             ♥ Especialidades
           </p>
-          <h2 className="font-serif text-3xl sm:text-4xl md:text-5xl font-bold text-beauty-text-dark mb-4">
+          <h2 className="font-serif text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-4 drop-shadow-lg">
             Nuestro <span className="text-beauty-primary">Trabajo</span>
           </h2>
-          <p className="text-beauty-text-muted text-sm sm:text-base max-w-md mx-auto">
+          <p className="text-white/80 text-sm sm:text-base max-w-md mx-auto drop-shadow">
             Cada servicio es una experiencia diseñada para que te sientas hermosa y segura.
           </p>
           <div className="gold-divider w-20 mx-auto mt-5" />
         </div>
 
-        {/* Cards grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-          {TRABAJOS.map((item, i) => {
-            const fotoUrl  = fotos[i] ?? null
-            const fotoIdx  = fotoUrl ? fotosConIndice.findIndex(f => f.index === i) : -1
+        {/* ── Carrusel ─────────────────────────────────────────────── */}
+        <div className="relative">
 
-            return (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: '-60px' }}
-                transition={{ delay: i * 0.07 }}
-                className={`relative bg-gradient-to-br ${item.bg} backdrop-blur-sm rounded-3xl border border-white/60 shadow-sm hover:shadow-card transition-all duration-300 group overflow-hidden`}
-              >
-                {/* Círculo decorativo */}
-                <div className={`absolute -top-4 -right-4 w-20 h-20 ${item.accent} opacity-10 rounded-full group-hover:scale-150 transition-transform duration-500`} />
-
-                {/* Imagen real — clickeable para abrir lightbox */}
-                {fotoUrl && (
-                  <button
-                    onClick={() => setLightbox(fotoIdx)}
-                    className="relative w-full h-44 overflow-hidden rounded-t-3xl block focus:outline-none"
-                    aria-label={`Ver imagen de ${item.titulo}`}
+          {/* Ventana visible — oculta lo que queda fuera */}
+          <div className="overflow-hidden rounded-2xl">
+            {/* Track — se desplaza con CSS transform */}
+            <div
+              ref={trackRef}
+              className="flex items-center"
+              style={{
+                gap: `${GAP_PX}px`,
+                // Desplazamiento: cada tarjeta ocupa CARD_W% + GAP, centrada
+                transform: `translateX(calc(${SIDE_W}% - ${current} * (${CARD_W}% + ${GAP_PX}px) + ${GAP_PX / 2}px))`,
+                transition: 'transform 0.5s cubic-bezier(0.4,0,0.2,1)',
+                willChange: 'transform',
+              }}
+            >
+              {items.map((item, i) => {
+                const isActive = i === current
+                return (
+                  <div
+                    key={i}
+                    onClick={() => isActive ? setLightbox(i) : goTo(i)}
+                    className="flex-shrink-0 cursor-pointer"
+                    style={{ width: `${CARD_W}%` }}
                   >
-                    <Image
-                      src={fotoUrl}
-                      alt={item.titulo}
-                      fill
-                      className="object-cover group-hover:scale-105 transition-transform duration-500"
-                      sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                    />
-                    {/* Overlay hint */}
-                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all duration-300 flex items-center justify-center">
-                      <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-white/90 text-gray-800 text-xs font-semibold px-3 py-1.5 rounded-full shadow">
-                        Ver imagen
-                      </span>
-                    </div>
-                  </button>
-                )}
+                    <motion.div
+                      animate={{
+                        scale:   isActive ? 1 : 0.9,
+                        opacity: isActive ? 1 : 0.45,
+                      }}
+                      transition={{ duration: 0.4 }}
+                      className="rounded-2xl overflow-hidden shadow-xl"
+                    >
+                      <Image
+                        src={item.url}
+                        alt={`${item.categoria} — ${item.trabajo}`}
+                        width={700}
+                        height={520}
+                        className="w-full h-auto object-contain block"
+                        sizes="(max-width: 640px) 54vw, 380px"
+                        priority={i === 0}
+                      />
+                    </motion.div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
 
-                {/* Contenido */}
-                <div className="p-6">
-                  {!fotoUrl && (
-                    <div className="w-14 h-14 bg-white rounded-2xl shadow-sm flex items-center justify-center text-3xl mb-4 group-hover:scale-105 transition-transform duration-300">
-                      {item.icon}
-                    </div>
-                  )}
-                  <h3 className="font-serif font-bold text-beauty-text-dark text-lg mb-2">
-                    {item.titulo}
-                  </h3>
-                  <p className="text-beauty-text-muted text-sm leading-relaxed">
-                    {item.desc}
-                  </p>
-                </div>
+          {/* Flechas — fuera del overflow:hidden */}
+          <button
+            onClick={() => goTo(current - 1)}
+            className="absolute -left-4 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-black/50 hover:bg-black/70 text-white flex items-center justify-center transition-all z-10 shadow-lg"
+            aria-label="Anterior"
+          ><ChevronLeft size={18} /></button>
+          <button
+            onClick={() => goTo(current + 1)}
+            className="absolute -right-4 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-black/50 hover:bg-black/70 text-white flex items-center justify-center transition-all z-10 shadow-lg"
+            aria-label="Siguiente"
+          ><ChevronRight size={18} /></button>
+        </div>
 
-                <div className={`absolute bottom-0 left-0 right-0 h-1 ${item.accent} opacity-30 rounded-b-3xl`} />
-              </motion.div>
-            )
-          })}
+        {/* Nombre debajo — categoría + trabajo */}
+        <div className="text-center mt-6 h-12">
+          <motion.div
+            key={current}
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3 }}
+          >
+            <p className="text-white/55 text-xs tracking-widest uppercase drop-shadow">
+              {items[current].categoria}
+            </p>
+            <p className="font-serif text-white text-xl font-bold drop-shadow-lg mt-0.5">
+              {items[current].trabajo}
+            </p>
+          </motion.div>
+        </div>
+
+        {/* Puntos */}
+        <div className="flex justify-center gap-2 mt-4">
+          {items.map((_, i) => (
+            <button
+              key={i}
+              onClick={() => goTo(i)}
+              aria-label={`Ir a ${i + 1}`}
+              className={`rounded-full transition-all duration-300 ${
+                i === current ? 'w-6 h-2 bg-beauty-primary' : 'w-2 h-2 bg-white/35 hover:bg-white/60'
+              }`}
+            />
+          ))}
         </div>
 
         {/* CTA */}
-        <div className="text-center mt-12">
+        <div className="text-center mt-10">
           <a
             href="https://api.whatsapp.com/send/?phone=573022197673&text=Hola%21+Me+gustar%C3%ADa+agendar+una+cita+%EF%BF%BD&type=phone_number&app_absent=0"
-            target="_blank"
-            rel="noopener noreferrer"
+            target="_blank" rel="noopener noreferrer"
             className="inline-flex items-center gap-2 bg-beauty-primary text-white font-semibold px-10 py-4 rounded-full text-base hover:bg-beauty-primary-dark transition-all shadow-beauty hover:shadow-beauty-lg"
           >
             ✨ Reserva tu turno
@@ -179,86 +196,47 @@ export default function GallerySection({ fotos = [] }: Props) {
         </div>
       </div>
 
-      {/* ── Lightbox ─────────────────────────────────────────── */}
-      <AnimatePresence>
-        {lightbox !== null && activeFoto && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="fixed inset-0 z-[99999] bg-black/90 flex items-center justify-center p-4"
-            onClick={() => setLightbox(null)}
+      {/* ── Lightbox ──────────────────────────────────────────────── */}
+      {lightbox !== null && (
+        <div
+          className="fixed inset-0 z-[99999] bg-black/90 flex items-center justify-center p-4"
+          onClick={() => setLightbox(null)}
+        >
+          <div
+            className="relative max-w-3xl w-full"
+            onClick={e => e.stopPropagation()}
           >
-            {/* Imagen centrada */}
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1,   opacity: 1 }}
-              exit={{ scale: 0.9,    opacity: 0 }}
-              transition={{ duration: 0.25 }}
-              className="relative max-w-4xl w-full max-h-[85vh]"
-              onClick={e => e.stopPropagation()}
-            >
-              <Image
-                key={activeFoto.url}
-                src={activeFoto.url}
-                alt={TRABAJOS[activeFoto.index]?.titulo ?? 'Imagen'}
-                width={1200}
-                height={900}
-                className="w-full h-auto max-h-[85vh] object-contain rounded-2xl shadow-2xl"
-                sizes="100vw"
-                priority
-              />
+            <Image
+              src={items[lightbox].url}
+              alt={`${items[lightbox].categoria} — ${items[lightbox].trabajo}`}
+              width={1200}
+              height={900}
+              className="w-full h-auto max-h-[78vh] object-contain rounded-2xl shadow-2xl"
+              sizes="100vw"
+              priority
+            />
+            <div className="text-center mt-4">
+              <p className="text-white/50 text-xs tracking-widest uppercase">{items[lightbox].categoria}</p>
+              <p className="font-serif text-white text-xl font-bold mt-1">{items[lightbox].trabajo}</p>
+            </div>
+          </div>
 
-              {/* Título */}
-              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent rounded-b-2xl px-6 py-4">
-                <p className="text-white font-bold text-lg">
-                  {TRABAJOS[activeFoto.index]?.titulo}
-                </p>
-                <p className="text-white/70 text-sm">
-                  {TRABAJOS[activeFoto.index]?.desc}
-                </p>
-              </div>
-            </motion.div>
+          <button onClick={() => setLightbox(null)}
+            className="absolute top-4 right-4 w-10 h-10 bg-white/20 hover:bg-white/30 rounded-full flex items-center justify-center text-white"
+            aria-label="Cerrar"><X size={20} /></button>
 
-            {/* Botón cerrar */}
-            <button
-              onClick={() => setLightbox(null)}
-              className="absolute top-4 right-4 w-10 h-10 bg-white/20 hover:bg-white/30 rounded-full flex items-center justify-center text-white transition-colors"
-              aria-label="Cerrar"
-            >
-              <X size={20} />
-            </button>
+          <button onClick={e => { e.stopPropagation(); setLightbox((lightbox - 1 + total) % total) }}
+            className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/20 hover:bg-white/30 rounded-full flex items-center justify-center text-white"
+            aria-label="Anterior"><ChevronLeft size={22} /></button>
+          <button onClick={e => { e.stopPropagation(); setLightbox((lightbox + 1) % total) }}
+            className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/20 hover:bg-white/30 rounded-full flex items-center justify-center text-white"
+            aria-label="Siguiente"><ChevronRight size={22} /></button>
 
-            {/* Flechas de navegación — solo si hay más de 1 foto */}
-            {fotosConIndice.length > 1 && (
-              <>
-                <button
-                  onClick={e => { e.stopPropagation(); setLightbox(Math.max(lightbox - 1, 0)) }}
-                  disabled={lightbox === 0}
-                  className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/20 hover:bg-white/30 rounded-full flex items-center justify-center text-white transition-colors disabled:opacity-30"
-                  aria-label="Anterior"
-                >
-                  <ChevronLeft size={22} />
-                </button>
-                <button
-                  onClick={e => { e.stopPropagation(); setLightbox(Math.min(lightbox + 1, fotosConIndice.length - 1)) }}
-                  disabled={lightbox === fotosConIndice.length - 1}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/20 hover:bg-white/30 rounded-full flex items-center justify-center text-white transition-colors disabled:opacity-30"
-                  aria-label="Siguiente"
-                >
-                  <ChevronRight size={22} />
-                </button>
-
-                {/* Contador */}
-                <p className="absolute bottom-4 left-1/2 -translate-x-1/2 text-white/60 text-xs">
-                  {lightbox + 1} / {fotosConIndice.length}
-                </p>
-              </>
-            )}
-          </motion.div>
-        )}
-      </AnimatePresence>
+          <p className="absolute bottom-4 left-1/2 -translate-x-1/2 text-white/40 text-xs">
+            {lightbox + 1} / {total}
+          </p>
+        </div>
+      )}
     </section>
   )
 }

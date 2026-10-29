@@ -115,7 +115,7 @@ export default function BookingSection() {
 
   if (success) {
     return (
-      <section id="reservar" className="py-14 sm:py-20 bg-white">
+      <section id="reservar" className="py-14 sm:py-20">
         <div className="max-w-md mx-auto px-4 text-center">
           <div className="beauty-card p-8 sm:p-10">
             <div className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-6">

@@ -14,15 +14,15 @@ const testimonials = [
 
 export default function TestimonialsSection() {
   return (
-    <section id="testimonios" className="py-14 sm:py-20 bg-beauty-bg">
+    <section id="testimonios" className="py-14 sm:py-20">
       <div className="max-w-6xl mx-auto px-4 sm:px-6">
 
         {/* Header */}
         <div className="text-center mb-10 sm:mb-12">
-          <p className="text-beauty-secondary text-xs sm:text-sm font-medium tracking-widest uppercase mb-3">
+          <p className="text-white/80 text-xs sm:text-sm font-medium tracking-widest uppercase mb-3 drop-shadow">
             ♥ Testimonios
           </p>
-          <h2 className="font-serif text-3xl sm:text-4xl font-bold text-beauty-text-dark mb-2">
+          <h2 className="font-serif text-3xl sm:text-4xl font-bold text-white mb-2 drop-shadow-lg">
             Lo que Dicen <span className="text-beauty-primary">Nuestras Clientas</span>
           </h2>
           <div className="gold-divider w-24 mx-auto mt-4" />

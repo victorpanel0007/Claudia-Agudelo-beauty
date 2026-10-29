@@ -34,16 +34,16 @@ export default function ServicesSection({ categorias }: Props) {
   return (
     <section
       id="servicios"
-      className="py-16 sm:py-24 bg-white"
+      className="py-16 sm:py-24"
     >
       <div className="max-w-5xl mx-auto px-4 sm:px-6">
 
         <div className="text-center mb-12">
-          <p className="text-beauty-secondary text-xs sm:text-sm font-semibold tracking-widest uppercase mb-3">♥ Lo que ofrecemos</p>
-          <h2 className="font-serif text-3xl sm:text-4xl md:text-5xl font-bold text-beauty-text-dark mb-4">
+          <p className="text-white/80 text-xs sm:text-sm font-semibold tracking-widest uppercase mb-3 drop-shadow">♥ Lo que ofrecemos</p>
+          <h2 className="font-serif text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-4 drop-shadow-lg">
             Nuestros <span className="text-beauty-primary">Servicios</span>
           </h2>
-          <p className="text-beauty-text-muted text-sm sm:text-base max-w-md mx-auto">
+          <p className="text-white/80 text-sm sm:text-base max-w-md mx-auto drop-shadow">
             Especialistas en belleza con años de experiencia. Todo lo que necesitas en un solo lugar.
           </p>
           <div className="gold-divider w-20 mx-auto mt-5" />
