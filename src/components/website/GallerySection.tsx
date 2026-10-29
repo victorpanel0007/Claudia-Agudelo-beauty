@@ -20,9 +20,7 @@ export default function GallerySection({ fotos = [] }: Props) {
   const [current, setCurrent]   = useState(0)
   const [lightbox, setLightbox] = useState<number | null>(null)
   const timerRef  = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const trackRef  = useRef<HTMLDivElement>(null)
 
-  // Autoplay
   function resetTimer() {
     if (timerRef.current) clearTimeout(timerRef.current)
     if (total < 2) return
@@ -38,7 +36,6 @@ export default function GallerySection({ fotos = [] }: Props) {
     setCurrent((idx + total) % total)
   }
 
-  // Teclado en lightbox
   useEffect(() => {
     if (lightbox === null) return
     const onKey = (e: KeyboardEvent) => {
@@ -77,16 +74,11 @@ export default function GallerySection({ fotos = [] }: Props) {
 
         {/* ── Carrusel ─────────────────────────────────────────────── */}
         <div className="relative">
-
-          {/* Ventana visible — oculta lo que queda fuera */}
           <div className="overflow-hidden rounded-2xl">
-            {/* Track — se desplaza con CSS transform */}
             <div
-              ref={trackRef}
               className="flex items-center"
               style={{
                 gap: `${GAP_PX}px`,
-                // Desplazamiento: cada tarjeta ocupa CARD_W% + GAP, centrada
                 transform: `translateX(calc(${SIDE_W}% - ${current} * (${CARD_W}% + ${GAP_PX}px) + ${GAP_PX / 2}px))`,
                 transition: 'transform 0.5s cubic-bezier(0.4,0,0.2,1)',
                 willChange: 'transform',
@@ -102,14 +94,10 @@ export default function GallerySection({ fotos = [] }: Props) {
                     style={{ width: `${CARD_W}%` }}
                   >
                     <motion.div
-                      animate={{
-                        scale:   isActive ? 1 : 0.9,
-                        opacity: isActive ? 1 : 0.45,
-                      }}
+                      animate={{ scale: isActive ? 1 : 0.9, opacity: isActive ? 1 : 0.45 }}
                       transition={{ duration: 0.4 }}
                       className="rounded-2xl overflow-hidden shadow-xl bg-black/5"
                     >
-                      {/* Contenedor de altura fija uniforme — imagen centrada con object-contain */}
                       <div className="relative w-full h-64 sm:h-72">
                         <Image
                           src={item.url}
@@ -127,7 +115,6 @@ export default function GallerySection({ fotos = [] }: Props) {
             </div>
           </div>
 
-          {/* Flechas — fuera del overflow:hidden */}
           <button
             onClick={() => goTo(current - 1)}
             className="absolute -left-4 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-black/50 hover:bg-black/70 text-white flex items-center justify-center transition-all z-10 shadow-lg"
@@ -140,7 +127,7 @@ export default function GallerySection({ fotos = [] }: Props) {
           ><ChevronRight size={18} /></button>
         </div>
 
-        {/* Nombre debajo — categoría + trabajo */}
+        {/* Nombre debajo */}
         <div className="text-center mt-6 h-12">
           <motion.div
             key={current}
@@ -189,10 +176,7 @@ export default function GallerySection({ fotos = [] }: Props) {
           className="fixed inset-0 z-[99999] bg-black/90 flex items-center justify-center p-4"
           onClick={() => setLightbox(null)}
         >
-          <div
-            className="relative max-w-3xl w-full"
-            onClick={e => e.stopPropagation()}
-          >
+          <div className="relative max-w-3xl w-full" onClick={e => e.stopPropagation()}>
             <Image
               src={items[lightbox].url}
               alt={`${items[lightbox].categoria} — ${items[lightbox].descripcion}`}

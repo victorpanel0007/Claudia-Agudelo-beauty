@@ -1,6 +1,7 @@
 import dynamic from 'next/dynamic'
 import Header from '@/components/website/Header'
 import HeroSection from '@/components/website/HeroSection'
+import BackgroundFondo from '@/components/website/BackgroundFondo'
 import WhatsAppFloat from '@/components/website/WhatsAppFloat'
 import { createClient } from '@/lib/supabase/server'
 
@@ -72,16 +73,7 @@ export default async function HomePage() {
 
   return (
     <main className="min-h-screen relative">
-      {/* Imagen de portada fija — visible mientras el usuario baja */}
-      <div
-        aria-hidden="true"
-        className="fixed inset-0 -z-10"
-        style={{
-          backgroundImage: "url('/fondo.png')",
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-        }}
-      />
+      <BackgroundFondo />
       <Header />
       <HeroSection />
       <ServicesSection

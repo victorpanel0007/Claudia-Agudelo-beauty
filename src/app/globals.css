@@ -223,3 +223,22 @@ a, button {
 .scroll-snap-x > * {
   scroll-snap-align: start;
 }
+
+/* ── Ken Burns — zoom cinematográfico imagen de fondo ────────────────────── */
+@keyframes kenBurns {
+  0%   { transform: scale(1.00) translateY(0px);   }
+  50%  { transform: scale(1.08) translateY(-14px); }
+  100% { transform: scale(1.00) translateY(0px);   }
+}
+
+.bg-ken-burns {
+  animation: kenBurns 26s ease-in-out infinite;
+  will-change: transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bg-ken-burns {
+    animation: none !important;
+    transform: scale(1) !important;
+  }
+}
