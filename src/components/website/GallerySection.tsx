@@ -1,35 +1,20 @@
-﻿'use client'
+'use client'
 
 import { motion } from 'framer-motion'
 import Image from 'next/image'
 import { useEffect, useRef, useState } from 'react'
 import { ChevronLeft, ChevronRight, X } from 'lucide-react'
 
-const TRABAJOS = [
-  { categoria: 'Manicura',               trabajo: 'Semipermanente' },
-  { categoria: 'Manicura',               trabajo: 'Acrílico' },
-  { categoria: 'Maquillaje',             trabajo: 'Social' },
-  { categoria: 'Maquillaje',             trabajo: 'Novia' },
-  { categoria: 'Peluquería',             trabajo: 'Coloración' },
-  { categoria: 'Peluquería',             trabajo: 'Keratina' },
-  { categoria: 'Cejas & Pestañas',       trabajo: 'Lifting de Pestañas' },
-  { categoria: 'Cejas & Pestañas',       trabajo: 'Diseño de Cejas' },
-  { categoria: 'Tratamientos Capilares', trabajo: 'Hidratación' },
-  { categoria: 'Depilación',             trabajo: 'Cera Caliente' },
-]
-
 const AUTOPLAY_MS = 3500
-// Ancho de la tarjeta central como % del contenedor visible
-const CARD_W   = 54   // % — la central
-const SIDE_W   = 20   // % — cada lateral visible
-const GAP_PX   = 10   // px entre tarjetas
+const CARD_W   = 54
+const SIDE_W   = 20
+const GAP_PX   = 10
 
-interface Props { fotos: string[] }
+interface FotoGaleria { url: string; categoria: string; descripcion: string | null }
+interface Props { fotos: FotoGaleria[] }
 
 export default function GallerySection({ fotos = [] }: Props) {
-  const items = fotos
-    .map((url, i) => ({ url, ...(TRABAJOS[i] ?? { categoria: 'Belleza', trabajo: 'Tratamiento' }) }))
-    .filter(f => !!f.url)
+  const items = fotos.filter(f => !!f.url)
 
   const total = items.length
   const [current, setCurrent]   = useState(0)
@@ -122,17 +107,19 @@ export default function GallerySection({ fotos = [] }: Props) {
                         opacity: isActive ? 1 : 0.45,
                       }}
                       transition={{ duration: 0.4 }}
-                      className="rounded-2xl overflow-hidden shadow-xl"
+                      className="rounded-2xl overflow-hidden shadow-xl bg-black/5"
                     >
-                      <Image
-                        src={item.url}
-                        alt={`${item.categoria} — ${item.trabajo}`}
-                        width={700}
-                        height={520}
-                        className="w-full h-auto object-contain block"
-                        sizes="(max-width: 640px) 54vw, 380px"
-                        priority={i === 0}
-                      />
+                      {/* Contenedor de altura fija uniforme — imagen centrada con object-contain */}
+                      <div className="relative w-full h-64 sm:h-72">
+                        <Image
+                          src={item.url}
+                          alt={`${item.categoria} — ${item.descripcion}`}
+                          fill
+                          className="object-contain"
+                          sizes="(max-width: 640px) 54vw, 380px"
+                          priority={i === 0}
+                        />
+                      </div>
                     </motion.div>
                   </div>
                 )
@@ -165,7 +152,7 @@ export default function GallerySection({ fotos = [] }: Props) {
               {items[current].categoria}
             </p>
             <p className="font-serif text-white text-xl font-bold drop-shadow-lg mt-0.5">
-              {items[current].trabajo}
+              {items[current].descripcion}
             </p>
           </motion.div>
         </div>
@@ -208,7 +195,7 @@ export default function GallerySection({ fotos = [] }: Props) {
           >
             <Image
               src={items[lightbox].url}
-              alt={`${items[lightbox].categoria} — ${items[lightbox].trabajo}`}
+              alt={`${items[lightbox].categoria} — ${items[lightbox].descripcion}`}
               width={1200}
               height={900}
               className="w-full h-auto max-h-[78vh] object-contain rounded-2xl shadow-2xl"
@@ -217,7 +204,7 @@ export default function GallerySection({ fotos = [] }: Props) {
             />
             <div className="text-center mt-4">
               <p className="text-white/50 text-xs tracking-widest uppercase">{items[lightbox].categoria}</p>
-              <p className="font-serif text-white text-xl font-bold mt-1">{items[lightbox].trabajo}</p>
+              <p className="font-serif text-white text-xl font-bold mt-1">{items[lightbox].descripcion}</p>
             </div>
           </div>
 

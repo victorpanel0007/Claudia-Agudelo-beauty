@@ -46,7 +46,7 @@ export default async function HomePage() {
   // Consultar categorías y servicios activos directamente de Supabase
   const supabase = await createClient()
 
-  const [{ data: categorias }, { data: catImagenes }, galeríaResult] = await Promise.all([
+  const [{ data: categorias }, { data: catImagenes }, { data: galeriaData }] = await Promise.all([
     supabase
       .from('categorias')
       .select('id, nombre, icono, orden')
@@ -54,7 +54,12 @@ export default async function HomePage() {
     supabase
       .from('categoria_imagenes')
       .select('categoria_id, imagen_url'),
-    supabase.storage.from('galeria').list('', { limit: 50, sortBy: { column: 'created_at', order: 'asc' } }),
+    supabase
+      .from('galeria')
+      .select('url, categoria, descripcion')
+      .eq('activo', true)
+      .order('orden', { ascending: true })
+      .order('created_at', { ascending: false }),
   ])
 
   // Mapa categoriaId → imagen_url para acceso rápido en el componente
@@ -63,11 +68,7 @@ export default async function HomePage() {
     imagenesMap[ci.categoria_id] = ci.imagen_url
   })
 
-  // URLs públicas de las fotos del bucket galeria (raíz, excluyendo carpeta categorias/)
-  const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
-  const galeriaUrls: string[] = (galeríaResult.data ?? [])
-    .filter(f => f.name && !f.name.startsWith('.') && f.metadata)
-    .map(f => `${SUPABASE_URL}/storage/v1/object/public/galeria/${f.name}`)
+  const galeriaFotos = (galeriaData ?? []) as { url: string; categoria: string; descripcion: string | null }[]
 
   return (
     <main className="min-h-screen relative">
@@ -87,7 +88,7 @@ export default async function HomePage() {
         categorias={categorias ?? []}
         imagenesMap={imagenesMap}
       />
-      <GallerySection fotos={galeriaUrls} />
+      <GallerySection fotos={galeriaFotos} />
       <TestimonialsSection />
       <ContactSection />
       <Footer />

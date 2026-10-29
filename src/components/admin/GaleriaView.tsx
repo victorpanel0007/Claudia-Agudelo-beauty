@@ -243,15 +243,15 @@ export default function GaleriaView() {
                 </select>
               </div>
 
-              {/* Descripción */}
+              {/* Nombre del trabajo */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Descripción <span className="text-gray-400 font-normal">(opcional)</span>
+                  Nombre del trabajo <span className="text-gray-400 font-normal">(opcional)</span>
                 </label>
                 <input
                   value={descripcion}
                   onChange={e => setDescripcion(e.target.value)}
-                  placeholder="Ej: Diseño de uñas en gel..."
+                  placeholder="Ej: Semipermanente, Novia, Keratina..."
                   className="input-beauty"
                 />
               </div>
