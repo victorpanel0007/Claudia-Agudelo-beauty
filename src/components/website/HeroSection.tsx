@@ -64,7 +64,8 @@ export default function HeroSection() {
           </h1>
 
           <p className="text-white/90 text-base leading-relaxed mb-8 drop-shadow">
-            En nuestro salón, cada detalle está pensado para que te sientas única, hermosa y renovada.
+            Salón de belleza en Sabaneta, Antioquia. Manicure, maquillaje, masajes, peluquería,
+            cejas, barbería y mucho más. Todo lo que necesitas en un solo lugar.
           </p>
 
           <a

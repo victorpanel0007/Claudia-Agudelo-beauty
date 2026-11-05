@@ -46,7 +46,8 @@ export default function ServicesSection({ categorias }: Props) {
             Nuestros <span className="text-beauty-primary">Servicios</span>
           </h2>
           <p className="text-white/80 text-sm sm:text-base max-w-md mx-auto drop-shadow">
-            Especialistas en belleza con años de experiencia. Todo lo que necesitas en un solo lugar.
+            Especialistas en belleza en Sabaneta, Antioquia. Manicure, pedicure, maquillaje,
+            masajes, peluquería, cejas, barbería, depilación, limpieza facial y podología.
           </p>
           <div className="gold-divider w-20 mx-auto mt-5" />
         </motion.div>
@@ -59,6 +60,7 @@ export default function ServicesSection({ categorias }: Props) {
               href={WA_LINK}
               target="_blank"
               rel="noopener noreferrer"
+              aria-label={`${cat.nombre} en Sabaneta — Claudia Agudelo Beauty`}
               variants={cardVariants}
               initial="hidden"
               whileInView="visible"

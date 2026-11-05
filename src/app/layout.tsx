@@ -23,32 +23,61 @@ const playfair = Playfair_Display({
 })
 
 // ── Metadata completa para SEO ────────────────────────────────────────────
+// Dominio canónico principal — siempre claudiaagudelobeauty.com
+const CANONICAL_BASE = 'https://claudiaagudelobeauty.com'
+
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'https://www.claudiaagudelobeauty.sbs'),
+  metadataBase: new URL(CANONICAL_BASE),
   title: {
-    default: 'Claudia Agudelo Beauty | Salón de Belleza Premium',
+    default: 'Claudia Agudelo Beauty | Salón de Belleza en Sabaneta',
     template: '%s | Claudia Agudelo Beauty',
   },
   description:
-    'Salón de belleza premium en Colombia. Manicura, pedicura, maquillaje, masajes, cejas, pestañas, peluquería y más. Reserva tu cita online o por WhatsApp.',
+    'Claudia Agudelo Beauty, salón de belleza en Sabaneta, Antioquia. Manicure, pedicure, maquillaje, masajes, cejas, peluquería, depilación, barbería, limpieza facial y más. Agenda tu cita por WhatsApp.',
   keywords: [
-    'salón de belleza', 'spa', 'manicura', 'pedicura',
-    'maquillaje', 'masajes', 'cejas', 'pestañas', 'peluquería',
-    'Claudia Agudelo', 'beauty', 'Colombia',
+    'salón de belleza Sabaneta',
+    'salón de belleza Antioquia',
+    'Claudia Agudelo Beauty',
+    'manicure Sabaneta',
+    'pedicure Sabaneta',
+    'maquillaje Sabaneta',
+    'masajes Sabaneta',
+    'peluquería Sabaneta',
+    'cejas Sabaneta',
+    'limpieza facial Sabaneta',
+    'depilación Sabaneta',
+    'barbería Sabaneta',
+    'podología Sabaneta',
+    'servicios de belleza Sabaneta',
   ],
   authors: [{ name: 'Claudia Agudelo Beauty' }],
   creator: 'Claudia Agudelo Beauty',
   openGraph: {
-    title: 'Claudia Agudelo Beauty | Salón de Belleza Premium',
-    description: 'Realzamos tu belleza y tu esencia. Reserva tu cita online.',
+    title: 'Claudia Agudelo Beauty | Salón de Belleza en Sabaneta',
+    description:
+      'Salón de belleza en Sabaneta, Antioquia. Manicure, pedicure, maquillaje, masajes, cejas, peluquería y más. Agenda tu cita fácilmente por WhatsApp.',
     type: 'website',
+    url: CANONICAL_BASE,
     locale: 'es_CO',
     siteName: 'Claudia Agudelo Beauty',
+    images: [
+      {
+        url: `${CANONICAL_BASE}/logo.png`,
+        width: 512,
+        height: 512,
+        alt: 'Claudia Agudelo Beauty — Salón de belleza en Sabaneta, Antioquia',
+      },
+    ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Claudia Agudelo Beauty',
-    description: 'Salón de belleza premium. Reserva tu cita online.',
+    title: 'Claudia Agudelo Beauty | Salón de Belleza en Sabaneta',
+    description:
+      'Salón de belleza en Sabaneta, Antioquia. Manicure, maquillaje, masajes, peluquería y más.',
+    images: [`${CANONICAL_BASE}/logo.png`],
+  },
+  alternates: {
+    canonical: CANONICAL_BASE,
   },
   robots: {
     index: true,

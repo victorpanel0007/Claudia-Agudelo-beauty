@@ -2,6 +2,21 @@
 const nextConfig = {
   reactStrictMode: true,
   compress: true,
+  // Ocultar la versión de Next.js para reducir la superficie de ataque
+  poweredByHeader: false,
+
+  // ── Redirecciones de dominio ──────────────────────────────────────────────
+  // www → sin-www (dominio canónico sin www)
+  async redirects() {
+    return [
+      {
+        source: '/:path*',
+        has: [{ type: 'host', value: 'www.claudiaagudelobeauty.com' }],
+        destination: 'https://claudiaagudelobeauty.com/:path*',
+        permanent: true, // 308 / 301
+      },
+    ]
+  },
 
   // ── Imágenes optimizadas ──────────────────────────────────────────────────
   images: {
