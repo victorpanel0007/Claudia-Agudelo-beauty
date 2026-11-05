@@ -33,9 +33,9 @@ const jsonLd = {
   '@id': `${CANONICAL_URL}/#beautysalon`,
   name: 'Claudia Agudelo Beauty',
   url: CANONICAL_URL,
-  // ⬜ Dirección exacta — reemplazar con la dirección real cuando esté disponible
   address: {
     '@type': 'PostalAddress',
+    streetAddress: 'Cl. 74 Sur #46-48',
     addressLocality: 'Sabaneta',
     addressRegion: 'Antioquia',
     addressCountry: 'CO',

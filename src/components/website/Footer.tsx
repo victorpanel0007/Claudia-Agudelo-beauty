@@ -11,7 +11,7 @@ export default function Footer() {
             Claudia Agudelo Beauty
           </p>
           <p className="text-white/90 text-sm mt-1 drop-shadow">
-            Salón de Belleza — Sabaneta, Antioquia, Colombia
+            Cl. 74 Sur #46-48, Sabaneta, Antioquia, Colombia
           </p>
         </div>
 
@@ -39,7 +39,7 @@ export default function Footer() {
                 className="hover:text-white transition-colors drop-shadow"
                 aria-label="Ver Claudia Agudelo Beauty en Google Maps"
               >
-                📍 Sabaneta, Antioquia
+                📍 Cl. 74 Sur #46-48, Sabaneta
               </a>
             </p>
           </div>
