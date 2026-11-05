@@ -12,7 +12,7 @@ const CANONICAL_URL = 'https://claudiaagudelobeauty.com'
 export const metadata: Metadata = {
   title: 'Claudia Agudelo Beauty | Salón de Belleza en Sabaneta',
   description:
-    'Claudia Agudelo Beauty, salón de belleza en Sabaneta, Antioquia. Manicure, pedicure, maquillaje, masajes, cejas, peluquería, depilación, barbería, limpieza facial y podología. Agenda tu cita por WhatsApp.',
+    'Salón de belleza en Sabaneta especializado en manicure, pedicure, maquillaje, masajes, cejas, pestañas y peluquería. Agenda tu cita por WhatsApp.',
   alternates: {
     canonical: CANONICAL_URL,
   },
