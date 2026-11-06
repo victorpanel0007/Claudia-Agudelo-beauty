@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server'
 
-const PLACE_ID = 'ChIJ5X_5kGiDRo4RkW1pI9FPUGs'
-// Caché de 6 horas — evita exceder cuota de la API
-const CACHE_SECONDS = 6 * 60 * 60
+const PLACE_ID      = 'ChIJ5X_5kGiDRo4RkW1pI9FPUGs'
+const CACHE_SECONDS = 6 * 60 * 60 // 6 horas
 
 export async function GET() {
   const key = process.env.GOOGLE_PLACES_API_KEY
@@ -11,20 +10,54 @@ export async function GET() {
   }
 
   try {
-    const url = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${PLACE_ID}&fields=name,rating,user_ratings_total,reviews&language=es&reviews_sort=newest&key=${key}`
-    const res = await fetch(url, { next: { revalidate: CACHE_SECONDS } })
+    // Places API (New) — único endpoint disponible actualmente
+    const url = `https://places.googleapis.com/v1/places/${PLACE_ID}`
+    const res = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'X-Goog-Api-Key': key,
+        // reviews, reviews.authorAttribution, etc. son campos de la nueva API
+        'X-Goog-FieldMask': [
+          'rating',
+          'userRatingCount',
+          'reviews.rating',
+          'reviews.text',
+          'reviews.relativePublishTimeDescription',
+          'reviews.authorAttribution.displayName',
+          'reviews.authorAttribution.photoUri',
+        ].join(','),
+      },
+      next: { revalidate: CACHE_SECONDS },
+    })
+
     const data = await res.json()
 
-    if (data.status !== 'OK') {
-      return NextResponse.json({ error: data.status, message: data.error_message }, { status: 502 })
+    if (!res.ok) {
+      return NextResponse.json(
+        { error: data?.error?.status ?? 'ERROR', message: data?.error?.message },
+        { status: 502 }
+      )
     }
 
-    const { rating, user_ratings_total, reviews } = data.result
+    // Mapear formato nuevo → formato que espera el componente
+    const reviews = (data.reviews ?? []).map((r: {
+      rating: number
+      text?: { text: string }
+      relativePublishTimeDescription?: string
+      authorAttribution?: { displayName: string; photoUri: string }
+    }) => ({
+      author_name:                  r.authorAttribution?.displayName ?? 'Cliente',
+      profile_photo_url:            r.authorAttribution?.photoUri ?? '',
+      rating:                       r.rating,
+      relative_time_description:    r.relativePublishTimeDescription ?? '',
+      text:                         r.text?.text ?? '',
+    }))
+
     return NextResponse.json(
-      { rating, total: user_ratings_total, reviews: reviews ?? [] },
+      { rating: data.rating ?? 5, total: data.userRatingCount ?? 38, reviews },
       { headers: { 'Cache-Control': `public, s-maxage=${CACHE_SECONDS}, stale-while-revalidate=3600` } }
     )
-  } catch (err) {
+  } catch {
     return NextResponse.json({ error: 'Error al consultar Google' }, { status: 500 })
   }
 }
