@@ -1,87 +1,76 @@
 import Link from 'next/link'
+import Image from 'next/image'
 
 export default function Footer() {
+  const year = new Date().getFullYear()
+
   return (
-    <footer className="py-8 sm:py-10">
-      <div className="max-w-5xl mx-auto px-4 sm:px-6">
+    <footer
+      className="py-14 sm:py-20"
+      style={{
+        background: 'rgba(0,0,0,0.55)',
+        backdropFilter: 'blur(12px)',
+        WebkitBackdropFilter: 'blur(12px)',
+        borderTop: '1px solid rgba(255,255,255,0.06)',
+      }}
+    >
+      <div className="max-w-2xl mx-auto px-4 sm:px-6 flex flex-col items-center text-center gap-6">
 
-        {/* Identidad del negocio */}
-        <div className="text-center md:text-left mb-4">
-          <p className="font-serif text-white font-bold text-xl drop-shadow-lg">
-            Claudia Agudelo Beauty
-          </p>
-          <p className="text-white/90 text-sm mt-1 drop-shadow">
-            Cl. 74 Sur #46-48, Sabaneta, Antioquia, Colombia
-          </p>
+        {/* Logo */}
+        <div className="w-20 h-20 rounded-full overflow-hidden border border-white/20 shadow-lg">
+          <Image
+            src="/logo.png"
+            alt="Claudia Agudelo Beauty"
+            width={80}
+            height={80}
+            className="w-full h-full object-cover"
+          />
         </div>
 
-        <div className="gold-divider mb-4" />
+        {/* Frase */}
+        <p className="font-serif italic text-white/70 text-sm sm:text-base tracking-wide drop-shadow">
+          Tu refugio de belleza y bienestar en Sabaneta, Antioquia.
+        </p>
 
-        {/* Información de contacto y enlaces */}
-        <div className="flex flex-col sm:flex-row items-center sm:items-start justify-between gap-4 text-xs text-white/80 mb-5">
+        {/* Divisor dorado */}
+        <div className="w-16 h-px" style={{ background: 'linear-gradient(90deg,transparent,#C5A675,transparent)' }} />
 
-          {/* Contacto */}
-          <div className="text-center sm:text-left space-y-1">
-            <p>
-              <a
-                href="tel:+573022197673"
-                className="hover:text-white transition-colors drop-shadow"
-                aria-label="Llamar a Claudia Agudelo Beauty"
-              >
-                📞 +57 302 219 7673
-              </a>
-            </p>
-            <p>
-              <a
-                href="https://maps.app.goo.gl/Zp81HQMAva6wmwUM7"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="hover:text-white transition-colors drop-shadow"
-                aria-label="Ver Claudia Agudelo Beauty en Google Maps"
-              >
-                📍 Cl. 74 Sur #46-48, Sabaneta
-              </a>
-            </p>
-          </div>
+        {/* Links legales */}
+        <nav className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2">
+          <Link
+            href="/privacidad"
+            className="text-white/50 hover:text-white text-[11px] font-medium tracking-widest uppercase transition-colors"
+          >
+            Política de Privacidad
+          </Link>
+          <span className="text-white/20 text-xs hidden sm:block">·</span>
+          <Link
+            href="/cookies"
+            className="text-white/50 hover:text-white text-[11px] font-medium tracking-widest uppercase transition-colors"
+          >
+            Política de Cookies
+          </Link>
+          <span className="text-white/20 text-xs hidden sm:block">·</span>
+          <Link
+            href="/terminos"
+            className="text-white/50 hover:text-white text-[11px] font-medium tracking-widest uppercase transition-colors"
+          >
+            Términos y Condiciones
+          </Link>
+        </nav>
 
-          {/* Horario */}
-          <div className="text-center space-y-1">
-            <p className="drop-shadow">🕘 Lun – Sáb: 9:00 a. m. – 7:00 p. m.</p>
-            <p className="drop-shadow">Domingos cerrado</p>
-          </div>
-
-          {/* Links */}
-          <div className="text-center sm:text-right space-y-1">
-            <p>
-              <Link
-                href="/privacidad"
-                className="hover:text-white transition-colors drop-shadow"
-              >
-                Política de Privacidad
-              </Link>
-            </p>
-            <p>
-              <a
-                href="https://www.instagram.com/claudiaagudelobeauty"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="hover:text-white transition-colors drop-shadow"
-                aria-label="Instagram de Claudia Agudelo Beauty"
-              >
-                Instagram
-              </a>
-            </p>
-          </div>
-        </div>
-
-        <div className="gold-divider mb-4" />
-
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-white">
-          <p className="text-center sm:text-left drop-shadow">
-            © 2026 Claudia Agudelo Beauty. Todos los derechos reservados.
-          </p>
-          <p className="drop-shadow">Hecho con 💖 en Colombia</p>
-        </div>
+        {/* Copyright */}
+        <p className="text-white/30 text-[11px] tracking-wide">
+          © {year} Claudia Agudelo Beauty. Todos los derechos reservados. | Página web creada por{' '}
+          <a
+            href="https://wa.link/9kgtc0"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-white/50 hover:text-white transition-colors"
+          >
+            Victor Deavila
+          </a>
+        </p>
 
       </div>
     </footer>

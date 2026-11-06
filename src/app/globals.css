@@ -2,15 +2,15 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ── Paleta Oficial Claudia Agudelo Beauty ───────────────────────────────── */
+/* ── Paleta original — base del sistema (admin + paneles internos) ───────── */
 :root {
-  --background:  #FFF8EE; /* Crema Suave */
-  --rosa-claro:  #FAD6E0; /* Rosa Claro */
-  --primary:     #EFA1B5; /* Rosa Medio */
-  --borgona:     #8B1E3F; /* Borgoña */
-  --sage:        #A7B8A6; /* Verde Salvia */
-  --secondary:   #D4AF37; /* Dorado */
-  --text:        #222222; /* Negro Suave */
+  --background:  #FFF8EE; /* Crema Suave — fondo admin */
+  --rosa-claro:  #FAD6E0;
+  --primary:     #EFA1B5;
+  --borgona:     #8B1E3F;
+  --sage:        #A7B8A6;
+  --secondary:   #D4AF37;
+  --text:        #222222;
   --white:       #FFFFFF;
 }
 
@@ -20,7 +20,7 @@
 html { scroll-behavior: smooth; }
 
 body {
-  font-family: var(--font-inter), system-ui, sans-serif;
+  font-family: var(--font-montserrat), var(--font-inter), system-ui, sans-serif;
   background: var(--background);
   color: var(--text);
   -webkit-font-smoothing: antialiased;
@@ -136,12 +136,14 @@ select {
 }
 
 /* ── Tipografía ──────────────────────────────────────────────────────────── */
+/* Cormorant Garamond para elementos serif (web pública) */
+/* Montserrat para todos los textos */
 .section-title {
   @apply font-serif text-3xl md:text-4xl font-bold text-beauty-text;
 }
 .text-gold { @apply text-beauty-secondary; }
 
-/* Texto degradado dorado */
+/* Texto degradado dorado original */
 .gradient-text {
   background: linear-gradient(135deg, #D4AF37, #E8CC6A);
   -webkit-background-clip: text;
@@ -149,7 +151,14 @@ select {
   background-clip: text;
 }
 
-/* Texto borgoña */
+/* Texto degradado champaña — solo web pública */
+.gradient-text-champagne {
+  background: linear-gradient(135deg, #C5A675, #D9C4A0);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
 .text-borgona { @apply text-beauty-borgona; }
 
 /* ── Input ───────────────────────────────────────────────────────────────── */
@@ -181,7 +190,7 @@ a, button {
 }
 
 /* ── Calendario ──────────────────────────────────────────────────────────── */
-.rbc-calendar  { font-family: var(--font-inter) !important; background: white !important; }
+.rbc-calendar  { font-family: var(--font-montserrat), var(--font-inter) !important; background: white !important; }
 .rbc-header    { font-weight: 600 !important; padding: 8px !important; background: #FFF8EE !important; color: #222222 !important; }
 .rbc-event     { background: #EFA1B5 !important; border: none !important; border-radius: 6px !important; color: #FFFFFF !important; font-size: 12px !important; font-weight: 500 !important; }
 .rbc-today     { background: #FAD6E0 !important; }
@@ -242,3 +251,7 @@ a, button {
     transform: scale(1) !important;
   }
 }
+
+/* Ocultar scrollbar en filas horizontales de galería */
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+.scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }

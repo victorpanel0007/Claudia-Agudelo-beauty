@@ -18,7 +18,7 @@ export default function ContactSection() {
           </p>
           <h2 className="font-serif text-3xl sm:text-4xl font-bold text-white mb-2 drop-shadow-lg">
             Encuéntranos &{' '}
-            <span className="text-beauty-primary">Contáctanos</span>
+            <span className="text-beauty-champagne">Contáctanos</span>
           </h2>
           <div className="gold-divider w-24 mx-auto mt-4" />
         </div>
@@ -31,8 +31,8 @@ export default function ContactSection() {
             {/* Horario */}
             <div className="bg-white/80 backdrop-blur-md rounded-2xl p-5 shadow-lg">
               <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-xl bg-beauty-rosa-claro border border-beauty-primary/20 flex items-center justify-center shrink-0">
-                  <Clock className="text-beauty-primary" size={18} />
+                <div className="w-10 h-10 rounded-xl bg-beauty-verde-niebla border border-beauty-champagne/20 flex items-center justify-center shrink-0">
+                  <Clock className="text-beauty-champagne" size={18} />
                 </div>
                 <p className="font-bold text-beauty-text-dark text-base">Horario de atención</p>
               </div>
@@ -55,8 +55,8 @@ export default function ContactSection() {
             {/* Síguenos */}
             <div className="bg-white/80 backdrop-blur-md rounded-2xl p-5 shadow-lg">
               <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-xl bg-beauty-rosa-claro border border-beauty-primary/20 flex items-center justify-center shrink-0">
-                  <Heart className="text-beauty-primary" size={18} />
+                <div className="w-10 h-10 rounded-xl bg-beauty-verde-niebla border border-beauty-champagne/20 flex items-center justify-center shrink-0">
+                  <Heart className="text-beauty-champagne" size={18} />
                 </div>
                 <p className="font-bold text-beauty-text-dark text-base">Síguenos</p>
               </div>
@@ -86,7 +86,7 @@ export default function ContactSection() {
 
             {/* CTA móvil */}
             <a href={WA} target="_blank" rel="noopener noreferrer"
-              className="lg:hidden bg-beauty-primary text-white font-semibold px-8 py-4 rounded-full text-base flex items-center justify-center gap-2 min-h-[52px] shadow-beauty hover:bg-beauty-primary-dark transition-all">
+              className="lg:hidden bg-beauty-champagne text-white font-semibold px-8 py-4 rounded-full text-base flex items-center justify-center gap-2 min-h-[52px] shadow-beauty hover:bg-beauty-web-accent-dark transition-all">
               💅 Agenda tu Cita Ahora
             </a>
           </div>
@@ -105,7 +105,7 @@ export default function ContactSection() {
             />
             <div className="bg-white/80 backdrop-blur-md p-4 text-center">
               <a href="https://maps.app.goo.gl/Zp81HQMAva6wmwUM7" target="_blank" rel="noopener noreferrer"
-                className="bg-beauty-primary text-white font-semibold px-6 py-3 rounded-full text-sm inline-flex items-center gap-2 hover:bg-beauty-primary-dark transition-all min-h-[48px]">
+                className="bg-beauty-champagne text-white font-semibold px-6 py-3 rounded-full text-sm inline-flex items-center gap-2 hover:bg-beauty-web-accent-dark transition-all min-h-[48px]">
                 <MapPin size={14} /> Ver en Google Maps
               </a>
             </div>

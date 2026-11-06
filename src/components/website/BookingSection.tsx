@@ -143,11 +143,11 @@ export default function BookingSection() {
 
         {/* Header */}
         <div className="text-center mb-8 sm:mb-10">
-          <p className="text-beauty-secondary text-xs sm:text-sm font-medium tracking-widest uppercase mb-3">
+          <p className="text-beauty-champagne text-xs sm:text-sm font-medium tracking-widest uppercase mb-3">
             ♥ Reserva Online
           </p>
-          <h2 className="font-serif text-3xl sm:text-4xl font-bold text-beauty-text-dark mb-2">
-            Tu Cita en <span className="text-beauty-primary">Minutos</span>
+          <h2 className="font-serif text-3xl sm:text-4xl font-bold text-beauty-verde-profundo mb-2">
+            Tu Cita en <span className="text-beauty-champagne">Minutos</span>
           </h2>
           <div className="gold-divider w-24 mx-auto mt-4" />
         </div>
@@ -157,9 +157,9 @@ export default function BookingSection() {
           {[1, 2].map(s => (
             <div key={s} className="flex items-center gap-2">
               <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold transition-all ${
-                step >= s ? 'bg-beauty-secondary text-white' : 'bg-gray-200 text-gray-400'
+                step >= s ? 'bg-beauty-champagne text-white' : 'bg-gray-200 text-gray-400'
               }`}>{s}</div>
-              {s < 2 && <div className={`w-10 sm:w-16 h-0.5 ${step >= 2 ? 'bg-beauty-secondary' : 'bg-gray-200'}`} />}
+              {s < 2 && <div className={`w-10 sm:w-16 h-0.5 ${step >= 2 ? 'bg-beauty-champagne' : 'bg-gray-200'}`} />}
             </div>
           ))}
         </div>
@@ -230,18 +230,18 @@ export default function BookingSection() {
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                 <label className="cursor-pointer">
                   <input {...register('especialista_id')} type="radio" value="" className="sr-only peer" />
-                  <div className="border-2 border-beauty-primary/40 rounded-xl p-3 text-center text-sm font-medium text-beauty-text
-                    peer-checked:border-beauty-secondary peer-checked:text-beauty-secondary peer-checked:bg-beauty-secondary/10
-                    transition-all cursor-pointer hover:border-beauty-primary min-h-[52px] flex items-center justify-center">
+                  <div className="border-2 border-beauty-champagne/40 rounded-xl p-3 text-center text-sm font-medium text-beauty-verde-profundo
+                    peer-checked:border-beauty-champagne peer-checked:text-beauty-champagne peer-checked:bg-beauty-champagne/10
+                    transition-all cursor-pointer hover:border-beauty-champagne min-h-[52px] flex items-center justify-center">
                     Cualquiera
                   </div>
                 </label>
                 {especialistas.map(esp => (
                   <label key={esp.id} className="cursor-pointer">
                     <input {...register('especialista_id')} type="radio" value={esp.id} className="sr-only peer" />
-                    <div className="border-2 border-beauty-primary/40 rounded-xl p-3 text-center text-sm font-medium text-beauty-text
-                      peer-checked:border-beauty-secondary peer-checked:text-beauty-secondary peer-checked:bg-beauty-secondary/10
-                      transition-all cursor-pointer hover:border-beauty-primary min-h-[52px] flex items-center justify-center">
+                    <div className="border-2 border-beauty-champagne/40 rounded-xl p-3 text-center text-sm font-medium text-beauty-verde-profundo
+                      peer-checked:border-beauty-champagne peer-checked:text-beauty-champagne peer-checked:bg-beauty-champagne/10
+                      transition-all cursor-pointer hover:border-beauty-champagne min-h-[52px] flex items-center justify-center">
                       {esp.nombre}
                     </div>
                   </label>
@@ -284,8 +284,8 @@ export default function BookingSection() {
                       className={`p-3 rounded-xl border-2 text-left transition-all min-h-[56px] ${
                         selectedSlot?.fecha_inicio === slot.fecha_inicio &&
                         selectedSlot?.especialista_id === slot.especialista_id
-                          ? 'border-beauty-secondary bg-beauty-secondary/10'
-                          : 'border-beauty-primary/40 hover:border-beauty-secondary/60'
+                          ? 'border-beauty-champagne bg-beauty-champagne/10'
+                          : 'border-beauty-champagne/40 hover:border-beauty-champagne/60'
                       }`}>
                       <div className="flex items-center gap-1 text-beauty-text-dark font-semibold text-sm">
                         <Clock size={12} /> {slot.hora}

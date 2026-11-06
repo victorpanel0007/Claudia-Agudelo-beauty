@@ -1,132 +1,146 @@
 'use client'
 
+import Image from 'next/image'
 import { motion, useReducedMotion } from 'framer-motion'
-import { useEffect, useState } from 'react'
 
-const WA_LINK = 'https://api.whatsapp.com/send/?phone=573022197673&text=Hola%21+Me+gustar%C3%ADa+agendar+una+cita+%EF%BF%BD&type=phone_number&app_absent=0'
-
-interface Categoria { id: string; nombre: string; icono: string; orden: number }
-interface Props { categorias: Categoria[]; imagenesMap: Record<string, string> }
-
-export default function ServicesSection({ categorias }: Props) {
+export default function ServicesSection() {
   const reducedMotion = useReducedMotion()
-  const [active, setActive] = useState(0)
 
-  // Cicla automáticamente por cada servicio cada 1.2s
-  useEffect(() => {
-    if (reducedMotion || categorias.length === 0) return
-    const timer = setInterval(() => {
-      setActive(a => (a + 1) % categorias.length)
-    }, 1200)
-    return () => clearInterval(timer)
-  }, [categorias.length, reducedMotion])
+  const fade = reducedMotion
+    ? {}
+    : { initial: { opacity: 0, y: 24 }, whileInView: { opacity: 1, y: 0 }, viewport: { once: true, margin: '-60px' } }
 
-  // Con prefers-reduced-motion: los elementos aparecen directamente sin animación
-  const cardVariants = {
-    hidden:  reducedMotion ? { opacity: 1, y: 0 } : { opacity: 0, y: 32 },
-    visible: { opacity: 1, y: 0 },
-  }
+  const slideLeft = reducedMotion
+    ? {}
+    : { initial: { opacity: 0, x: -32 }, whileInView: { opacity: 1, x: 0 }, viewport: { once: true, margin: '-60px' } }
+
+  const slideRight = reducedMotion
+    ? {}
+    : { initial: { opacity: 0, x: 32 }, whileInView: { opacity: 1, x: 0 }, viewport: { once: true, margin: '-60px' } }
 
   return (
-    <section id="servicios" className="py-16 sm:py-24">
-      <div className="max-w-5xl mx-auto px-4 sm:px-6">
+    <section id="servicios" className="py-16 sm:py-24 relative overflow-hidden">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6">
 
-        {/* Header — aparece primero */}
-        <motion.div
-          className="text-center mb-12"
-          initial={reducedMotion ? false : { opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: '-60px' }}
-          transition={{ duration: 0.7, ease: 'easeOut' }}
+        {/* Etiqueta superior */}
+        <motion.p
+          {...fade}
+          transition={{ duration: 0.6 }}
+          className="text-center text-white/70 text-xs font-semibold tracking-[0.3em] uppercase mb-10 drop-shadow"
         >
-          <p className="text-white/80 text-xs sm:text-sm font-semibold tracking-widest uppercase mb-3 drop-shadow">
-            ♥ Lo que ofrecemos
-          </p>
-          <h2 className="font-serif text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-4 drop-shadow-lg">
-            Nuestros <span className="text-beauty-primary">Servicios</span>
-          </h2>
-          <p className="text-white/80 text-sm sm:text-base max-w-md mx-auto drop-shadow">
-            Especialistas en belleza en Sabaneta, Antioquia. Manicure, pedicure, maquillaje,
-            masajes, peluquería, cejas, barbería, depilación, limpieza facial y podología.
-          </p>
-          <div className="gold-divider w-20 mx-auto mt-5" />
-        </motion.div>
+          ✦ Sobre Nosotros ✦
+        </motion.p>
 
-        {/* Grid de tarjetas */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {categorias.map((cat, i) => (
-            <motion.a
-              key={cat.id}
-              href={WA_LINK}
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label={`${cat.nombre} en Sabaneta — Claudia Agudelo Beauty`}
-              variants={cardVariants}
-              initial="hidden"
-              whileInView="visible"
-              viewport={{ once: true, margin: '-50px' }}
-              transition={{
-                duration: reducedMotion ? 0 : 0.75,
-                ease: [0.25, 0.46, 0.45, 0.94],
-                delay: reducedMotion ? 0 : (i % 3) * 0.1,
-              }}
-              whileHover={reducedMotion ? {} : { y: -4, transition: { duration: 0.25 } }}
-              className={`group flex flex-col items-center justify-center text-center py-8 px-4 cursor-pointer rounded-2xl border transition-all duration-500 hover:border-white/40 hover:bg-white/10 hover:backdrop-blur-sm hover:shadow-lg ${
-                active === i
-                  ? 'border-white/50 bg-white/10 backdrop-blur-sm shadow-lg scale-105'
-                  : 'border-transparent'
-              }`}
-              style={{ background: 'transparent' }}
-            >
-              {/* Número decorativo dorado */}
-              <span
-                className="text-xs font-semibold tracking-[0.3em] mb-3 transition-opacity duration-300 group-hover:opacity-100 opacity-60"
-                style={{ color: '#C9A96E' }}
-              >
-                {String(i + 1).padStart(2, '0')}
-              </span>
+        {/* Composición principal: foto izquierda + texto derecha */}
+        <div className="flex flex-col lg:flex-row items-stretch gap-0 lg:gap-0 rounded-3xl overflow-hidden shadow-2xl">
 
-              {/* Línea dorada superior */}
-              <div
-                className="w-8 h-px mb-4 transition-all duration-500 group-hover:w-14"
-                style={{ backgroundColor: '#C9A96E' }}
-              />
-
-              {/* Nombre del servicio */}
-              <h3
-                className="font-serif text-xl sm:text-2xl font-bold leading-snug drop-shadow-sm transition-all duration-300 group-hover:tracking-wide"
-                style={{ color: '#ffffff' }}
-              >
-                {cat.nombre}
-              </h3>
-
-              {/* Línea dorada inferior */}
-              <div
-                className="w-8 h-px mt-4 transition-all duration-500 group-hover:w-14"
-                style={{ backgroundColor: '#C9A96E' }}
-              />
-            </motion.a>
-          ))}
-        </div>
-
-        {/* CTA */}
-        <motion.div
-          className="text-center mt-12"
-          initial={reducedMotion ? false : { opacity: 0, y: 16 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: '-40px' }}
-          transition={{ duration: 0.7, ease: 'easeOut', delay: 0.2 }}
-        >
-          <a
-            href={WA_LINK}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="bg-beauty-primary text-white font-semibold px-10 py-4 rounded-full text-base hover:bg-beauty-primary-dark transition-all shadow-beauty hover:shadow-beauty-lg inline-flex items-center gap-2"
+          {/* ── Fotografía ─────────────────────────────────────────────── */}
+          <motion.div
+            {...slideLeft}
+            transition={{ duration: 0.8, ease: [0.25, 0.46, 0.45, 0.94] }}
+            className="relative w-full lg:w-[48%] min-h-[380px] sm:min-h-[480px] lg:min-h-[580px] flex-shrink-0"
           >
-            💅 Apartar Cita
-          </a>
-        </motion.div>
+            <Image
+              src="/Claudia.png"
+              alt="Claudia Agudelo — Fundadora de Claudia Agudelo Beauty"
+              fill
+              className="object-cover object-top"
+              sizes="(max-width: 1024px) 100vw, 48vw"
+              priority
+            />
+            {/* Gradiente lateral para fusionar con el texto en desktop */}
+            <div className="hidden lg:block absolute inset-y-0 right-0 w-24 bg-gradient-to-r from-transparent to-black/40 pointer-events-none" />
+            {/* Gradiente inferior en móvil */}
+            <div className="lg:hidden absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/50 to-transparent pointer-events-none" />
+          </motion.div>
 
+          {/* ── Bloque de texto ────────────────────────────────────────── */}
+          <motion.div
+            {...slideRight}
+            transition={{ duration: 0.8, ease: [0.25, 0.46, 0.45, 0.94], delay: 0.15 }}
+            className="relative flex-1 flex items-center"
+            style={{
+              background: 'rgba(0,0,0,0.45)',
+              backdropFilter: 'blur(18px)',
+              WebkitBackdropFilter: 'blur(18px)',
+            }}
+          >
+            {/* Textura dorada sutil de fondo */}
+            <div
+              className="absolute inset-0 pointer-events-none opacity-10"
+              style={{
+                background: 'linear-gradient(135deg, #C5A675 0%, transparent 60%)',
+              }}
+            />
+
+            <div className="relative z-10 px-8 sm:px-10 lg:px-12 py-10 sm:py-14 lg:py-16">
+
+              {/* Línea dorada decorativa */}
+              <div
+                className="w-12 h-px mb-6"
+                style={{ background: 'linear-gradient(90deg, #C5A675, transparent)' }}
+              />
+
+              {/* Título H2 editorial */}
+              <h2 className="font-serif text-3xl sm:text-4xl lg:text-[2.6rem] font-bold leading-tight mb-6 drop-shadow-lg">
+                <span className="text-white">Un espacio para ti,</span>
+                <br />
+                <span
+                  className="italic"
+                  style={{ color: '#C5A675' }}
+                >
+                  un momento para brillar.
+                </span>
+              </h2>
+
+              {/* Texto descriptivo */}
+              <div className="space-y-4 mb-8">
+                <p className="text-white/85 text-sm sm:text-base leading-relaxed">
+                  En <strong className="text-white font-semibold">Claudia Agudelo Beauty</strong> creemos
+                  que la belleza comienza cuando te regalas un momento para ti. Creamos un espacio donde
+                  el cuidado, la calidez y la atención a cada detalle se unen para que te sientas especial.
+                </p>
+                <p className="text-white/85 text-sm sm:text-base leading-relaxed">
+                  Más que un lugar para realzar tu belleza, somos un refugio para desconectarte de la rutina,
+                  reconectar contigo y disfrutar de una experiencia pensada para tu bienestar.
+                </p>
+              </div>
+
+              {/* Línea dorada divisora */}
+              <div
+                className="w-full h-px mb-6 opacity-30"
+                style={{ background: 'linear-gradient(90deg, #C5A675, transparent)' }}
+              />
+
+              {/* Frase final */}
+              <p
+                className="font-serif text-base sm:text-lg italic leading-relaxed"
+                style={{ color: '#C5A675' }}
+              >
+                &ldquo;Tu esencia es única. Nuestro propósito es ayudarte a brillar.&rdquo;
+              </p>
+
+              {/* CTA */}
+              <div className="mt-8">
+                <a
+                  href="https://api.whatsapp.com/send/?phone=573022197673&text=Hola%21+Me+gustar%C3%ADa+agendar+una+cita+%EF%BF%BD&type=phone_number&app_absent=0"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 font-semibold px-8 py-3.5 rounded-full text-sm transition-all"
+                  style={{
+                    background: 'linear-gradient(135deg, #C5A675, #A8854F)',
+                    color: '#fff',
+                    boxShadow: '0 4px 20px rgba(197,166,117,0.35)',
+                  }}
+                >
+                  💅 Agenda tu cita
+                </a>
+              </div>
+
+            </div>
+          </motion.div>
+
+        </div>
       </div>
     </section>
   )

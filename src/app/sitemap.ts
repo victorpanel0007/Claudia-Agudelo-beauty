@@ -2,11 +2,6 @@ import { MetadataRoute } from 'next'
 
 const BASE_URL = 'https://claudiaagudelobeauty.com'
 
-/**
- * Sitemap generado dinámicamente por Next.js.
- * Solo incluye URLs públicas, canónicas y del dominio principal.
- * Excluye: /admin, /api, /login, /especialista y cualquier ruta privada.
- */
 export default function sitemap(): MetadataRoute.Sitemap {
   return [
     {
@@ -17,9 +12,21 @@ export default function sitemap(): MetadataRoute.Sitemap {
     },
     {
       url: `${BASE_URL}/privacidad`,
-      lastModified: new Date('2026-07-01'),
+      lastModified: new Date('2026-11-06'),
       changeFrequency: 'yearly',
       priority: 0.3,
+    },
+    {
+      url: `${BASE_URL}/cookies`,
+      lastModified: new Date('2026-11-06'),
+      changeFrequency: 'yearly',
+      priority: 0.2,
+    },
+    {
+      url: `${BASE_URL}/terminos`,
+      lastModified: new Date('2026-11-06'),
+      changeFrequency: 'yearly',
+      priority: 0.2,
     },
   ]
 }

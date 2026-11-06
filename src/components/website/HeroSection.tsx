@@ -58,7 +58,7 @@ export default function HeroSection() {
           <h1 className="font-serif text-4xl sm:text-5xl lg:text-6xl font-bold text-white leading-tight mb-4 drop-shadow-lg">
             Realzamos<br />
             tu belleza
-            <span className="block text-beauty-primary italic font-serif mt-1 text-3xl sm:text-4xl lg:text-5xl drop-shadow">
+            <span className="block text-beauty-champagne italic font-serif mt-1 text-3xl sm:text-4xl lg:text-5xl drop-shadow">
               y tu esencia
             </span>
           </h1>
@@ -72,7 +72,7 @@ export default function HeroSection() {
             href="https://api.whatsapp.com/send/?phone=573022197673&text=Hola%21+Me+gustar%C3%ADa+agendar+una+cita+%EF%BF%BD&type=phone_number&app_absent=0"
             target="_blank"
             rel="noopener noreferrer"
-            className="bg-beauty-primary text-white font-semibold px-8 py-4 rounded-full text-base hover:bg-beauty-primary-dark transition-all shadow-beauty hover:shadow-beauty-lg inline-flex items-center gap-2 min-h-[52px]"
+            className="bg-beauty-champagne text-white font-semibold px-8 py-4 rounded-full text-base hover:bg-beauty-web-accent-dark transition-all shadow-beauty hover:shadow-beauty-lg inline-flex items-center gap-2 min-h-[52px]"
           >
             💅 Agenda tu Cita
           </a>

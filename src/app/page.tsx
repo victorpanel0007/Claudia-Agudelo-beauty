@@ -101,10 +101,6 @@ const TestimonialsSection = dynamic(() => import('@/components/website/Testimoni
   loading: () => <SectionSkeleton />,
 })
 
-const ContactSection = dynamic(() => import('@/components/website/ContactSection'), {
-  loading: () => <SectionSkeleton />,
-})
-
 const Footer = dynamic(() => import('@/components/website/Footer'))
 
 function SectionSkeleton() {
@@ -161,13 +157,9 @@ export default async function HomePage() {
       <BackgroundFondo />
       <Header />
       <HeroSection />
-      <ServicesSection
-        categorias={categorias ?? []}
-        imagenesMap={imagenesMap}
-      />
+      <ServicesSection />
       <GallerySection fotos={galeriaFotos} />
       <TestimonialsSection />
-      <ContactSection />
       <Footer />
       <WhatsAppFloat />
     </main>

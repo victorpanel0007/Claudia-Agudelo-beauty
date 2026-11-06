@@ -1,24 +1,24 @@
 import type { Metadata, Viewport } from 'next'
-import { Inter, Playfair_Display } from 'next/font/google'
+import { Cormorant_Garamond, Montserrat } from 'next/font/google'
 import './globals.css'
 
-// ── Fuentes optimizadas ───────────────────────────────────────────────────
-// Inter: solo subset latin, solo pesos usados (400, 500, 600, 700)
-const inter = Inter({
+// ── Fuentes ───────────────────────────────────────────────────────────────
+// Cormorant Garamond: serif editorial de lujo para títulos
+const cormorant = Cormorant_Garamond({
   subsets: ['latin'],
-  variable: '--font-inter',
+  variable: '--font-cormorant',
   display: 'swap',
-  weight: ['400', '500', '600', '700'],
+  weight: ['300', '400', '500', '600', '700'],
+  style: ['normal', 'italic'],
   preload: true,
 })
 
-// Playfair: solo pesos y estilos usados
-const playfair = Playfair_Display({
+// Montserrat: sans-serif moderna para textos y navegación
+const montserrat = Montserrat({
   subsets: ['latin'],
-  variable: '--font-playfair',
+  variable: '--font-montserrat',
   display: 'swap',
-  weight: ['400', '700'],
-  style: ['normal', 'italic'],
+  weight: ['300', '400', '500', '600', '700'],
   preload: true,
 })
 
@@ -96,7 +96,7 @@ export const metadata: Metadata = {
 }
 
 export const viewport: Viewport = {
-  themeColor: '#EFA1B5',
+  themeColor: '#29332E',
   width: 'device-width',
   initialScale: 1,
   maximumScale: 5,
@@ -110,7 +110,7 @@ export default function RootLayout({
   return (
     <html
       lang="es"
-      className={`scroll-smooth ${inter.variable} ${playfair.variable}`}
+      className={`scroll-smooth ${cormorant.variable} ${montserrat.variable}`}
       suppressHydrationWarning
     >
       <head>

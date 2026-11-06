@@ -10,39 +10,64 @@ const config: Config = {
     extend: {
       colors: {
         beauty: {
-          // ── Paleta Oficial Claudia Agudelo Beauty ──────────────
+          // ── Paleta original — usada en admin, especialista, login ──────
+          // NO modificar estos valores — los paneles internos dependen de ellos
           bg:              '#FFF8EE', // Crema Suave
-          'bg-dark':       '#F5EFE0', // Crema ligeramente más oscura
+          'bg-dark':       '#F5EFE0',
           'rosa-claro':    '#FAD6E0', // Rosa Claro
-          primary:         '#EFA1B5', // Rosa Medio (botones principales)
-          'primary-light': '#FAD6E0', // Rosa Claro (hover light)
-          'primary-dark':  '#D4809A', // Rosa Medio oscurecido
-          borgona:         '#8B1E3F', // Borgoña (acento fuerte)
-          'borgona-light': '#B5486A', // Borgoña claro
-          'borgona-dark':  '#5C0F28', // Borgoña oscuro
-          sage:            '#A7B8A6', // Verde Salvia
-          'sage-light':    '#C5D1C4', // Verde Salvia claro
-          'sage-dark':     '#7A9479', // Verde Salvia oscuro
+          primary:         '#EFA1B5', // Rosa Medio
+          'primary-light': '#FAD6E0',
+          'primary-dark':  '#D4809A',
+          borgona:         '#8B1E3F', // Borgoña
+          'borgona-light': '#B5486A',
+          'borgona-dark':  '#5C0F28',
+          sage:            '#A7B8A6', // Verde Salvia original
+          'sage-light':    '#C5D1C4',
+          'sage-dark':     '#7A9479',
           secondary:       '#D4AF37', // Dorado
-          'secondary-light':'#E8CC6A', // Dorado claro
-          'secondary-dark': '#A8861C', // Dorado oscuro
+          'secondary-light':'#E8CC6A',
+          'secondary-dark': '#A8861C',
           text:            '#222222', // Negro Suave
           'text-dark':     '#111111',
           'text-muted':    '#666666',
           white:           '#FFFFFF',
           'off-white':     '#FFF8EE',
-          // Aliases
           gold:            '#D4AF37',
           'gold-light':    '#E8CC6A',
           'gold-dark':     '#A8861C',
           black:           '#222222',
           'black-soft':    '#444444',
           'text-soft':     '#888888',
+
+          // ── Paleta nueva — usada SOLO en la web pública ────────────────
+          // Usar con prefijo "web-" para no pisar los colores del admin
+          'web-bg':             '#F5F8F6', // Blanco nube
+          'web-bg-secondary':   '#DCE7DF', // Verde niebla
+          'web-accent':         '#C5A675', // Champaña
+          'web-accent-light':   '#D9C4A0',
+          'web-accent-dark':    '#A8854F',
+          'web-sage':           '#829889', // Verde salvia nuevo
+          'web-sage-light':     '#A3B5A9',
+          'web-sage-dark':      '#5E7466',
+          'web-deep':           '#29332E', // Verde profundo
+          'web-deep-light':     '#3D4F47',
+          'web-deep-dark':      '#1A2420',
+          'web-white':          '#FFFFFF',
+          'web-cloud':          '#F5F8F6',
+
+          // Aliases cortos para la web pública
+          champagne:            '#C5A675',
+          'verde-niebla':       '#DCE7DF',
+          'verde-salvia':       '#829889',
+          'verde-profundo':     '#29332E',
+          'blanco-nube':        '#F5F8F6',
         },
       },
       fontFamily: {
-        sans:  ['var(--font-inter)', 'system-ui', 'sans-serif'],
-        serif: ['var(--font-playfair)', 'Georgia', 'serif'],
+        // Cormorant Garamond para títulos web pública
+        serif: ['var(--font-cormorant)', 'var(--font-playfair)', 'Georgia', 'serif'],
+        // Montserrat para textos web pública y admin
+        sans:  ['var(--font-montserrat)', 'var(--font-inter)', 'system-ui', 'sans-serif'],
       },
       backgroundImage: {
         'gradient-beauty':  'linear-gradient(135deg, #8B1E3F 0%, #5C0F28 100%)',

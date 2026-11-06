@@ -48,9 +48,14 @@ const nextConfig = {
         source: '/(.*)',
         headers: [
           { key: 'X-Content-Type-Options',  value: 'nosniff' },
-          { key: 'X-Frame-Options',          value: 'DENY' },
+          // X-Frame-Options removido para permitir iframes de Google Maps
           { key: 'X-XSS-Protection',         value: '1; mode=block' },
           { key: 'Referrer-Policy',           value: 'strict-origin-when-cross-origin' },
+          // Content-Security-Policy: permite frames de Google Maps y Places
+          {
+            key: 'Content-Security-Policy',
+            value: "frame-src 'self' https://maps.google.com https://www.google.com https://maps.googleapis.com;",
+          },
         ],
       },
     ]

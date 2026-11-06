@@ -7,11 +7,8 @@ import Image from 'next/image'
 import toast from 'react-hot-toast'
 import { createPortal } from 'react-dom'
 
-const CATEGORIAS = [
-  'General', 'Manicura y Pedicura', 'Maquillaje', 'Masajes',
-  'Limpieza Facial', 'Cejas y Pestañas', 'Peinados',
-  'Barbería', 'Depilación Corporal', 'Peluquería', 'Podología',
-]
+// Las tres categorías de la galería pública
+const CATEGORIAS = ['Cabello', 'Uñas', 'Maquillaje']
 
 interface FotoGaleria {
   id: string
@@ -29,11 +26,13 @@ export default function GaleriaView() {
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
   const [showModal, setShowModal] = useState(false)
-  const [categoria, setCategoria] = useState('General')
+  const [categoria, setCategoria] = useState('Cabello')
   const [descripcion, setDescripcion] = useState('')
   const [preview, setPreview] = useState<string | null>(null)
   const [file, setFile] = useState<File | null>(null)
   const [deleting, setDeleting] = useState<string | null>(null)
+  const [editingCat, setEditingCat] = useState<string | null>(null)  // id foto en edición
+  const [newCat, setNewCat] = useState('')
   const fileRef = useRef<HTMLInputElement>(null)
   const supabase = createClient()
 
@@ -91,7 +90,7 @@ export default function GaleriaView() {
       setShowModal(false)
       setFile(null)
       setPreview(null)
-      setCategoria('General')
+      setCategoria('Cabello')
       setDescripcion('')
       loadFotos()
     } catch (err: unknown) {
@@ -114,6 +113,21 @@ export default function GaleriaView() {
       toast.error('Error al eliminar')
     }
     setDeleting(null)
+  }
+
+  async function handleUpdateCategoria(id: string) {
+    const res = await fetch('/api/galeria', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, categoria: newCat }),
+    })
+    if (res.ok) {
+      toast.success('Categoría actualizada')
+      setEditingCat(null)
+      loadFotos()
+    } else {
+      toast.error('Error al actualizar')
+    }
   }
 
   function closeModal() {
@@ -185,7 +199,7 @@ export default function GaleriaView() {
                 sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
               />
               {/* Overlay */}
-              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all duration-300 flex flex-col justify-between p-3">
+              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/50 transition-all duration-300 flex flex-col justify-between p-3">
                 <div className="opacity-0 group-hover:opacity-100 transition-opacity flex justify-end">
                   <button
                     onClick={() => handleDelete(foto)}
@@ -198,12 +212,37 @@ export default function GaleriaView() {
                     }
                   </button>
                 </div>
-                <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                  <span className="text-xs font-semibold text-white bg-black/50 px-2 py-1 rounded-lg">
-                    {foto.categoria}
-                  </span>
+                <div className="opacity-0 group-hover:opacity-100 transition-opacity space-y-1">
+                  {/* Editar categoría inline */}
+                  {editingCat === foto.id ? (
+                    <div className="flex gap-1" onClick={e => e.stopPropagation()}>
+                      <select
+                        value={newCat}
+                        onChange={e => setNewCat(e.target.value)}
+                        className="flex-1 text-xs rounded-lg px-1.5 py-1 bg-white text-gray-800 border-0"
+                        autoFocus
+                      >
+                        {CATEGORIAS.map(c => <option key={c} value={c}>{c}</option>)}
+                      </select>
+                      <button
+                        onClick={() => handleUpdateCategoria(foto.id)}
+                        className="text-xs bg-beauty-primary text-white px-2 py-1 rounded-lg font-medium"
+                      >✓</button>
+                      <button
+                        onClick={() => setEditingCat(null)}
+                        className="text-xs bg-white/20 text-white px-2 py-1 rounded-lg"
+                      >✕</button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={e => { e.stopPropagation(); setEditingCat(foto.id); setNewCat(foto.categoria) }}
+                      className="text-xs font-semibold text-white bg-black/50 hover:bg-beauty-primary px-2 py-1 rounded-lg transition-colors w-full text-left"
+                    >
+                      📁 {foto.categoria}
+                    </button>
+                  )}
                   {foto.descripcion && (
-                    <p className="text-[10px] text-white/80 mt-1 truncate">{foto.descripcion}</p>
+                    <p className="text-[10px] text-white/80 truncate">{foto.descripcion}</p>
                   )}
                 </div>
               </div>
