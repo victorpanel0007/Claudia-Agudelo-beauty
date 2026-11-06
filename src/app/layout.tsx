@@ -1,11 +1,11 @@
 import type { Metadata, Viewport } from 'next'
-import { Cormorant_Garamond, Montserrat } from 'next/font/google'
+import { Cormorant, Montserrat } from 'next/font/google'
 import Script from 'next/script'
 import './globals.css'
 
 // ── Fuentes ───────────────────────────────────────────────────────────────
 // Cormorant Garamond: serif editorial de lujo para títulos
-const cormorant = Cormorant_Garamond({
+const cormorant = Cormorant({
   subsets: ['latin'],
   variable: '--font-cormorant',
   display: 'swap',
