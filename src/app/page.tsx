@@ -74,8 +74,63 @@ const jsonLd = {
   ],
 }
 
-const ServicesSection = dynamic(() => import('@/components/website/ServicesSection'), {
-  loading: () => <SectionSkeleton />,
+// ── JSON-LD: FAQPage ─────────────────────────────────────────────────────
+const faqLd = {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: [
+    {
+      '@type': 'Question',
+      name: '¿Dónde están ubicados?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: 'Nos encontramos en la Cl. 74 Sur #46-48 (Barrio Holanda), Sabaneta, Antioquia.',
+      },
+    },
+    {
+      '@type': 'Question',
+      name: '¿Qué servicios ofrecen en el salón?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: 'Ofrecemos peluquería, tratamientos capilares, manicura y pedicura, masajes relajantes, limpieza facial profunda, cejas y pestañas, maquillaje profesional y barbería.',
+      },
+    },
+    {
+      '@type': 'Question',
+      name: '¿Cómo puedo agendar una cita?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: 'Puedes agendar de forma automática directamente en nuestra web o a través de nuestro canal de WhatsApp las 24 horas con nuestra recepcionista virtual.',
+      },
+    },
+    {
+      '@type': 'Question',
+      name: '¿Puedo elegir a mi especialista favorita al reservar?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: 'Sí, al momento de agendar puedes elegir entre Claudia, Andrea o la primera especialista disponible.',
+      },
+    },
+    {
+      '@type': 'Question',
+      name: '¿Con cuánta anticipación debo agendar?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: 'Recomendamos reservar con antelación a través de nuestra web o WhatsApp para asegurar tu horario, especialmente para los fines de semana.',
+      },
+    },
+    {
+      '@type': 'Question',
+      name: '¿Qué métodos de pago aceptan?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: 'Puedes pagar de forma segura directamente en el salón en efectivo o mediante los medios electrónicos disponibles.',
+      },
+    },
+  ],
+}
+
+const ServicesSection = dynamic(() => import('@/components/website/ServicesSection'), {  loading: () => <SectionSkeleton />,
 })
 
 const BookingSection = dynamic(() => import('@/components/website/BookingSection'), {
@@ -142,6 +197,11 @@ export default async function HomePage() {
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+      {/* JSON-LD — FAQPage para rich results en Google */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqLd) }}
       />
       <BackgroundFondo />
       <Header />
