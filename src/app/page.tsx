@@ -10,79 +10,68 @@ import { createClient } from '@/lib/supabase/server'
 const CANONICAL_URL = 'https://claudiaagudelobeauty.com'
 
 export const metadata: Metadata = {
-  title: 'Claudia Agudelo Beauty | Salón de Belleza en Sabaneta',
+  title: 'Claudia Agudelo Beauty | Salón de Belleza, Spa y Barbería en Sabaneta',
   description:
-    'Salón de belleza en Sabaneta especializado en manicure, pedicure, maquillaje, masajes, cejas, pestañas y peluquería. Agenda tu cita por WhatsApp.',
+    'Salón de belleza integral y spa en Sabaneta. Expertos en peluquería, manicura, pedicura, masajes, limpieza facial, cejas, pestañas, maquillaje y barbería. ¡Agenda tu cita!',
   alternates: {
     canonical: CANONICAL_URL,
   },
   openGraph: {
-    title: 'Claudia Agudelo Beauty | Salón de Belleza en Sabaneta',
+    title: 'Claudia Agudelo Beauty | Salón de Belleza, Spa y Barbería en Sabaneta',
     description:
-      'Salón de belleza en Sabaneta, Antioquia. Manicure, pedicure, maquillaje, masajes, cejas, peluquería y más. Agenda tu cita fácilmente por WhatsApp.',
+      'Tu centro integral de belleza y bienestar en Sabaneta. Manicura, peluquería, masajes, barbería y más. Agenda por WhatsApp.',
     url: CANONICAL_URL,
   },
 }
 
 // ── JSON-LD: BeautySalon + LocalBusiness ─────────────────────────────────
-// Los datos marcados con ⬜ requieren confirmación. Los datos ✅ están
-// verificados en el código fuente (ContactSection, WhatsApp, redes sociales).
 const jsonLd = {
   '@context': 'https://schema.org',
   '@type': 'BeautySalon',
-  '@id': `${CANONICAL_URL}/#beautysalon`,
+  '@id': 'https://claudiaagudelobeauty.com/',
   name: 'Claudia Agudelo Beauty',
-  url: CANONICAL_URL,
+  url: 'https://claudiaagudelobeauty.com/',
+  telephone: '+573022197673',
+  image: 'https://claudiaagudelobeauty.com/logo.png',
+  priceRange: '$$',
   address: {
     '@type': 'PostalAddress',
     streetAddress: 'Cl. 74 Sur #46-48',
     addressLocality: 'Sabaneta',
     addressRegion: 'Antioquia',
     addressCountry: 'CO',
+    postalCode: '055450',
   },
-  // ✅ Teléfono/WhatsApp confirmado en ContactSection.tsx
-  telephone: '+57 302 219 7673',
-  // ✅ Horarios confirmados en ContactSection.tsx
+  geo: {
+    '@type': 'GeoCoordinates',
+    latitude: 6.151,
+    longitude: -75.614,
+  },
   openingHoursSpecification: [
     {
       '@type': 'OpeningHoursSpecification',
-      dayOfWeek: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
-      opens: '09:00',
-      closes: '19:00',
-    },
-    {
-      '@type': 'OpeningHoursSpecification',
-      dayOfWeek: 'Saturday',
+      dayOfWeek: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
       opens: '09:00',
       closes: '19:00',
     },
   ],
-  // ✅ Redes sociales confirmadas en ContactSection.tsx
   sameAs: [
     'https://www.instagram.com/claudiaagudelobeauty',
     'https://www.facebook.com/share/14d4ZJDy6n8/',
     'https://www.tiktok.com/@claudiaagudelobeauty',
   ],
-  // ✅ Logo confirmado en /public/logo.png
-  image: `${CANONICAL_URL}/logo.png`,
-  priceRange: '$$',
-  // ✅ Servicios confirmados en el proyecto
-  hasOfferCatalog: {
-    '@type': 'OfferCatalog',
-    name: 'Servicios de Belleza — Claudia Agudelo Beauty',
-    itemListElement: [
-      { '@type': 'Offer', itemOffered: { '@type': 'Service', name: 'Manicure y pedicure', description: 'Servicios de manicure y pedicure en Sabaneta, Antioquia.' } },
-      { '@type': 'Offer', itemOffered: { '@type': 'Service', name: 'Maquillaje', description: 'Maquillaje profesional en Sabaneta, Antioquia.' } },
-      { '@type': 'Offer', itemOffered: { '@type': 'Service', name: 'Masajes', description: 'Masajes relajantes y terapéuticos en Sabaneta, Antioquia.' } },
-      { '@type': 'Offer', itemOffered: { '@type': 'Service', name: 'Limpieza facial', description: 'Limpieza facial profunda en Sabaneta, Antioquia.' } },
-      { '@type': 'Offer', itemOffered: { '@type': 'Service', name: 'Cejas y pestañas', description: 'Diseño de cejas y tratamiento de pestañas en Sabaneta, Antioquia.' } },
-      { '@type': 'Offer', itemOffered: { '@type': 'Service', name: 'Peinados', description: 'Peinados para toda ocasión en Sabaneta, Antioquia.' } },
-      { '@type': 'Offer', itemOffered: { '@type': 'Service', name: 'Barbería', description: 'Servicios de barbería en Sabaneta, Antioquia.' } },
-      { '@type': 'Offer', itemOffered: { '@type': 'Service', name: 'Depilación corporal', description: 'Depilación corporal en Sabaneta, Antioquia.' } },
-      { '@type': 'Offer', itemOffered: { '@type': 'Service', name: 'Peluquería', description: 'Servicios de peluquería en Sabaneta, Antioquia.' } },
-      { '@type': 'Offer', itemOffered: { '@type': 'Service', name: 'Podología', description: 'Servicios de podología en Sabaneta, Antioquia.' } },
-    ],
-  },
+  makesOffer: [
+    { '@type': 'Offer', itemOffered: { '@type': 'Service', name: 'Peluquería y Tratamientos Capilares' } },
+    { '@type': 'Offer', itemOffered: { '@type': 'Service', name: 'Manicura y Pedicura' } },
+    { '@type': 'Offer', itemOffered: { '@type': 'Service', name: 'Masajes Relajantes y Spa' } },
+    { '@type': 'Offer', itemOffered: { '@type': 'Service', name: 'Diseño de Cejas y Pestañas' } },
+    { '@type': 'Offer', itemOffered: { '@type': 'Service', name: 'Barbería' } },
+    { '@type': 'Offer', itemOffered: { '@type': 'Service', name: 'Maquillaje Profesional' } },
+    { '@type': 'Offer', itemOffered: { '@type': 'Service', name: 'Limpieza Facial' } },
+    { '@type': 'Offer', itemOffered: { '@type': 'Service', name: 'Depilación Corporal' } },
+    { '@type': 'Offer', itemOffered: { '@type': 'Service', name: 'Peinados' } },
+    { '@type': 'Offer', itemOffered: { '@type': 'Service', name: 'Podología' } },
+  ],
 }
 
 const ServicesSection = dynamic(() => import('@/components/website/ServicesSection'), {
